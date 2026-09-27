@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Renders the level badges (tools/badges/*.svg) to Media/Badge<Name>.tga.
+# Needs rsvg-convert and Python with Pillow.
+set -eu
+HERE="$(cd "$(dirname "$0")/.." && pwd)"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+for svg in "$HERE"/tools/badges/*.svg; do
+    name="$(basename "$svg" .svg)"
+    rsvg-convert "$svg" -o "$TMP/$name.png"
+    out="$HERE/Media/Badge${name^}.tga"
+    python3 -c 'import sys; from PIL import Image; Image.open(sys.argv[1]).convert("RGBA").save(sys.argv[2])' \
+        "$TMP/$name.png" "$out"
+    echo "$out"
+done

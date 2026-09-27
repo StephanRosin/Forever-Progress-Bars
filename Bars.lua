@@ -787,22 +787,28 @@ local function PaintGold(ring)
     Gradient(ring[4], G.SHADE, G.MID)
 end
 
--- Styles drawn from Blizzard's own art. Round ones make the box a circle
--- (`scale` is how much the art reaches past it); `disc` puts a dark disc
--- behind a ring that is open in the middle. The atlases come from the Forever
--- UI source, but not every module there loads, so each one is checked at
--- runtime and offered only if the client has it.
+-- Badge styles. Most are drawn for this addon (tools/badges/*.svg, rendered
+-- by tools/make_badges): `inner` is the share of the texture's height the
+-- dark middle takes, where the digits go; `aspect` its width to height;
+-- `lift` moves the digits up by that share of the height (the crest's middle
+-- sits high). The gold rings are Blizzard's own art: a round box, `scale` for
+-- how far the art reaches past it and a dark disc behind the open ring. Their
+-- atlases come from the Forever UI source, but not every module there loads,
+-- so they are checked at runtime and offered only if the client has them.
+local MEDIA = "Interface\\AddOns\\ForeverProgressBars\\Media\\"
 Bars.ART_STYLES = {
-    BADGE       = { atlas = "GarrMission_IconLevelBG", round = true, scale = 1.0 },
-    BUBBLE      = { atlas = "PetJournal-LevelBubble", round = true, scale = 1.0 },
+    CREST       = { file = MEDIA .. "BadgeCrest.tga", inner = 0.58, lift = 0.03 },
+    HEX         = { file = MEDIA .. "BadgeHex.tga", inner = 0.6 },
+    DIAMOND     = { file = MEDIA .. "BadgeDiamond.tga", inner = 0.5 },
+    ROSETTE     = { file = MEDIA .. "BadgeRosette.tga", inner = 0.62 },
+    LAUREL      = { file = MEDIA .. "BadgeLaurel.tga", inner = 0.54 },
+    WINGS       = { file = MEDIA .. "BadgeWings.tga", inner = 0.62, aspect = 2 },
     RING_GOLD   = { atlas = "communities-ring-gold", round = true, scale = 1.0, disc = true },
     RING_ORNATE = { atlas = "Artifacts-PerkRing-Final", round = true, scale = 1.2, disc = true },
-    PLATE_GOLD  = { atlas = "collections-levelplate-gold" },
-    PLATE_DARK  = { atlas = "collections-levelplate-black" },
 }
 Bars.LEVEL_STYLES = {
     "NONE", "CLASSIC", "GOLD", "CLASS", "PLAIN",
-    "BADGE", "BUBBLE", "RING_GOLD", "RING_ORNATE", "PLATE_GOLD", "PLATE_DARK",
+    "CREST", "HEX", "DIAMOND", "ROSETTE", "LAUREL", "WINGS", "RING_GOLD", "RING_ORNATE",
 }
 local DISC = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
@@ -817,7 +823,7 @@ function Bars.AvailableLevelStyles()
     local list = {}
     for _, style in ipairs(Bars.LEVEL_STYLES) do
         local art = Bars.ART_STYLES[style]
-        if not art or AtlasExists(art.atlas) then list[#list + 1] = style end
+        if not art or not art.atlas or AtlasExists(art.atlas) then list[#list + 1] = style end
     end
     return list
 end
@@ -826,7 +832,7 @@ end
 local function LevelStyle()
     local style = S("levelStyle")
     local art = Bars.ART_STYLES[style]
-    if art and not AtlasExists(art.atlas) then return "CLASSIC" end
+    if art and art.atlas and not AtlasExists(art.atlas) then return "CLASSIC" end
     return style
 end
 Bars.LevelStyle = LevelStyle
@@ -851,7 +857,7 @@ local function ApplyLevelLook()
     levelBox.art:SetShown(art ~= nil)
     levelBox.disc:SetShown(art ~= nil and art.disc == true)
     if art then
-        levelBox.art:SetAtlas(art.atlas)
+        if art.atlas then levelBox.art:SetAtlas(art.atlas) else levelBox.art:SetTexture(art.file) end
         levelBox.bg:Hide()
         ShowRing(ring, false)
         ShowRing(line, false)
@@ -1005,7 +1011,15 @@ local function UpdateLevelBox()
     local w = math.max(S("levelBoxMinW"), textWidth + 2 * S("levelBoxPadX"))
     local h = S("levelFontSize") + 2 * S("levelBoxPadY")
     local art = Bars.ART_STYLES[LevelStyle()]
-    if art and art.round then
+    local lift = 0
+    if art and art.file then
+        -- The digits (and at least the font's height) fill the badge's middle.
+        local content = math.max(textWidth, S("levelFontSize")) + 2 * S("levelBoxPadX")
+        h = content / art.inner
+        w = h * (art.aspect or 1)
+        levelBox.art:SetSize(w, h)
+        lift = (art.lift or 0) * h
+    elseif art and art.round then
         local d = math.max(textWidth + 2 * S("levelBoxPadX"), h)
         w, h = d, d
         levelBox.art:SetSize(d * art.scale, d * art.scale)
@@ -1015,6 +1029,8 @@ local function UpdateLevelBox()
     end
     levelBox:SetWidth(w)
     levelBox:SetHeight(h)
+    levelText:ClearAllPoints()
+    levelText:SetPoint("CENTER", levelBox, "CENTER", 0, lift)
     local reach = art and art.round and w * art.scale or w
     return math.max(S("levelGap"), reach + 2 * CFG.LEVEL_BOX_MARGIN)
 end
