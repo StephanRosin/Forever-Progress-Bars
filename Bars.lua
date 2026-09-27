@@ -796,19 +796,23 @@ end
 -- atlases come from the Forever UI source, but not every module there loads,
 -- so they are checked at runtime and offered only if the client has them.
 local MEDIA = "Interface\\AddOns\\ForeverProgressBars\\Media\\"
+--
+-- `crop` cuts the empty margin off a texture (left and right texture
+-- coordinates), `margin` is the room between the badge and the bars. The
+-- crest's `inner` is larger than its dark middle really is: at the default
+-- padding it looked too big (it looked right at 3 px).
 Bars.ART_STYLES = {
-    CREST       = { file = MEDIA .. "BadgeCrest.tga", inner = 0.58, lift = 0.03 },
-    HEX         = { file = MEDIA .. "BadgeHex.tga", inner = 0.6 },
-    DIAMOND     = { file = MEDIA .. "BadgeDiamond.tga", inner = 0.5 },
-    ROSETTE     = { file = MEDIA .. "BadgeRosette.tga", inner = 0.62 },
+    CREST       = { file = MEDIA .. "BadgeCrest.tga", inner = 0.76, lift = 0.03 },
     LAUREL      = { file = MEDIA .. "BadgeLaurel.tga", inner = 0.54 },
-    WINGS       = { file = MEDIA .. "BadgeWings.tga", inner = 0.62, aspect = 2 },
+    -- The wing tips end at x 22 and 490 of 512.
+    WINGS       = { file = MEDIA .. "BadgeWings.tga", inner = 0.62, aspect = 468 / 256,
+                    crop = { 22 / 512, 490 / 512 }, margin = 2 },
     RING_GOLD   = { atlas = "communities-ring-gold", round = true, scale = 1.0, disc = true },
     RING_ORNATE = { atlas = "Artifacts-PerkRing-Final", round = true, scale = 1.2, disc = true },
 }
 Bars.LEVEL_STYLES = {
-    "NONE", "CLASSIC", "GOLD", "CLASS", "PLAIN",
-    "CREST", "HEX", "DIAMOND", "ROSETTE", "LAUREL", "WINGS", "RING_GOLD", "RING_ORNATE",
+    "NONE", "CLASSIC", "GOLD", "CLASS",
+    "CREST", "LAUREL", "WINGS", "RING_GOLD", "RING_ORNATE",
 }
 local DISC = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
@@ -828,9 +832,15 @@ function Bars.AvailableLevelStyles()
     return list
 end
 
--- The chosen style, or Classic if this client lacks its art.
+-- The chosen style, or Classic if this client lacks its art or the style
+-- is no longer offered (an older version had more).
 local function LevelStyle()
     local style = S("levelStyle")
+    local known = false
+    for _, s in ipairs(Bars.LEVEL_STYLES) do
+        if s == style then known = true break end
+    end
+    if not known then return "CLASSIC" end
     local art = Bars.ART_STYLES[style]
     if art and art.atlas and not AtlasExists(art.atlas) then return "CLASSIC" end
     return style
@@ -857,7 +867,13 @@ local function ApplyLevelLook()
     levelBox.art:SetShown(art ~= nil)
     levelBox.disc:SetShown(art ~= nil and art.disc == true)
     if art then
-        if art.atlas then levelBox.art:SetAtlas(art.atlas) else levelBox.art:SetTexture(art.file) end
+        if art.atlas then
+            levelBox.art:SetAtlas(art.atlas)
+        else
+            levelBox.art:SetTexture(art.file)
+            local crop = art.crop or { 0, 1 }
+            levelBox.art:SetTexCoord(crop[1], crop[2], 0, 1)
+        end
         levelBox.bg:Hide()
         ShowRing(ring, false)
         ShowRing(line, false)
@@ -1032,7 +1048,8 @@ local function UpdateLevelBox()
     levelText:ClearAllPoints()
     levelText:SetPoint("CENTER", levelBox, "CENTER", 0, lift)
     local reach = art and art.round and w * art.scale or w
-    return math.max(S("levelGap"), reach + 2 * CFG.LEVEL_BOX_MARGIN)
+    local margin = art and art.margin or CFG.LEVEL_BOX_MARGIN
+    return math.max(S("levelGap"), reach + 2 * margin)
 end
 
 local function Layout()
