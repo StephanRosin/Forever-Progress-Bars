@@ -1,0 +1,27 @@
+## Interface: 20506, 16001
+## Title: Forever Progress Bars
+## Notes: Professions, secondary skills and reputations as bars, with your level in the middle.
+## Notes-deDE: Berufe, Nebenberufe und Ruf als Leisten, mit deiner Stufe in der Mitte.
+## Notes-esES: Profesiones, habilidades secundarias y reputaciones como barras, con tu nivel en el centro.
+## Notes-esMX: Profesiones, habilidades secundarias y reputaciones como barras, con tu nivel en el centro.
+## Notes-frFR: Métiers, compétences secondaires et réputations en barres, avec votre niveau au centre.
+## Version: 1.0.0
+## X-Curse-Project-ID: 1714182
+## IconTexture: Interface\AddOns\ForeverProgressBars\Media\MinimapIcon.tga
+## SavedVariables: ForeverProgressBarsProfiles
+## SavedVariablesPerCharacter: ForeverProgressBarsChar
+
+Locales\enUS.lua
+Locales\deDE.lua
+Locales\esES.lua
+Locales\frFR.lua
+Locale.lua
+Profiles.lua
+Settings.lua
+Media.lua
+Bars.lua
+Options\Rows.lua
+Options\Window.lua
+Options\Panel.lua
+Options\MinimapButton.lua
+Commands.lua
