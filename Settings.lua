@@ -18,8 +18,11 @@ Settings.DEFAULTS = {
     -- Bars
     barHeight = 25,
     textHeight = 14,
+    textGap = 1,            -- between the text line and its bar
     spacing = 13,
     segmentWidth = 22,
+    barBgColor = { 0, 0, 0 },       -- the empty part of a bar
+    barBgAlpha = 60,                -- percent
     labelFontSize = 14,     -- 0 = the font object's own size
     showIcons = true,
     iconSize = 18,
@@ -55,8 +58,10 @@ Settings.DEFAULTS = {
 Settings.RANGES = {
     barHeight = { 4, 40 },
     textHeight = { 8, 30 },
+    textGap = { -10, 20 },
     spacing = { 0, 60 },
     segmentWidth = { 4, 60 },
+    barBgAlpha = { 0, 100 },
     labelFontSize = { 0, 30 },
     iconSize = { 6, 40 },
     iconGap = { 0, 20 },

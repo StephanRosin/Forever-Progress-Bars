@@ -15,6 +15,11 @@ local ADDON, ns = ...
 local L, Settings = ns.L, ns.Settings
 local S = Settings.Get
 
+-- One row: the text line, the gap under it and the bar.
+local function RowHeight()
+    return S("textHeight") + S("textGap") + S("barHeight")
+end
+
 -- Fixed values: not settings.
 local CFG = {
     NUM_SLOTS = 4,          -- 2 primary professions + 2 secondary skills
@@ -34,7 +39,6 @@ local CFG = {
         LINE = { 0.2, 0.12, 0.02, 1 },
     },
     BAR_TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar",
-    BG_COLOR = { 0, 0, 0, 0.60 },
     BORDER_COLOR = { 0, 0, 0, 0.90 },
     SEGMENT_COLOR = { 0, 0, 0, 0.55 },
     FONT_TEMPLATE = "GameFontHighlightSmall",
@@ -609,7 +613,7 @@ local function BuildBar(index)
 
     local bg = bar:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(bar)
-    ColorTexture(bg, unpack(CFG.BG_COLOR))
+    bar.bg = bg
 
     local borders = {}
     for i = 1, 4 do
@@ -696,6 +700,17 @@ local function ApplyBarGeometry(bar)
     bar.icon:SetSize(iconSize, iconSize)
     bar.nameText:SetHeight(textHeight)
     bar.valueText:SetHeight(textHeight)
+    -- The empty part of the bar.
+    local c = S("barBgColor")
+    ColorTexture(bar.bg, c[1], c[2], c[3], S("barBgAlpha") / 100)
+    -- The text line sits `textGap` above the bar.
+    local gap = S("textGap")
+    bar.icon:ClearAllPoints()
+    bar.icon:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", 0, gap)
+    bar.valueText:ClearAllPoints()
+    bar.valueText:SetPoint("BOTTOMRIGHT", bar, "TOPRIGHT", 0, gap)
+    bar.nameText:ClearAllPoints()
+    bar.nameText:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", bar.nameOffset or 0, gap)
     LabelFont(bar.nameText)
     LabelFont(bar.valueText)
     LabelFont(bar.standing)
@@ -705,7 +720,7 @@ local function ApplyBarGeometry(bar)
     end
     for _, b in ipairs({ bar.click, bar.open }) do
         b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, textHeight + 1)
+        b:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, textHeight + S("textGap"))
         b:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
     end
 end
@@ -1073,7 +1088,7 @@ local function Layout()
         2 * barWidth + 2 * spacing + levelGap,
         3 * barWidth + 3 * spacing + levelGap,
     }
-    local rowHeight = S("textHeight") + S("barHeight")
+    local rowHeight = RowHeight()
     for i = 1, CFG.NUM_SLOTS do
         local bar = slots[i]
         bar:ClearAllPoints()
@@ -1104,7 +1119,7 @@ end
 -- relative to the container, whose top is the top of the first text line.
 function Bars.LayoutBackdrop()
     if not backdrop or not container then return end
-    local rowHeight = S("textHeight") + S("barHeight")
+    local rowHeight = RowHeight()
     local top, bottom = 0, -rowHeight
     for i = 1, CFG.NUM_REP_SLOTS do
         if repSlots[i] and repSlots[i]:IsShown() then
@@ -1133,7 +1148,7 @@ local function Place()
     container:ClearAllPoints()
     container:SetPoint("TOP", UIParent, "TOP", S("x"), S("y"))
     container:SetWidth(width)
-    container:SetHeight(S("textHeight") + S("barHeight"))
+    container:SetHeight(RowHeight())
 end
 
 -- =============================================================================
@@ -1260,7 +1275,7 @@ local function FillSlot(index, line)
         bar.nameOffset = 0
     end
     bar.nameText:ClearAllPoints()
-    bar.nameText:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", bar.nameOffset, 1)
+    bar.nameText:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", bar.nameOffset, S("textGap"))
     bar.nameText:SetText(line.name)
     bar.valueText:SetText(string.format("%d/%d", line.rank, line.maxRank))
     bar.sb:SetMinMaxValues(0, math.max(1, line.maxRank))
@@ -1435,7 +1450,7 @@ local function FillRepSlot(index)
     bar.icon:Hide()
     bar.nameOffset = 0
     bar.nameText:ClearAllPoints()
-    bar.nameText:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", 0, 1)
+    bar.nameText:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", 0, S("textGap"))
     bar.nameText:SetText(found.name)
     bar.valueText:SetText(string.format("%d/%d", bar.data.rank, bar.data.maxRank))
     bar.sb:SetMinMaxValues(0, bar.data.maxRank)

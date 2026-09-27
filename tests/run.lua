@@ -205,7 +205,7 @@ Settings.Set("levelStyle", "CREST")
 check("crest: digits lifted", select(5, Bars.levelText:GetPoint("CENTER")) > 0, true)
 Settings.Set("backdropShow", true)
 Settings.Set("levelY", 20)
-local badgeTop = -(14 + 25) / 2 + 20 + lb:GetHeight() / 2
+local badgeTop = -(14 + 1 + 25) / 2 + 20 + lb:GetHeight() / 2
 check("moved up, the badge reaches above the text line", badgeTop > 0, true)
 check("the backdrop covers the badge", near(Bars.backdrop._points.TOPLEFT[4], badgeTop + 6), true)
 Settings.Set("levelY", nil)
@@ -235,7 +235,7 @@ check("default width", c:GetWidth(), 1180)
 Settings.Set("width", 5000)
 check("never wider than the screen", c:GetWidth(), 1920)
 Settings.Set("width", nil)
-check("height: text plus bar", c:GetHeight(), 14 + 25)
+check("height: text, gap and bar", c:GetHeight(), 14 + 1 + 25)
 function c:GetCenter() return 1000, 500 end
 function c:GetTop() return 1000 end
 c:GetScript("OnDragStop")(c)
@@ -247,6 +247,30 @@ ns.ToggleLock()
 check("locked: not movable", c:IsMovable(), false)
 check("locked: click-through", c._mouse, false)
 ns.ToggleLock()
+
+section("Space between text and bar")
+local function nameY() return slot(1).nameText._points.BOTTOMLEFT[4] end
+check("default: 1 px", nameY(), 1)
+Settings.Set("textGap", 6)
+check("the name moves up", nameY(), 6)
+check("the value too", slot(1).valueText._points.BOTTOMRIGHT[4], 6)
+check("the icon too", slot(1).icon._points.BOTTOMLEFT[4], 6)
+check("the row grows", c:GetHeight(), 14 + 6 + 25)
+check("the click area covers the text", slot(1).open._points.TOPLEFT[4], 14 + 6)
+check("the reputation row moves down", Bars.RepSlot(2)._points.BOTTOMLEFT[4], -(14 + 6 + 25 + 4))
+check("reputation names too", Bars.RepSlot(2).nameText._points.BOTTOMLEFT[4], 6)
+Settings.Set("textGap", -3)
+check("negative: into the bar", nameY(), -3)
+Settings.Set("textGap", nil)
+
+section("Empty part of the bars")
+check("default: black at 60 %", table.concat(slot(1).bg._texColor, ","), "0,0,0,0.6")
+Settings.Set("barBgColor", { 0.2, 0.3, 0.4 })
+Settings.Set("barBgAlpha", 25)
+check("colour and opacity", table.concat(slot(2).bg._texColor, ","), "0.2,0.3,0.4,0.25")
+check("reputation bars too", Bars.RepSlot(1).bg._texColor[4], 0.25)
+Settings.Set("barBgColor", nil)
+Settings.Set("barBgAlpha", nil)
 
 section("The level sits in the middle")
 -- 2*barWidth + 1.5*spacing + levelGap/2 == width/2
@@ -261,7 +285,7 @@ check("off by default", bd:IsShown(), false)
 Settings.Set("backdropShow", true)
 check("shown", bd:IsShown(), true)
 check("opacity 50 %", bd.bg._texColor[4], 0.5)
-local row = 14 + 25
+local row = 14 + 1 + 25
 local topLeft, bottomRight = bd._points.TOPLEFT, bd._points.BOTTOMRIGHT
 -- The level box (58 high, centred 25 below the row's middle) reaches lowest
 -- of all? The reputation row ends at -(2*39+4) = -82; the box at

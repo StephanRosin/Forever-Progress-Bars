@@ -31,7 +31,7 @@ Everything you level besides your character, in one strip: two primary professio
 
 ## Layout
 - Drag the strip where you want it, or set position and width exactly. Lock it to make it click-through.
-- Bar height, text height, spacing, segment width, label font size and icon size are all adjustable.
+- Bar height, text height, the space between text and bar, spacing, segment width, label font size and icon size are all adjustable, as are the colour and opacity of the bars' empty part.
 
 ## Options
 - Its own options window, opened from the **minimap button** or with `/fpb`: General, Bars, Professions, Reputation, Level, Background and Profiles.

@@ -84,14 +84,32 @@ local function generalRows()
     }
 end
 
+local function colorRow(key, label, noOpacity)
+    return {
+        type = "color", label = label, noOpacity = noOpacity,
+        get = function()
+            local c = S(key)
+            return { c[1], c[2], c[3], c[4] or 1 }
+        end,
+        set = function(c)
+            Settings.Set(key, noOpacity and { c[1], c[2], c[3] } or { c[1], c[2], c[3], c[4] })
+        end,
+    }
+end
+
 local function barRows()
     return {
         { type = "header", label = "OPT_BARS" },
         num("barHeight", "OPT_BAR_HEIGHT"),
         num("textHeight", "OPT_TEXT_HEIGHT"),
+        num("textGap", "OPT_TEXT_GAP"),
         num("spacing", "OPT_SPACING"),
         num("segmentWidth", "OPT_SEGMENT_WIDTH"),
         num("labelFontSize", "OPT_LABEL_FONT_SIZE"),
+        colorRow("barBgColor", "OPT_BAR_BG_COLOR", true),
+        { label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
+          get = function() return S("barBgAlpha") end,
+          set = function(v) Settings.Set("barBgAlpha", v) end },
         { type = "header", label = "OPT_ICONS" },
         check("showIcons", "OPT_SHOW_ICONS"),
         num("iconSize", "OPT_ICON_SIZE"),
@@ -183,19 +201,6 @@ local function levelRows()
         num("levelBoxPadX", "OPT_LEVEL_BOX_PAD_X"),
         num("levelBoxPadY", "OPT_LEVEL_BOX_PAD_Y"),
         num("levelBoxMinW", "OPT_LEVEL_BOX_MIN_W"),
-    }
-end
-
-local function colorRow(key, label, noOpacity)
-    return {
-        type = "color", label = label, noOpacity = noOpacity,
-        get = function()
-            local c = S(key)
-            return { c[1], c[2], c[3], c[4] or 1 }
-        end,
-        set = function(c)
-            Settings.Set(key, noOpacity and { c[1], c[2], c[3] } or { c[1], c[2], c[3], c[4] })
-        end,
     }
 end
 
