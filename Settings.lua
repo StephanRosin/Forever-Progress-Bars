@@ -11,47 +11,47 @@ Settings.DEFAULTS = {
     -- Position: the top edge's centre, relative to the top centre of the
     -- screen, and the strip's width. Dragging writes the same values.
     x = 0,
-    y = -29,
+    y = -28,
     width = 1180,
-    locked = false,
+    locked = true,
 
     -- Bars
-    barHeight = 25,
-    textHeight = 14,
-    textGap = 1,            -- between the text line and its bar
-    spacing = 13,
-    segmentWidth = 22,
-    barBgColor = { 0, 0, 0 },       -- the empty part of a bar
-    barBgAlpha = 60,                -- percent
-    labelFontSize = 14,     -- 0 = the font object's own size
+    barHeight = 22,
+    textHeight = 11,
+    textGap = 4,            -- between the text line and its bar
+    spacing = 15,
+    segmentWidth = 21,
+    barBgColor = { 0.192, 0.192, 0.192 },   -- the empty part of a bar
+    barBgAlpha = 97,                -- percent
+    labelFontSize = 12,     -- 0 = the font object's own size
     showIcons = true,
-    iconSize = 18,
-    iconGap = 1,
+    iconSize = 11,
+    iconGap = 2,
 
     -- Level number
     levelY = -25,
     levelGap = 87,          -- the least room kept free for the level box
     levelFont = "Friz Quadrata",
-    levelFontSize = 38,
+    levelFontSize = 28,
     levelFontFlag = "OUTLINE",
-    levelStyle = "CLASSIC",   -- see Bars.LEVEL_STYLES
+    levelStyle = "CREST",   -- see Bars.LEVEL_STYLES
     levelColor = "GOLD",      -- GOLD, WHITE or CLASS
-    levelBoxPadX = 10,
+    levelBoxPadX = 14,
     levelBoxPadY = 10,
     levelBoxMinW = 62,
 
     -- Backdrop behind everything
-    backdropShow = false,
+    backdropShow = true,
     backdropColor = { 0, 0, 0 },
-    backdropAlpha = 50,             -- percent
-    backdropPadding = 6,
-    backdropBorder = "NONE",        -- NONE, FLAT or GOLD
+    backdropAlpha = 100,            -- percent
+    backdropPadding = 8,
+    backdropBorder = "GOLD",        -- NONE, FLAT or GOLD
     backdropBorderSize = 1,         -- in screen pixels
     backdropBorderColor = { 0, 0, 0, 1 },
 
     -- Minimap button
     minimapShow = true,
-    minimapAngle = 200,
+    minimapAngle = 338,
 }
 
 -- Slider ranges, used by the options window and to clamp typed values.

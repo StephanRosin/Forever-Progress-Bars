@@ -1,6 +1,6 @@
 **Summary**
 
-Your professions, secondary skills and reputations as clean bars, with your level in a box in the middle and an optional gold-framed background. Drag it anywhere, click a bar to open the profession.
+Your professions, secondary skills and reputations as clean bars, with your level on a gold crest in the middle, on a gold-framed background. Drag it anywhere, click a bar to open the profession.
 
 ---
 
@@ -26,11 +26,11 @@ Everything you level besides your character, in one strip: two primary professio
 - Box styles: Classic, **Gold** (shaded like a bevel), Class colour or the number alone, plus **hand-drawn gold badges** (crest, laurel wreath, wings) and two gold rings from Blizzard's own art. Every badge grows with the number. The number in gold, white or your class colour; font, size and outline adjustable.
 
 ## Background
-- An optional background behind everything, sized to cover exactly what is shown (the reputation row only while it has bars, the level box where it reaches out).
+- A background behind everything (on by default, can be turned off), sized to cover exactly what is shown (the reputation row only while it has bars, the level box where it reaches out).
 - Any colour and opacity, padding, and a flat or **gold** border from 1 to 8 pixels.
 
 ## Layout
-- Drag the strip where you want it, or set position and width exactly. Lock it to make it click-through.
+- The strip starts at the top of the screen, **locked** (click-through). Right-click the minimap button or type `/fpb unlock` to drag it somewhere else, or set position and width exactly in the options.
 - Bar height, text height, the space between text and bar, spacing, segment width, label font size and icon size are all adjustable, as are the colour and opacity of the bars' empty part.
 
 ## Options

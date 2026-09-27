@@ -39,6 +39,26 @@ M.Fire("PLAYER_LOGIN")
 M.RunTimers()
 M.RunTimers()
 
+section("Defaults")
+check("an empty profile gets the defaults", S("levelStyle"), Settings.DEFAULTS.levelStyle)
+check("the backdrop is on by default", Bars.backdrop:IsShown(), Settings.DEFAULTS.backdropShow)
+check("the bar height by default", Bars.Slot(1):GetHeight(), Settings.DEFAULTS.barHeight)
+check("locked by default", Bars.container:IsMovable(), not Settings.DEFAULTS.locked)
+
+-- The rest runs on a fixed layout, so it does not change with the defaults.
+local TEST_VALUES = {
+    y = -29, locked = false, barHeight = 25, textHeight = 14, textGap = 1, spacing = 13,
+    segmentWidth = 22, labelFontSize = 14, iconSize = 18, iconGap = 1,
+    barBgColor = { 0, 0, 0 }, barBgAlpha = 60,
+    levelStyle = "CLASSIC", levelFontSize = 38, levelBoxPadX = 10,
+    backdropShow = false, backdropAlpha = 50, backdropPadding = 6, backdropBorder = "NONE",
+}
+local function useTestValues()
+    for k, v in pairs(TEST_VALUES) do ns.DB()[k] = v end
+    Settings.Changed(nil)
+end
+useTestValues()
+
 section("Profession bars")
 local function slot(i) return Bars.Slot(i) end
 local function name(i) return slot(i).data and slot(i).data.name end
@@ -174,7 +194,7 @@ check("gold: inner line", Bars.levelBox.line[1]:IsShown(), true)
 Settings.Set("levelStyle", "NONE")
 check("none: no box", Bars.levelBox.bg:IsShown(), false)
 check("none: no ring", Bars.levelBox.ring[1]:IsShown(), false)
-Settings.Set("levelStyle", nil)
+Settings.Set("levelStyle", TEST_VALUES.levelStyle)
 check("box height from the font", Bars.levelBox:GetHeight(), 38 + 2 * 10)
 
 section("Level badges")
@@ -209,7 +229,7 @@ local badgeTop = -(14 + 1 + 25) / 2 + 20 + lb:GetHeight() / 2
 check("moved up, the badge reaches above the text line", badgeTop > 0, true)
 check("the backdrop covers the badge", near(Bars.backdrop._points.TOPLEFT[4], badgeTop + 6), true)
 Settings.Set("levelY", nil)
-Settings.Set("backdropShow", nil)
+Settings.Set("backdropShow", TEST_VALUES.backdropShow)
 Settings.Set("levelStyle", "RING_GOLD")
 check("ring: Blizzard atlas", lb.art._atlas, "communities-ring-gold")
 check("open ring: dark disc behind", lb.disc:IsShown(), true)
@@ -225,7 +245,7 @@ check("a style no longer offered: Classic", Bars.LevelStyle(), "CLASSIC")
 Settings.Set("levelStyle", "RING_ORNATE")
 check("classic ring shown instead", lb.ring[1]:IsShown(), true)
 check("no art then", lb.art:IsShown(), false)
-Settings.Set("levelStyle", nil)
+Settings.Set("levelStyle", TEST_VALUES.levelStyle)
 
 section("Position and size")
 local c = Bars.container
@@ -241,7 +261,7 @@ function c:GetTop() return 1000 end
 c:GetScript("OnDragStop")(c)
 check("dragging stores x", S("x"), 40)
 check("dragging stores y", S("y"), -80)
-Settings.Set("x", nil); Settings.Set("y", nil)
+Settings.Set("x", nil); Settings.Set("y", TEST_VALUES.y)
 check("unlocked by default: movable", c:IsMovable(), true)
 ns.ToggleLock()
 check("locked: not movable", c:IsMovable(), false)
@@ -261,7 +281,7 @@ check("the reputation row moves down", Bars.RepSlot(2)._points.BOTTOMLEFT[4], -(
 check("reputation names too", Bars.RepSlot(2).nameText._points.BOTTOMLEFT[4], 6)
 Settings.Set("textGap", -3)
 check("negative: into the bar", nameY(), -3)
-Settings.Set("textGap", nil)
+Settings.Set("textGap", TEST_VALUES.textGap)
 
 section("Empty part of the bars")
 check("default: black at 60 %", table.concat(slot(1).bg._texColor, ","), "0,0,0,0.6")
@@ -269,8 +289,8 @@ Settings.Set("barBgColor", { 0.2, 0.3, 0.4 })
 Settings.Set("barBgAlpha", 25)
 check("colour and opacity", table.concat(slot(2).bg._texColor, ","), "0.2,0.3,0.4,0.25")
 check("reputation bars too", Bars.RepSlot(1).bg._texColor[4], 0.25)
-Settings.Set("barBgColor", nil)
-Settings.Set("barBgAlpha", nil)
+Settings.Set("barBgColor", TEST_VALUES.barBgColor)
+Settings.Set("barBgAlpha", TEST_VALUES.barBgAlpha)
 
 section("The level sits in the middle")
 -- 2*barWidth + 1.5*spacing + levelGap/2 == width/2
@@ -312,7 +332,9 @@ check("no inner line when flat", bd.line[1]:IsShown(), false)
 Settings.Set("backdropAlpha", 20)
 check("opacity", bd.bg._texColor[4], 0.2)
 Settings.ResetProfile()
-check("reset: backdrop off again", bd:IsShown(), false)
+check("reset: back to the default backdrop", bd:IsShown(), Settings.DEFAULTS.backdropShow)
+check("reset: an empty profile", next(ns.DB()), nil)
+useTestValues()
 
 section("Profiles")
 Settings.Set("barHeight", 30)
