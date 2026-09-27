@@ -30,7 +30,7 @@ Everything you level besides your character, in one strip: two primary professio
 - Any colour and opacity, padding, and a flat or **gold** border from 1 to 8 pixels.
 
 ## Layout
-- The strip starts at the top of the screen, 60 % of the screen wide (at most 1180), so it fits small screens and large UI scales too. Drag it where you want it, or set position and width exactly in the options. Lock it (right-click the minimap button or `/fpb lock`) to make it click-through.
+- The strip starts at the top of the screen, 60 % of the screen wide (at most 1180), so it fits small screens and large UI scales too, and **locked** (click-through). Right-click the minimap button or type `/fpb unlock` to drag it somewhere else, or set position and width exactly in the options.
 - Bar height, text height, the space between text and bar, spacing, segment width, label font size and icon size are all adjustable, as are the colour and opacity of the bars' empty part.
 
 ## Options

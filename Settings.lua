@@ -13,7 +13,7 @@ Settings.DEFAULTS = {
     x = 0,
     y = -25,
     width = 0,              -- 0: automatic, see Settings.AutoWidth
-    locked = false,
+    locked = true,
 
     -- Bars
     barHeight = 22,
