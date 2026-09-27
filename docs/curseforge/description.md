@@ -23,7 +23,7 @@ Everything you level besides your character, in one strip: two primary professio
 
 ## Level
 - Your level in a box between the bars, always centred.
-- Box styles: Classic, **Gold** (shaded like a bevel), Class colour, Plain, or the number alone, plus badges drawn with **Blizzard's own art**: the follower level badge, the pet level bubble, gold rings and level plates. The number in gold, white or your class colour; font, size and outline adjustable.
+- Box styles: Classic, **Gold** (shaded like a bevel), Class colour, Plain, or the number alone, plus **hand-drawn gold badges**: crest, hexagon, diamond, rosette, laurel wreath and wings, and two gold rings from Blizzard's own art. Every badge grows with the number. The number in gold, white or your class colour; font, size and outline adjustable.
 
 ## Background
 - An optional background behind everything, sized to cover exactly what is shown (the reputation row only while it has bars, the level box where it reaches out).
