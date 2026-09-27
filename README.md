@@ -1,8 +1,8 @@
 # Forever Progress Bars
 
 Two primary professions, two secondary skills and four reputations as bars,
-with the character level in a box in the middle, for WoW: Forever and TBC
-Classic Anniversary. Its own options window (minimap button or `/fpb`),
+with the character level in a box in the middle, for WoW: Forever. Its own
+options window (minimap button or `/fpb`),
 profiles, and English, German, Spanish and French.
 
 The full feature list is in [docs/curseforge/description.md](docs/curseforge/description.md).

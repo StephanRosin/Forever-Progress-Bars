@@ -6,7 +6,7 @@ Your professions, secondary skills and reputations as clean bars, with your leve
 
 # Forever Progress Bars
 
-Everything you level besides your character, in one strip: two primary professions, two secondary skills, four reputations of your choice and a large level number, for **WoW: Forever** and **TBC Classic Anniversary**. English, Deutsch, Español, Français.
+Everything you level besides your character, in one strip: two primary professions, two secondary skills, four reputations of your choice and a large level number, for **WoW: Forever**. English, Deutsch, Español, Français.
 
 ## Professions and skills
 - Two primary professions on the left, two secondary skills on the right (First Aid and Cooking by default), each with its icon, name and rank.
@@ -42,7 +42,7 @@ Everything you level besides your character, in one strip: two primary professio
 `/fpb` (options), `/fpb lock`, `/fpb unlock`, `/fpb status`
 
 ## Notes
-- Made for WoW: Forever and TBC Classic Anniversary.
+- Made for WoW: Forever.
 - Fonts: the game's own, plus every font another addon registers with LibSharedMedia.
 - The translations were not written by native speakers: corrections are very welcome on the issue tracker.
 - Bug reports and ideas are welcome on the project's issue tracker. `/fpb status` prints what helps with a report.
