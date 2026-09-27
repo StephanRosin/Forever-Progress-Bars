@@ -41,13 +41,13 @@ M.RunTimers()
 
 section("Defaults")
 check("an empty profile gets the defaults", S("levelStyle"), Settings.DEFAULTS.levelStyle)
-check("the backdrop is on by default", Bars.backdrop:IsShown(), Settings.DEFAULTS.backdropShow)
+check("the backdrop as by default", Bars.backdrop:IsShown(), Settings.DEFAULTS.backdropShow)
 check("the bar height by default", Bars.Slot(1):GetHeight(), Settings.DEFAULTS.barHeight)
-check("locked by default", Bars.container:IsMovable(), not Settings.DEFAULTS.locked)
+check("locked as by default", Bars.container:IsMovable(), not Settings.DEFAULTS.locked)
 
 -- The rest runs on a fixed layout, so it does not change with the defaults.
 local TEST_VALUES = {
-    y = -29, locked = false, barHeight = 25, textHeight = 14, textGap = 1, spacing = 13,
+    y = -29, locked = false, width = 1180, barHeight = 25, textHeight = 14, textGap = 1, spacing = 13,
     segmentWidth = 22, labelFontSize = 14, iconSize = 18, iconGap = 1,
     barBgColor = { 0, 0, 0 }, barBgAlpha = 60,
     levelStyle = "CLASSIC", levelFontSize = 38, levelBoxPadX = 10,
@@ -251,10 +251,18 @@ section("Position and size")
 local c = Bars.container
 check("anchored to the screen top", c._points.TOP[2], "TOP")
 check("default y", c._points.TOP[4], -29)
-check("default width", c:GetWidth(), 1180)
+-- Automatic width: 60 % of the screen, at most 1180. The mock screen is
+-- 1920 wide: 1152.
+ns.DB().width = nil
+Settings.Changed("width")
+check("automatic width on this screen", c:GetWidth(), 1152)
+check("automatic width: capped on a wide screen", Settings.AutoWidth(2383), 1180)
+check("automatic width: a small screen", Settings.AutoWidth(1024), 614)
+Settings.Set("width", 1180)
+check("a width of your own", c:GetWidth(), 1180)
 Settings.Set("width", 5000)
 check("never wider than the screen", c:GetWidth(), 1920)
-Settings.Set("width", nil)
+Settings.Set("width", TEST_VALUES.width)
 check("height: text, gap and bar", c:GetHeight(), 14 + 1 + 25)
 function c:GetCenter() return 1000, 500 end
 function c:GetTop() return 1000 end

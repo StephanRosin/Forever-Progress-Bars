@@ -77,7 +77,7 @@ local function generalRows()
         { label = "OPT_Y", min = -h, max = 0, step = 1, unit = "px",
           get = function() return S("y") end, set = function(v) Settings.Set("y", v) end },
         { label = "OPT_WIDTH", min = 200, max = w, step = 1, unit = "px",
-          get = function() return math.min(S("width"), w) end, set = function(v) Settings.Set("width", v) end },
+          get = function() return math.min(Settings.Width(w), w) end, set = function(v) Settings.Set("width", v) end },
         check("locked", "OPT_LOCK"),
         { type = "header", label = "OPT_MINIMAP" },
         check("minimapShow", "OPT_MINIMAP_SHOW"),

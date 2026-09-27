@@ -11,9 +11,9 @@ Settings.DEFAULTS = {
     -- Position: the top edge's centre, relative to the top centre of the
     -- screen, and the strip's width. Dragging writes the same values.
     x = 0,
-    y = -28,
-    width = 1180,
-    locked = true,
+    y = -25,
+    width = 0,              -- 0: automatic, see Settings.AutoWidth
+    locked = false,
 
     -- Bars
     barHeight = 22,
@@ -22,7 +22,7 @@ Settings.DEFAULTS = {
     spacing = 15,
     segmentWidth = 21,
     barBgColor = { 0.192, 0.192, 0.192 },   -- the empty part of a bar
-    barBgAlpha = 97,                -- percent
+    barBgAlpha = 30,                -- percent
     labelFontSize = 12,     -- 0 = the font object's own size
     showIcons = true,
     iconSize = 11,
@@ -41,7 +41,7 @@ Settings.DEFAULTS = {
     levelBoxMinW = 62,
 
     -- Backdrop behind everything
-    backdropShow = true,
+    backdropShow = false,
     backdropColor = { 0, 0, 0 },
     backdropAlpha = 100,            -- percent
     backdropPadding = 8,
@@ -76,6 +76,24 @@ Settings.RANGES = {
     backdropPadding = { 0, 40 },
     backdropBorderSize = { 1, 8 },
 }
+
+-- The width when none is set: 60 % of the screen, at most 1180. Screens
+-- and UI scales differ a lot: 1180 is about half of a wide screen at a
+-- small UI scale, but nearly all of a 1920 x 1080 one at scale 1.
+Settings.AUTO_WIDTH_SHARE = 0.6
+Settings.AUTO_WIDTH_MAX = 1180
+
+function Settings.AutoWidth(screenWidth)
+    if not screenWidth or screenWidth <= 0 then return Settings.AUTO_WIDTH_MAX end
+    return math.min(Settings.AUTO_WIDTH_MAX, math.floor(screenWidth * Settings.AUTO_WIDTH_SHARE))
+end
+
+-- The width in use: the setting, or the automatic one.
+function Settings.Width(screenWidth)
+    local w = Settings.Get("width")
+    if not w or w <= 0 then return Settings.AutoWidth(screenWidth) end
+    return w
+end
 
 -- Reputation bars by default: the player faction's four capital cities.
 Settings.DEFAULT_REPS = {

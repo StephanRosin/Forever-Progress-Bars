@@ -1143,7 +1143,7 @@ end
 local function Place()
     if not container then return end
     local screen = (UIParent.GetWidth and UIParent:GetWidth()) or 0
-    local width = S("width")
+    local width = Settings.Width(screen)
     if screen and screen > 0 then width = math.min(width, screen) end
     container:ClearAllPoints()
     container:SetPoint("TOP", UIParent, "TOP", S("x"), S("y"))
