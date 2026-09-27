@@ -172,12 +172,12 @@ local function levelRows()
             type = "select", label = "OPT_LEVEL_STYLE",
             choices = function()
                 local list = {}
-                for _, style in ipairs(ns.Bars.LEVEL_STYLES) do
+                for _, style in ipairs(ns.Bars.AvailableLevelStyles()) do
                     list[#list + 1] = { label = L["LEVEL_STYLE_" .. style], value = style }
                 end
                 return list
             end,
-            get = function() return S("levelStyle") end,
+            get = function() return ns.Bars.LevelStyle() end,
             set = function(v) Settings.Set("levelStyle", v) end,
         },
         num("levelBoxPadX", "OPT_LEVEL_BOX_PAD_X"),

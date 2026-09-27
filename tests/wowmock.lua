@@ -64,6 +64,7 @@ local function newWidget(name, kind)
     function w:SetVertexColor(r, g, b, a) self._vertex = { r, g, b, a } end
     function w:SetGradient(dir, a, b) self._gradient = { dir, a, b } end
     function w:SetTexture(t) self._texture = t end
+    function w:SetAtlas(a) self._atlas = a end
     function w:CreateTexture()
         local t = newWidget(nil, "Texture")
         t._owner = self
@@ -129,6 +130,11 @@ tinsert = table.insert
 StaticPopupDialogs = {}
 function StaticPopup_Show(which, a) M.popups[#M.popups + 1] = { which = which, text = StaticPopupDialogs[which].text, arg = a } end
 C_Timer = { After = function(_, fn) M.timers[#M.timers + 1] = fn end }
+-- Atlases this client has; the ornate ring is missing on purpose.
+M.atlases = { ["GarrMission_IconLevelBG"] = true, ["PetJournal-LevelBubble"] = true,
+              ["communities-ring-gold"] = true, ["collections-levelplate-gold"] = true,
+              ["collections-levelplate-black"] = true }
+C_Texture = { GetAtlasInfo = function(a) if M.atlases[a] then return { width = 64, height = 64 } end end }
 function CreateColor(r, g, b, a) return { r = r, g = g, b = b, a = a } end
 InterfaceOptions_AddCategory = function(panel) M.registered[#M.registered + 1] = panel.name end
 

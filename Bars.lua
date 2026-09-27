@@ -787,7 +787,49 @@ local function PaintGold(ring)
     Gradient(ring[4], G.SHADE, G.MID)
 end
 
-Bars.LEVEL_STYLES = { "NONE", "CLASSIC", "GOLD", "CLASS", "PLAIN" }
+-- Styles drawn from Blizzard's own art. Round ones make the box a circle
+-- (`scale` is how much the art reaches past it); `disc` puts a dark disc
+-- behind a ring that is open in the middle. The atlases come from the Forever
+-- UI source, but not every module there loads, so each one is checked at
+-- runtime and offered only if the client has it.
+Bars.ART_STYLES = {
+    BADGE       = { atlas = "GarrMission_IconLevelBG", round = true, scale = 1.0 },
+    BUBBLE      = { atlas = "PetJournal-LevelBubble", round = true, scale = 1.0 },
+    RING_GOLD   = { atlas = "communities-ring-gold", round = true, scale = 1.0, disc = true },
+    RING_ORNATE = { atlas = "Artifacts-PerkRing-Final", round = true, scale = 1.2, disc = true },
+    PLATE_GOLD  = { atlas = "collections-levelplate-gold" },
+    PLATE_DARK  = { atlas = "collections-levelplate-black" },
+}
+Bars.LEVEL_STYLES = {
+    "NONE", "CLASSIC", "GOLD", "CLASS", "PLAIN",
+    "BADGE", "BUBBLE", "RING_GOLD", "RING_ORNATE", "PLATE_GOLD", "PLATE_DARK",
+}
+local DISC = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+
+local function AtlasExists(atlas)
+    if not (C_Texture and C_Texture.GetAtlasInfo) then return false end
+    local ok, info = pcall(C_Texture.GetAtlasInfo, atlas)
+    return ok and info ~= nil
+end
+
+-- The styles this client can draw, in menu order.
+function Bars.AvailableLevelStyles()
+    local list = {}
+    for _, style in ipairs(Bars.LEVEL_STYLES) do
+        local art = Bars.ART_STYLES[style]
+        if not art or AtlasExists(art.atlas) then list[#list + 1] = style end
+    end
+    return list
+end
+
+-- The chosen style, or Classic if this client lacks its art.
+local function LevelStyle()
+    local style = S("levelStyle")
+    local art = Bars.ART_STYLES[style]
+    if art and not AtlasExists(art.atlas) then return "CLASSIC" end
+    return style
+end
+Bars.LevelStyle = LevelStyle
 
 local function ApplyLevelLook()
     if not levelText then return end
@@ -802,9 +844,19 @@ local function ApplyLevelLook()
                    or CFG.LEVEL_COLORS.GOLD
     levelText:SetTextColor(colour[1], colour[2], colour[3])
 
-    local style = S("levelStyle")
+    local style = LevelStyle()
     local ring, line = levelBox.ring, levelBox.line
     local px = OnePixel(levelBox)
+    local art = Bars.ART_STYLES[style]
+    levelBox.art:SetShown(art ~= nil)
+    levelBox.disc:SetShown(art ~= nil and art.disc == true)
+    if art then
+        levelBox.art:SetAtlas(art.atlas)
+        levelBox.bg:Hide()
+        ShowRing(ring, false)
+        ShowRing(line, false)
+        return
+    end
     levelBox.bg:SetShown(style ~= "NONE")
     ColorTexture(levelBox.bg, unpack(style == "CLASSIC" and CFG.LEVEL_BOX_BG or CFG.LEVEL_BOX_BG_DARK))
     ShowRing(ring, style == "CLASSIC" or style == "GOLD" or style == "CLASS")
@@ -872,6 +924,13 @@ local function BuildLevelBox()
     levelBox.bg = bg
     levelBox.ring = NewRing(levelBox, "BORDER")
     levelBox.line = NewRing(levelBox, "BORDER", 1)
+    -- Blizzard art for the badge styles, and a dark disc behind open rings.
+    levelBox.disc = levelBox:CreateTexture(nil, "BACKGROUND")
+    levelBox.disc:SetTexture(DISC)
+    levelBox.disc:SetVertexColor(0, 0, 0, 0.75)
+    levelBox.disc:SetPoint("CENTER")
+    levelBox.art = levelBox:CreateTexture(nil, "ARTWORK")
+    levelBox.art:SetPoint("CENTER")
 
     levelText = levelBox:CreateFontString(nil, "OVERLAY")
     levelText:SetPoint("CENTER", levelBox, "CENTER", 0, 0)
@@ -939,11 +998,25 @@ local function LayoutDividers(bar, width)
     for i = segments, #bar.dividers do bar.dividers[i]:Hide() end
 end
 
--- Fits the box to its digits and returns the room the centre needs.
+-- Fits the box to its digits and returns the room the centre needs. A round
+-- style makes it a circle wide enough for the digits and the font's height.
 local function UpdateLevelBox()
-    local w = math.max(S("levelBoxMinW"), (levelText:GetStringWidth() or 0) + 2 * S("levelBoxPadX"))
+    local textWidth = levelText:GetStringWidth() or 0
+    local w = math.max(S("levelBoxMinW"), textWidth + 2 * S("levelBoxPadX"))
+    local h = S("levelFontSize") + 2 * S("levelBoxPadY")
+    local art = Bars.ART_STYLES[LevelStyle()]
+    if art and art.round then
+        local d = math.max(textWidth + 2 * S("levelBoxPadX"), h)
+        w, h = d, d
+        levelBox.art:SetSize(d * art.scale, d * art.scale)
+        levelBox.disc:SetSize(d * 0.9, d * 0.9)
+    elseif art then
+        levelBox.art:SetSize(w, h)
+    end
     levelBox:SetWidth(w)
-    return math.max(S("levelGap"), w + 2 * CFG.LEVEL_BOX_MARGIN)
+    levelBox:SetHeight(h)
+    local reach = art and art.round and w * art.scale or w
+    return math.max(S("levelGap"), reach + 2 * CFG.LEVEL_BOX_MARGIN)
 end
 
 local function Layout()
