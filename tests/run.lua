@@ -142,11 +142,72 @@ pressed = nil
 ProfessionsFrame._shown = true
 M.Fire("TRADE_SKILL_SHOW")
 check("once shown, the wanted tab is pressed", pressed, 186)
+-- In combat casting from an addon button is refused by WoW ("Interface
+-- action failed"): nothing is tried, Blizzard's message instead.
+local errors = {}
+_G.UIErrorsFrame = { AddMessage = function(_, msg) errors[#errors + 1] = msg end }
+_G.ERR_NOT_IN_COMBAT = "You can't do that while in combat"
+M.state.combat = true
+M.casts = {}
+ProfessionsFrame._shown = false
+check("in combat: not opened", Bars.OpenProfession(186, 12), "combat")
+check("in combat: no cast tried", #M.casts, 0)
+check("in combat: Blizzard's message", errors[1], ERR_NOT_IN_COMBAT)
+check("in combat: no tab pressed", Bars.PressWantedTab(), "combat")
+M.state.combat = false
+ProfessionsFrame._shown = true
+_G.UIErrorsFrame, _G.ERR_NOT_IN_COMBAT = nil, nil
 M.state.time = M.state.time + 5
 pressed = nil
 M.Fire("TRADE_SKILL_LIST_UPDATE")
 check("after the deadline nothing more", pressed, nil)
 _G.ProfessionsFrame, _G.Professions, C_TradeSkillUI = nil, nil, nil
+
+section("In combat: protected bars stay untouched")
+do
+    -- Each bar carries a secure click button, so bars and container are
+    -- protected: in combat nothing may move, size, show or hide them.
+    local blocked = {}
+    local function guard(f, label)
+        for _, m in ipairs({ "SetPoint", "ClearAllPoints", "SetWidth", "SetHeight", "SetSize",
+                             "Show", "Hide", "SetShown", "EnableMouse", "SetMovable" }) do
+            local orig = f[m]
+            f[m] = function(self, ...)
+                if M.state.combat then blocked[#blocked + 1] = label .. ":" .. m end
+                return orig(self, ...)
+            end
+        end
+    end
+    for i = 1, 4 do guard(Bars.Slot(i), "slot" .. i); guard(Bars.RepSlot(i), "rep" .. i) end
+    local container = M.byName["ForeverProgressBarsFrame"]
+    guard(container, "container")
+
+    local wasX, wasLocked = S("x"), S("locked")
+    Settings.Set("locked", true)
+    M.state.combat = true
+    M.state.skills[2][4] = 301          -- a skill-up in combat: only the value
+    Bars.Refresh()
+    ns.RefreshReputation()
+    check("skill-up: nothing protected", table.concat(blocked, ","), "")
+    check("skill-up: value updated at once", slot(1).valueText:GetText(), "301/375")
+    Settings.SetHidden("Cooking", true) -- slot 4 empties: has to wait
+    Settings.Set("x", 40)               -- moving: has to wait
+    Settings.Set("locked", false)       -- unlocking: has to wait
+    check("changes in combat: nothing protected", table.concat(blocked, ","), "")
+    check("slot 4 still shown until combat ends", slot(4):IsShown(), true)
+
+    M.state.combat = false
+    M.Fire("PLAYER_REGEN_ENABLED")
+    check("after combat: slot 4 hidden", slot(4):IsShown(), false)
+    check("after combat: moved", select(4, container:GetPoint("TOP")), 40)
+    check("after combat: unlocked", container:IsMovable(), true)
+
+    Settings.SetHidden("Cooking", false)
+    Settings.Set("x", wasX)
+    Settings.Set("locked", wasLocked)
+    M.state.skills[2][4] = 300
+    Bars.Refresh()
+end
 
 section("Reputation")
 local function rep(i) return Bars.RepSlot(i).data and Bars.RepSlot(i).data.name end

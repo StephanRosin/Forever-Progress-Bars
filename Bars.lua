@@ -522,8 +522,20 @@ Bars.TabFor = TabFor
 local wantedTab, wantedUntil
 local TAB_DEADLINE = 2
 
+-- Casting from an addon's own button is protected in combat: WoW refuses it
+-- with "Interface action failed because of an AddOn". So in combat nothing
+-- is tried; the player gets Blizzard's own "not in combat" message.
+local function RefuseInCombat()
+    if not (InCombatLockdown and InCombatLockdown()) then return false end
+    if UIErrorsFrame and UIErrorsFrame.AddMessage and ERR_NOT_IN_COMBAT then
+        UIErrorsFrame:AddMessage(ERR_NOT_IN_COMBAT, 1, 0.1, 0.1)
+    end
+    return true
+end
+
 local function OpenProfession(skillLine, spellOffset)
     if not spellOffset then return "no data" end
+    if RefuseInCombat() then return "combat" end
     -- Open and already selected: close it (Blizzard's tabs cannot do that).
     if WindowShown() and IsSelected(skillLine) then
         wantedTab, wantedUntil = nil, nil
@@ -550,6 +562,8 @@ Bars.OpenProfession = OpenProfession
 
 local function PressWantedTab()
     if not wantedTab then return "none" end
+    -- The tab casts too; in combat it would be refused (see OpenProfession).
+    if InCombatLockdown and InCombatLockdown() then return "combat" end
     local now = (GetTime and GetTime()) or 0
     if wantedUntil and now > wantedUntil then
         wantedTab, wantedUntil = nil, nil
@@ -691,12 +705,27 @@ local function BuildBar(index)
     return bar
 end
 
+-- Every bar carries a secure click button, which makes the bar (and the
+-- container holding it) protected: in combat none of them may be moved,
+-- sized, shown or hidden. Contents (texts, values, colours) may change;
+-- everything else waits for PLAYER_REGEN_ENABLED.
+local function Locked()
+    return InCombatLockdown and InCombatLockdown() and true or false
+end
+local layoutPending, placePending, lockPending = false, false, false
+
+-- Shows or hides a bar; in combat a change waits.
+local function SetBarShown(bar, shown)
+    if (bar:IsShown() and true or false) == shown then return end
+    if Locked() then layoutPending = true; return end
+    bar:SetShown(shown)
+end
+
 -- Sizes that depend on settings. The secure click area may be moved only
 -- out of combat; in combat it waits for PLAYER_REGEN_ENABLED.
 local geometryPending = false
 local function ApplyBarGeometry(bar)
     local textHeight, iconSize = S("textHeight"), S("iconSize")
-    bar:SetHeight(S("barHeight"))
     bar.icon:SetSize(iconSize, iconSize)
     bar.nameText:SetHeight(textHeight)
     bar.valueText:SetHeight(textHeight)
@@ -714,10 +743,11 @@ local function ApplyBarGeometry(bar)
     LabelFont(bar.nameText)
     LabelFont(bar.valueText)
     LabelFont(bar.standing)
-    if InCombatLockdown and InCombatLockdown() then
+    if Locked() then
         geometryPending = true
         return
     end
+    bar:SetHeight(S("barHeight"))
     for _, b in ipairs({ bar.click, bar.open }) do
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, textHeight + S("textGap"))
@@ -1069,6 +1099,7 @@ end
 
 local function Layout()
     if not container or layoutBusy then return end
+    if Locked() then layoutPending = true; return end
     layoutBusy = true
     local width = container:GetWidth() or 0
     local spacing = S("spacing")
@@ -1142,6 +1173,7 @@ end
 -- Position and width, from the settings. The width never exceeds the screen.
 local function Place()
     if not container then return end
+    if Locked() then placePending = true; return end
     local screen = (UIParent.GetWidth and UIParent:GetWidth()) or 0
     local width = Settings.Width(screen)
     if screen and screen > 0 then width = math.min(width, screen) end
@@ -1177,6 +1209,7 @@ end
 -- swallow clicks into the world.
 local function ApplyLock()
     if not container then return end
+    if Locked() then lockPending = true; return end
     local draggable = not S("locked")
     local widgets = { container }
     for i = 1, #slots do
@@ -1261,7 +1294,7 @@ local function FillSlot(index, line)
     bar.data = line
     ApplyClickTarget(bar)
     if not line then
-        bar:Hide()
+        SetBarShown(bar, false)
         return
     end
     -- Room for the icon only when there is one.
@@ -1281,7 +1314,7 @@ local function FillSlot(index, line)
     bar.sb:SetMinMaxValues(0, math.max(1, line.maxRank))
     bar.sb:SetValue(math.min(line.rank, line.maxRank))
     bar.sb:SetStatusBarColor(ColorForKey(line.key))
-    bar:Show()
+    SetBarShown(bar, true)
 end
 
 local function Refresh()
@@ -1439,7 +1472,7 @@ local function FillRepSlot(index)
     end
     if not found then
         bar.data = nil
-        bar:Hide()
+        SetBarShown(bar, false)
         return
     end
     bar.data = {
@@ -1458,7 +1491,7 @@ local function FillRepSlot(index)
     bar.sb:SetStatusBarColor(FactionColour(found.standing))
     bar.standing:SetText(bar.data.standingText)
     bar.standing:Show()
-    bar:Show()
+    SetBarShown(bar, true)
 end
 
 function ns.RefreshReputation()
@@ -1637,6 +1670,14 @@ events:SetScript("OnEvent", function(_, event, ...)
             geometryPending = false
             for i = 1, #slots do ApplyBarGeometry(slots[i]) end
             for i = 1, #repSlots do ApplyBarGeometry(repSlots[i]) end
+        end
+        -- What had to wait during combat, in the order ApplyAll uses.
+        if placePending then placePending = false; Place() end
+        if lockPending then lockPending = false; ApplyLock() end
+        if layoutPending then
+            layoutPending = false
+            Refresh()
+            ns.RefreshReputation()
         end
     elseif event == "SKILL_LINES_CHANGED" then
         if scanning or GetTime() < suppressSkillEventsUntil then return end
