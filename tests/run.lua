@@ -142,21 +142,32 @@ pressed = nil
 ProfessionsFrame._shown = true
 M.Fire("TRADE_SKILL_SHOW")
 check("once shown, the wanted tab is pressed", pressed, 186)
--- In combat casting from an addon button is refused by WoW ("Interface
--- action failed"): nothing is tried, Blizzard's message instead.
-local errors = {}
-_G.UIErrorsFrame = { AddMessage = function(_, msg) errors[#errors + 1] = msg end }
-_G.ERR_NOT_IN_COMBAT = "You can't do that while in combat"
+-- In combat Blizzard's secure tabs may not be pressed (WoW refuses what the
+-- window does next): the profession is switched with OpenTradeSkill.
+local opened = {}
+C_TradeSkillUI = { OpenTradeSkill = function(id) opened[#opened + 1] = id; return true end,
+                   GetBaseProfessionInfo = function() return { professionID = 171 } end }
 M.state.combat = true
-M.casts = {}
+pressed = nil
+check("in combat, window open: switched directly", Bars.OpenProfession(186, 12), "switched")
+check("in combat: OpenTradeSkill with the skill line", opened[1], 186)
+check("in combat: no tab pressed", pressed, nil)
+-- Closed window: cast as always, then the storm of answers is overruled
+-- with OpenTradeSkill too.
 ProfessionsFrame._shown = false
-check("in combat: not opened", Bars.OpenProfession(186, 12), "combat")
-check("in combat: no cast tried", #M.casts, 0)
-check("in combat: Blizzard's message", errors[1], ERR_NOT_IN_COMBAT)
-check("in combat: no tab pressed", Bars.PressWantedTab(), "combat")
-M.state.combat = false
+M.casts = {}
+check("in combat, window closed: cast", Bars.OpenProfession(186, 12), "opened")
+check("in combat: cast done", #M.casts, 1)
 ProfessionsFrame._shown = true
-_G.UIErrorsFrame, _G.ERR_NOT_IN_COMBAT = nil, nil
+check("in combat: the wanted profession wins", Bars.PressWantedTab(), "switched")
+check("in combat: no tab pressed after the cast", pressed, nil)
+check("in combat: switched to it", opened[#opened], 186)
+C_TradeSkillUI.GetBaseProfessionInfo = function() return { professionID = 186 } end
+local before = #opened
+Bars.PressWantedTab()
+check("already shown: not switched again", #opened, before)
+M.state.combat = false
+C_TradeSkillUI = nil
 M.state.time = M.state.time + 5
 pressed = nil
 M.Fire("TRADE_SKILL_LIST_UPDATE")

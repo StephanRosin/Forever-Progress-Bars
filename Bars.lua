@@ -522,27 +522,39 @@ Bars.TabFor = TabFor
 local wantedTab, wantedUntil
 local TAB_DEADLINE = 2
 
--- Casting from an addon's own button is protected in combat: WoW refuses it
--- with "Interface action failed because of an AddOn". So in combat nothing
--- is tried; the player gets Blizzard's own "not in combat" message.
-local function RefuseInCombat()
-    if not (InCombatLockdown and InCombatLockdown()) then return false end
-    if UIErrorsFrame and UIErrorsFrame.AddMessage and ERR_NOT_IN_COMBAT then
-        UIErrorsFrame:AddMessage(ERR_NOT_IN_COMBAT, 1, 0.1, 0.1)
-    end
+-- In combat Blizzard's profession tabs may not be pressed from an addon:
+-- they are secure buttons, and what the window does after a press (hiding
+-- tabs) is refused, "Interface action failed because of an AddOn", eight
+-- times at once. C_TradeSkillUI.OpenTradeSkill switches the window to a
+-- profession directly and is allowed; Blizzard's own bootstrap uses it the
+-- same way, only when another profession is shown.
+local function SelectInCombat(skillLine)
+    local api = C_TradeSkillUI
+    if not (api and api.OpenTradeSkill) then return false end
+    local ok, info = pcall(function() return api.GetBaseProfessionInfo and api.GetBaseProfessionInfo() end)
+    if ok and type(info) == "table" and info.professionID == skillLine then return true end
+    pcall(api.OpenTradeSkill, skillLine)
     return true
+end
+
+local function InCombat()
+    return InCombatLockdown and InCombatLockdown() and true or false
 end
 
 local function OpenProfession(skillLine, spellOffset)
     if not spellOffset then return "no data" end
-    if RefuseInCombat() then return "combat" end
     -- Open and already selected: close it (Blizzard's tabs cannot do that).
     if WindowShown() and IsSelected(skillLine) then
         wantedTab, wantedUntil = nil, nil
         if C_TradeSkillUI and C_TradeSkillUI.CloseTradeSkill then pcall(C_TradeSkillUI.CloseTradeSkill) end
         return "closed"
     end
-    -- Open on another profession: press Blizzard's own tab.
+    -- Open on another profession: press Blizzard's own tab; in combat switch
+    -- directly instead.
+    if WindowShown() and InCombat() and SelectInCombat(skillLine) then
+        wantedTab, wantedUntil = nil, nil
+        return "switched"
+    end
     local tab = WindowShown() and TabFor(skillLine) or nil
     if tab then
         wantedTab, wantedUntil = nil, nil
@@ -562,12 +574,15 @@ Bars.OpenProfession = OpenProfession
 
 local function PressWantedTab()
     if not wantedTab then return "none" end
-    -- The tab casts too; in combat it would be refused (see OpenProfession).
-    if InCombatLockdown and InCombatLockdown() then return "combat" end
     local now = (GetTime and GetTime()) or 0
     if wantedUntil and now > wantedUntil then
         wantedTab, wantedUntil = nil, nil
         return "expired"
+    end
+    -- In combat the tab may not be pressed (see SelectInCombat).
+    if InCombat() then
+        if SelectInCombat(wantedTab) then return "switched" end
+        return "combat"
     end
     local tab = TabFor(wantedTab)
     if not tab then return "no tab" end
