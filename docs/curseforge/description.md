@@ -35,6 +35,7 @@ Everything you level besides your character, in one strip: two primary professio
 
 ## Options
 - Its own options window, opened from the **minimap button** or with `/fpb`: General, Bars, Professions, Reputation, Level, Background and Profiles.
+- Also listed in Blizzard's **addon compartment** next to the minimap: left-click opens the options, right-click locks or unlocks the strip.
 - **Profiles**: save your layout under a name and share it between characters.
 - Language: follows the game; a dropdown in the options window picks another one, and the change applies at once.
 
