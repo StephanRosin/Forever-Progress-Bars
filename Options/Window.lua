@@ -289,6 +289,7 @@ local function xpRows()
 
         { type = "header", label = "OPT_XP_BADGE" },
         { type = "text", label = "OPT_XP_BADGE_HINT" },
+        check("xpBadgeFollow", "OPT_XP_BADGE_FOLLOW"),
         choice("xpBadgePoint", "OPT_XP_BADGE_POINT",
             { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }, "POINT_"),
         num("xpBadgeX", "OPT_XP_BADGE_X"),

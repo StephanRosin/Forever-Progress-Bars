@@ -27,6 +27,11 @@ local function newWidget(name, kind)
     function w:SetValue(v) self._value = v end
     function w:GetValue() return self._value end
     function w:SetMinMaxValues(a, b) self._min, self._max = a, b end
+    -- The fill texture of a status bar (made on first ask).
+    function w:GetStatusBarTexture()
+        if not self._fillTex then self._fillTex = newWidget() end
+        return self._fillTex
+    end
     function w:SetStatusBarColor(r, g, b) self._color = { r, g, b } end
     function w:SetTextColor(r, g, b) self._textColor = { r, g, b } end
     function w:SetChecked(v) self._checked = not not v end

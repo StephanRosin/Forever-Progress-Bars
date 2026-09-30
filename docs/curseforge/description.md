@@ -23,7 +23,7 @@ Everything you level, in one strip: two primary professions, two secondary skill
 
 ## Experience bar (optional)
 - An experience bar in the same style as the reputation bars, as wide as the whole strip (or a width of your own): above the professions, between professions and reputation, at the bottom, or **anywhere on the screen**.
-- A title line like the reputation bars: "Level 20" on the left, "730 / 23200 (3%)" on the right, with its own fonts and sizes (a big level, small numbers). Or the level as a badge of its own on the bar, placed at any of its points with its own style and size.
+- A title line like the reputation bars: "Level 20" on the left, "730 / 23200 (3%)" on the right, with its own fonts and sizes (a big level, small numbers). Or the level as a badge of its own on the bar, placed at any of its points or riding on the end of the fill, with its own style and size.
 - Rested experience shows ahead of the fill; the tooltip gives experience, progress, what is left to the next level and rested experience.
 - Hidden at the maximum level. While it is on, Blizzard's experience bar is hidden.
 

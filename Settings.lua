@@ -94,6 +94,7 @@ Settings.DEFAULTS = {
     -- The badge on the XP bar: its centre at a point of the bar plus X/Y,
     -- and a look of its own.
     xpBadgePoint = "LEFT",
+    xpBadgeFollow = false,  -- rides on the end of the fill instead
     xpBadgeX = 0,
     xpBadgeY = 0,
     xpBadgeStyle = "CREST",
@@ -251,7 +252,7 @@ Settings.PRESETS = {
         levelStyle = "WINGS", levelFontSize = 27,
         levelBoxPadX = 4, levelBoxPadY = 8, levelBoxMinW = 44,
         xpEnabled = true, xpRow = "FREE", xpFreeY = 0, xpWidth = 984, xpGap = 14,
-        xpLevelMode = "BADGE", xpBadgeY = 2, xpBadgeFontSize = 22,
+        xpLevelMode = "BADGE", xpBadgeY = 2, xpBadgeFontSize = 22, xpBadgeFollow = true,
     } },
 }
 

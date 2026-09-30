@@ -1277,7 +1277,17 @@ local function PlaceBadgeOnXp()
     if not on then return end
     SizeBadge(xpBadge, XP_BADGE)
     xpBadge:ClearAllPoints()
-    xpBadge:SetPoint("CENTER", xpSlot.sb, S("xpBadgePoint"), S("xpBadgeX"), S("xpBadgeY"))
+    local fill = S("xpBadgeFollow") and xpSlot.sb.GetStatusBarTexture and xpSlot.sb:GetStatusBarTexture()
+    if fill then
+        -- Riding on the end of the fill: hung on the fill texture's right
+        -- edge, which the bar widens with every bit of experience. The
+        -- chosen point's top, middle or bottom still decides the height.
+        local point = S("xpBadgePoint")
+        local edge = point:find("TOP") and "TOPRIGHT" or point:find("BOTTOM") and "BOTTOMRIGHT" or "RIGHT"
+        xpBadge:SetPoint("CENTER", fill, edge, S("xpBadgeX"), S("xpBadgeY"))
+    else
+        xpBadge:SetPoint("CENTER", xpSlot.sb, S("xpBadgePoint"), S("xpBadgeX"), S("xpBadgeY"))
+    end
     xpBadge:SetFrameLevel((xpSlot:GetFrameLevel() or 1) + 10)
 end
 
