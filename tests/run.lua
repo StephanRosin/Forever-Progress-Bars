@@ -422,6 +422,7 @@ do
     check("column: arrangement", S("arrangement"), "COLUMN")
     check("column: XP bar on", S("xpEnabled"), true)
     check("column: level free", S("levelPlace"), "FREE")
+    check("column: XP bar free and wide", S("xpRow") .. " " .. S("xpWidth"), "FREE 984")
     check("own lock kept", S("locked"), false)
     check("own hidden skills kept", Settings.IsHidden("Cooking", "COOKING"), true)
     check("load the classic preset", Settings.ApplyPreset("CLASSIC"), true)

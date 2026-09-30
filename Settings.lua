@@ -234,19 +234,16 @@ Settings.PRESETS = {
     -- The look before the arrangements came: one row, level in the middle,
     -- no XP bar. That is the defaults.
     { id = "CLASSIC", values = {} },
-    -- One column on the left, the XP bar between professions and
-    -- reputation with its badge, the level free above.
+    -- One column on the left, the XP bar free and wide above it with its
+    -- badge, the row's level switched off.
     { id = "COLUMN_XP", values = {
         arrangement = "COLUMN", columnWidth = 232,
-        x = -1072, y = 0,
-        levelPlace = "FREE", levelOffsetY = 456, levelY = -33, levelGap = 93,
+        x = -1062, y = -10,
+        levelShow = false, levelPlace = "FREE", levelOffsetY = 456, levelY = -33, levelGap = 93,
         levelStyle = "WINGS", levelFontSize = 27,
         levelBoxPadX = 4, levelBoxPadY = 8, levelBoxMinW = 44,
-        xpEnabled = true, xpRow = "MIDDLE", xpGap = 14, xpWidth = 222,
-        xpLevelMode = "BADGE", xpBadgeX = 15, xpBadgeY = 6, xpTextMode = "CURRENT_MAX_PERCENT",
-        labelFontSize = 12, textHeight = 11, textGap = 4, spacing = 15, segmentWidth = 21,
-        iconSize = 11, iconGap = 2, barBgAlpha = 30,
-        backdropBorder = "GOLD", backdropPadding = 8, backdropAlpha = 100,
+        xpEnabled = true, xpRow = "FREE", xpFreeY = 472, xpWidth = 984, xpGap = 14,
+        xpLevelMode = "BADGE", xpBadgeY = 2, xpBadgeFontSize = 22,
     } },
 }
 
