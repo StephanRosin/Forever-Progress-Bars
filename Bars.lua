@@ -923,13 +923,32 @@ Bars.ART_STYLES = {
     -- The wing tips end at x 22 and 490 of 512.
     WINGS       = { file = MEDIA .. "BadgeWings.tga", inner = 0.62, aspect = 468 / 256,
                     crop = { 22 / 512, 490 / 512 }, margin = 2 },
+    -- The rank medal: one texture per ten levels (Bars.RankTier). The
+    -- medal's centre sits at y 200 of 512; wings and glow end within x 40
+    -- and 472. `hangs`: the ribbon hangs below, so on the XP bar the medal
+    -- (not the whole texture) is centred on the chosen point.
+    RANK        = { tiers = {}, inner = 0.48, lift = 56 / 512, aspect = 432 / 512,
+                    crop = { 40 / 512, 472 / 512 }, margin = 2, hangs = true },
     RING_GOLD   = { atlas = "communities-ring-gold", round = true, scale = 1.0, disc = true },
     RING_ORNATE = { atlas = "Artifacts-PerkRing-Final", round = true, scale = 1.2, disc = true },
 }
+for i = 1, 7 do Bars.ART_STYLES.RANK.tiers[i] = MEDIA .. "BadgeRank" .. i .. ".tga" end
 Bars.LEVEL_STYLES = {
     "NONE", "CLASSIC", "GOLD", "CLASS",
-    "CREST", "LAUREL", "WINGS", "RING_GOLD", "RING_ORNATE",
+    "CREST", "LAUREL", "WINGS", "RANK", "RING_GOLD", "RING_ORNATE",
 }
+
+-- The rank medal's step for a level: 1-9, 10-19, ... 50-59, 60 and up.
+function Bars.RankTier(level)
+    local tiers = #Bars.ART_STYLES.RANK.tiers
+    return math.max(1, math.min(tiers, math.floor((tonumber(level) or 1) / 10) + 1))
+end
+
+-- A drawn style's texture; the rank medal's follows the level.
+local function ArtFile(art, level)
+    if not art.tiers then return art.file end
+    return art.tiers[Bars.RankTier(level or (UnitLevel and UnitLevel("player")))]
+end
 local DISC = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
 local function AtlasExists(atlas)
@@ -963,7 +982,7 @@ local function LevelStyle(keys)
 end
 Bars.LevelStyle = LevelStyle
 
-local function ApplyBadgeLook(box, keys)
+local function ApplyBadgeLook(box, keys, level)
     if not box then return end
     local text = box.text
     local size, flag = S(keys.size), S(keys.flag)
@@ -987,7 +1006,7 @@ local function ApplyBadgeLook(box, keys)
         if art.atlas then
             box.art:SetAtlas(art.atlas)
         else
-            box.art:SetTexture(art.file)
+            box.art:SetTexture(ArtFile(art, level))
             local crop = art.crop or { 0, 1 }
             box.art:SetTexCoord(crop[1], crop[2], 0, 1)
         end
@@ -1014,9 +1033,10 @@ local function ApplyBadgeLook(box, keys)
     end
 end
 
-local function ApplyLevelLook()
-    ApplyBadgeLook(levelBox, ROW_BADGE)
-    ApplyBadgeLook(xpBadge, XP_BADGE)
+-- level: at a level up, the new one (UnitLevel may still answer the old).
+local function ApplyLevelLook(level)
+    ApplyBadgeLook(levelBox, ROW_BADGE, level)
+    ApplyBadgeLook(xpBadge, XP_BADGE, level)
 end
 
 -- --------------------------------------------------------------------------
@@ -1140,9 +1160,25 @@ local function LayoutDividers(bar, width)
     for i = segments, #bar.dividers do bar.dividers[i]:Hide() end
 end
 
--- Fits the box to its digits and returns the room the centre needs. A round
+-- A "1" carries empty space on its left (its flag leans that way), so a
+-- number starting with 1 looks shifted to the right, one ending with 1 to
+-- the left. The number moves by this share of the font size against it
+-- (measured on "18" in the game's font: about 5 %).
+local ONE_NUDGE = 0.05
+
+local function OpticalNudge(text)
+    local shown = text:GetText() or ""
+    local _, size = text:GetFont()
+    size = tonumber(size) or 0
+    local nudge = 0
+    if shown:find("^1") then nudge = nudge - ONE_NUDGE * size end
+    if shown:find("1$") then nudge = nudge + ONE_NUDGE * size end
+    return nudge
+end
+Bars.OpticalNudge = OpticalNudge
+
+-- Fits a badge to its digits; returns its width, height and art. A round
 -- style makes it a circle wide enough for the digits and the font's height.
--- Fits a badge to its digits; returns its width, height and art.
 local function SizeBadge(box, keys)
     local text = box.text
     local fontSize = S(keys.size)
@@ -1151,7 +1187,7 @@ local function SizeBadge(box, keys)
     local h = fontSize + 2 * S("levelBoxPadY")
     local art = Bars.ART_STYLES[LevelStyle(keys)]
     local lift = 0
-    if art and art.file then
+    if art and (art.file or art.tiers) then
         -- The digits (and at least the font's height) fill the badge's middle.
         local content = math.max(textWidth, fontSize) + 2 * S("levelBoxPadX")
         h = content / art.inner
@@ -1169,7 +1205,7 @@ local function SizeBadge(box, keys)
     box:SetWidth(w)
     box:SetHeight(h)
     text:ClearAllPoints()
-    text:SetPoint("CENTER", box, "CENTER", 0, lift)
+    text:SetPoint("CENTER", box, "CENTER", OpticalNudge(text), lift)
     return w, h, art
 end
 
@@ -1306,7 +1342,8 @@ local function PlaceBadgeOnXp()
     local on = BadgeOnXp()
     xpBadge:SetShown(on)
     if not on then return end
-    SizeBadge(xpBadge, XP_BADGE)
+    local _, h, art = SizeBadge(xpBadge, XP_BADGE)
+    local dy = S("xpBadgeY") - ((art and art.hangs) and art.lift * h or 0)
     xpBadge:ClearAllPoints()
     local fill = S("xpBadgeFollow") and xpSlot.sb.GetStatusBarTexture and xpSlot.sb:GetStatusBarTexture()
     if fill then
@@ -1315,9 +1352,9 @@ local function PlaceBadgeOnXp()
         -- chosen point's top, middle or bottom still decides the height.
         local point = S("xpBadgePoint")
         local edge = point:find("TOP") and "TOPRIGHT" or point:find("BOTTOM") and "BOTTOMRIGHT" or "RIGHT"
-        xpBadge:SetPoint("CENTER", fill, edge, S("xpBadgeX"), S("xpBadgeY"))
+        xpBadge:SetPoint("CENTER", fill, edge, S("xpBadgeX"), dy)
     else
-        xpBadge:SetPoint("CENTER", xpSlot.sb, S("xpBadgePoint"), S("xpBadgeX"), S("xpBadgeY"))
+        xpBadge:SetPoint("CENTER", xpSlot.sb, S("xpBadgePoint"), S("xpBadgeX"), dy)
     end
     xpBadge:SetFrameLevel((xpSlot:GetFrameLevel() or 1) + 10)
 end
@@ -2153,6 +2190,7 @@ events:SetScript("OnEvent", function(_, event, ...)
     elseif event == "PLAYER_LEVEL_UP" then
         if levelText then levelText:SetText(tostring(... or UnitLevel("player"))) end
         if xpBadge then xpBadge.text:SetText(tostring(... or UnitLevel("player"))) end
+        if levelBox then ApplyLevelLook(...) end
         ScheduleRefresh()
     elseif event == "UPDATE_FACTION" then
         -- Our own expand/collapse fires this again.

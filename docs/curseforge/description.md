@@ -30,7 +30,7 @@ Everything you level, in one strip: two primary professions, two secondary skill
 
 ## Level
 - Your level in a box between the bars, above, in the middle of or below the columns, or **anywhere on the screen** (X from the screen's middle, Y from its top edge). It can also be switched off.
-- Box styles: Classic, **Gold** (shaded like a bevel), Class colour or the number alone, plus **hand-drawn gold badges** (crest, laurel wreath, wings) and two gold rings from Blizzard's own art. Every badge grows with the number. The number in gold, white or your class colour; font, size and outline adjustable.
+- Box styles: Classic, **Gold** (shaded like a bevel), Class colour or the number alone, plus **hand-drawn gold badges** (crest, laurel wreath, wings), a **rank medal** whose ornaments grow every ten levels (a plain medal at first, ribbons and stars later, wings from 50, a ruby crown at 60) and two gold rings from Blizzard's own art. Every badge grows with the number, and a number starting or ending with 1 is nudged so it looks centred. The number in gold, white or your class colour; font, size and outline adjustable.
 
 ## Background
 - An optional background behind everything, sized to cover exactly what is shown (the reputation row only while it has bars, the level box where it reaches out).

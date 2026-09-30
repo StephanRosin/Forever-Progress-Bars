@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+"""Writes the rank medal (tools/badges/rank1..7.svg): a faceted gold hexagon
+with the level in its middle and ornaments that grow every ten levels.
+
+    1-9    the plain medal
+    10-19  a short frayed strip of cloth
+    20-29  one ribbon, one star
+    30-39  three ribbons, one star
+    40-49  longer ribbons, two stars
+    50-59  stepped wings, two stars
+    60     wings, three stars, outer ribbons, a plate on top with a ruby,
+           a golden glow
+
+Drawn on 512 units, written at 256 px; the medal's centre sits at y 200, so
+the digits are lifted (Bars.lua, ART_STYLES.RANK). tools/make_badges turns
+the SVGs into Media/BadgeRank<n>.tga.
+"""
+import math
+import os
+CX, CY, R = 256, 200, 150
+
+def mix(a, b, t):
+    return '#%02x%02x%02x' % tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+DARK, LIGHT = (118, 58, 6), (255, 208, 104)
+LIGHT_DIR = (-0.45, -0.89)  # from the top, a little from the left
+
+def hexpts(r, cx=CX, cy=CY):
+    return [(cx + r * math.cos(math.radians(-90 + 60 * i)), cy + r * math.sin(math.radians(-90 + 60 * i))) for i in range(6)]
+
+def poly(pts, fill, extra=''):
+    d = 'M' + ' L'.join('%.1f %.1f' % p for p in pts) + ' Z'
+    return f'<path d="{d}" fill="{fill}" {extra}/>'
+
+def rounded(pts, rad):
+    n = len(pts); d = ''
+    for k in range(n):
+        p0, p1, p2 = pts[k - 1], pts[k], pts[(k + 1) % n]
+        def toward(a, b):
+            dx, dy = b[0] - a[0], b[1] - a[1]; L = math.hypot(dx, dy)
+            return (a[0] + dx / L * rad, a[1] + dy / L * rad)
+        a, b = toward(p1, p0), toward(p1, p2)
+        d += ('M' if k == 0 else ' L') + '%.1f %.1f Q%.1f %.1f %.1f %.1f' % (a[0], a[1], p1[0], p1[1], b[0], b[1])
+    return d + ' Z'
+
+ROUND = 0.12  # corner rounding, share of the radius
+
+def rhex(r, fill, extra=''):
+    return f'<path d="{rounded(hexpts(r), r * ROUND)}" fill="{fill}" {extra}/>'
+
+def shade(nx, ny, invert=False):
+    t = (nx * LIGHT_DIR[0] + ny * LIGHT_DIR[1] + 1) / 2
+    if invert: t = 1 - t
+    return mix(DARK, LIGHT, 0.15 + 0.85 * t)
+
+def bevel(r_out, r_in, invert=False):
+    o, i = hexpts(r_out), hexpts(r_in)
+    cid = 'c%d' % r_out
+    out = [f'<clipPath id="{cid}"><path d="{rounded(hexpts(r_out), r_out * ROUND)}"/></clipPath><g clip-path="url(#{cid})">']
+    for k in range(6):
+        a = math.radians(-60 + 60 * k)
+        out.append(poly([o[k], o[(k + 1) % 6], i[(k + 1) % 6], i[k]], shade(math.cos(a), math.sin(a), invert),
+                        'stroke="#5a3208" stroke-width="1.5" stroke-linejoin="round"'))
+    out.append('</g>')
+    return ''.join(out)
+
+def star(x, y, r):
+    pts = []
+    for k in range(10):
+        rr = r if k % 2 == 0 else r * 0.45
+        a = math.radians(-90 + 36 * k)
+        pts.append((x + rr * math.cos(a), y + rr * math.sin(a)))
+    return poly(pts, 'url(#starG)', 'stroke="#7a4a00" stroke-width="1.5" stroke-linejoin="round"')
+
+DEFS = '''<defs>
+<radialGradient id="face" cx="50%" cy="40%" r="65%">
+  <stop offset="0" stop-color="#9a5612"/><stop offset="0.7" stop-color="#5c2e08"/><stop offset="1" stop-color="#361a02"/></radialGradient>
+<linearGradient id="rib" x1="0" y1="0" x2="1" y2="0">
+  <stop offset="0" stop-color="#9c2a08"/><stop offset="0.5" stop-color="#d8501a"/><stop offset="1" stop-color="#a8320a"/></linearGradient>
+<linearGradient id="ribC" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#e86a1c"/><stop offset="1" stop-color="#f08a2a"/></linearGradient>
+<linearGradient id="cloth" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#b87a58"/><stop offset="0.5" stop-color="#f0b894"/><stop offset="1" stop-color="#d8966e"/></linearGradient>
+<linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#f4bc5c"/><stop offset="1" stop-color="#9a5a14"/></linearGradient>
+<linearGradient id="plateS" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#c88430"/><stop offset="1" stop-color="#6a3a0a"/></linearGradient>
+<radialGradient id="starG" cx="50%" cy="40%" r="60%">
+  <stop offset="0" stop-color="#fff6b0"/><stop offset="1" stop-color="#f0b820"/></radialGradient>
+<radialGradient id="ruby" cx="40%" cy="35%" r="70%">
+  <stop offset="0" stop-color="#ffb8b8"/><stop offset="0.35" stop-color="#e02030"/><stop offset="1" stop-color="#4a0008"/></radialGradient>
+<radialGradient id="glow" cx="50%" cy="50%" r="50%">
+  <stop offset="0" stop-color="#ffd870" stop-opacity="0.55"/><stop offset="1" stop-color="#ffd870" stop-opacity="0"/></radialGradient>
+<filter id="drop" x="-20%" y="-20%" width="140%" height="140%">
+  <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.7"/></filter>
+</defs>'''
+
+EDGE = 'stroke="#4a2804" stroke-width="2" stroke-linejoin="round"'
+
+def ribbon(side_len, center_len, stars, outer=False, sides=True):
+    s = []
+    y0 = 300
+    if outer:
+        for sx in (-1, 1):
+            x1, x2 = CX + sx * 78, CX + sx * 118
+            s.append(poly([(x1, y0 - 20), (x2, y0 - 30), (x2, y0 + side_len - 40), ((x1 + x2) / 2, y0 + side_len - 58), (x1, y0 + side_len - 40)], 'url(#rib)', EDGE))
+    for sx in ((-1, 1) if sides else ()):
+        x1, x2 = CX + sx * 40, CX + sx * 82
+        s.append(poly([(x1, y0), (x2, y0 - 10), (x2, y0 + side_len - 6), (x1, y0 + side_len)], 'url(#rib)', EDGE))
+    tip = y0 + center_len
+    s.append(poly([(CX - 42, y0 + 20), (CX + 42, y0 + 20), (CX + 42, tip - 24), (CX, tip), (CX - 42, tip - 24)], 'url(#ribC)', EDGE))
+    s.append(poly([(CX - 34, y0 + 20), (CX + 34, y0 + 20), (CX + 34, tip - 28), (CX, tip - 9), (CX - 34, tip - 28)], 'none', 'stroke="#ffc060" stroke-opacity="0.6" stroke-width="2"'))
+    sy = tip - 52
+    if stars == 1: s.append(star(CX, tip - 40, 15))
+    elif stars == 2: s += [star(CX - 19, sy, 16), star(CX + 19, sy, 16)]
+    elif stars == 3: s += [star(CX - 18, sy - 12, 15), star(CX + 18, sy - 12, 15), star(CX, sy + 14, 15)]
+    return ''.join(s)
+
+def cloth():
+    pts = [(CX - 46, 300), (CX + 46, 300), (CX + 48, 364), (CX + 34, 376), (CX + 22, 364), (CX + 8, 380),
+           (CX - 6, 366), (CX - 20, 382), (CX - 32, 366), (CX - 46, 374)]
+    return poly(pts, 'url(#cloth)', 'stroke="#6a3a1c" stroke-width="2" stroke-linejoin="round"')
+
+def wings():
+    s = []
+    for sx in (-1, 1):
+        def m(pts): return [(CX + sx * (CX - x), y) for x, y in pts]
+        for pts, g in (([(52, 140), (136, 156), (136, 262), (52, 244)], 'url(#plate)'),
+                       ([(70, 244), (136, 258), (136, 300), (70, 288)], 'url(#plateS)'),
+                       ([(88, 288), (136, 298), (136, 330), (88, 322)], 'url(#plateS)')):
+            s.append(poly(m(pts), g, EDGE))
+        # top face highlight of the big plate
+        s.append(poly(m([(52, 140), (136, 156), (136, 166), (58, 150)]), '#ffe0a0', 'opacity="0.55"'))
+    return ''.join(s)
+
+def topplate():
+    return (poly([(CX - 80, 96), (CX - 80, 64), (CX - 56, 36), (CX + 56, 36), (CX + 80, 64), (CX + 80, 96)], 'url(#plate)', EDGE)
+            + poly([(CX - 56, 36), (CX + 56, 36), (CX + 50, 44), (CX - 50, 44)], '#ffe8b0', 'opacity="0.6"'))
+
+def medal(gem=False):
+    s = [bevel(R, R - 20), rhex(R - 20, '#3a1e04'), bevel(R - 26, R - 44, invert=True),
+         rhex(R - 44, 'url(#face)', 'stroke="#2a1402" stroke-width="2"')]
+    # vertical side bars, as in the picture
+    w = R * math.cos(math.radians(30))
+    for sx in (-1, 1):
+        x = CX + sx * w
+        s.append(f'<path d="{rounded([(x, CY - R / 2 - 4), (x + sx * 12, CY - R / 2 + 4), (x + sx * 12, CY + R / 2 - 4), (x, CY + R / 2 + 4)], 4)}" fill="{shade(sx, 0)}" {EDGE}/>')
+    s.append(rhex(R, 'none', 'stroke="#4a2804" stroke-width="3" stroke-linejoin="round"'))
+    if gem:
+        s.append(f'<circle cx="{CX}" cy="{CY - R + 6}" r="17" fill="{mix(DARK, LIGHT, .8)}" {EDGE}/>'
+                 f'<circle cx="{CX}" cy="{CY - R + 6}" r="12" fill="url(#ruby)"/>'
+                 f'<circle cx="{CX - 4}" cy="{CY - R + 1}" r="3.5" fill="#fff" opacity="0.75"/>')
+    return ''.join(s)
+
+TIERS = [
+    ('1-9',   lambda: medal()),
+    ('10-19', lambda: cloth() + medal()),
+    ('20-29', lambda: ribbon(0, 115, 1, sides=False) + medal()),
+    ('30-39', lambda: ribbon(80, 120, 1) + medal()),
+    ('40-49', lambda: ribbon(90, 125, 2) + medal()),
+    ('50-59', lambda: ribbon(100, 140, 2) + wings() + medal()),
+    ('60',    lambda: f'<circle cx="{CX}" cy="{CY}" r="240" fill="url(#glow)"/>' + ribbon(120, 165, 3, outer=True) + wings() + topplate() + medal(gem=True)),
+]
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'badges')
+for i, (name, body) in enumerate(TIERS, 1):
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 512 512">{DEFS}<g filter="url(#drop)">{body()}</g></svg>\n'
+    with open(os.path.join(OUT, f'rank{i}.svg'), 'w') as f:
+        f.write(svg)

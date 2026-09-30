@@ -300,6 +300,28 @@ check("moved up, the badge reaches above the text line", badgeTop > 0, true)
 check("the backdrop covers the badge", near(Bars.backdrop._points.TOPLEFT[4], badgeTop + 6), true)
 Settings.Set("levelY", nil)
 Settings.Set("backdropShow", TEST_VALUES.backdropShow)
+Settings.Set("levelStyle", "RANK")
+check("rank medal offered", styles:find("RANK", 1, true) ~= nil, true)
+check("rank: tiers by ten levels", Bars.RankTier(1) .. Bars.RankTier(9) .. Bars.RankTier(10) .. Bars.RankTier(59)
+      .. Bars.RankTier(60) .. Bars.RankTier(70), "112677")
+check("rank: the level's texture", lb.art._texture,
+      "Interface\\AddOns\\ForeverProgressBars\\Media\\BadgeRank" .. Bars.RankTier(M.state.level) .. ".tga")
+check("rank: digits lifted onto the medal", near(select(5, Bars.levelText:GetPoint("CENTER")), lb:GetHeight() * 56 / 512), true)
+check("rank: margins cut off", near(lb:GetWidth(), lb:GetHeight() * 432 / 512), true)
+local oldLevel = M.state.level
+M.Fire("PLAYER_LEVEL_UP", 60)
+check("level up: the new step at once", lb.art._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\BadgeRank7.tga")
+M.state.level = oldLevel
+-- A 1 at the front pulls left, at the end pushes right, 11 stays put, 25
+-- needs nothing; 5 % of the font size.
+local probe = Bars.levelText
+local shown = probe:GetText()
+local fontSize = select(2, probe:GetFont())
+for _, case in ipairs({ { "18", -0.05 * fontSize }, { "21", 0.05 * fontSize }, { "11", 0 }, { "25", 0 } }) do
+    probe:SetText(case[1])
+    check("optical nudge " .. case[1], near(Bars.OpticalNudge(probe), case[2]), true)
+end
+probe:SetText(shown)
 Settings.Set("levelStyle", "RING_GOLD")
 check("ring: Blizzard atlas", lb.art._atlas, "communities-ring-gold")
 check("open ring: dark disc behind", lb.disc:IsShown(), true)
