@@ -247,7 +247,7 @@ Settings.PRESETS = {
     { id = "COLUMN_XP", values = {
         arrangement = "COLUMN", columnWidth = 232,
         xFrom = "LEFT", x = 13, y = -10,
-        levelShow = false, levelPlace = "FREE", levelOffsetY = -13, levelY = -33, levelGap = 93,
+        levelShow = false, levelPlace = "FREE", levelOffsetY = -21, levelY = -33, levelGap = 93,
         levelStyle = "WINGS", levelFontSize = 27,
         levelBoxPadX = 4, levelBoxPadY = 8, levelBoxMinW = 44,
         xpEnabled = true, xpRow = "FREE", xpFreeY = 0, xpWidth = 984, xpGap = 14,
