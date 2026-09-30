@@ -22,7 +22,7 @@ Everything you level, in one strip: two primary professions, two secondary skill
 - **Left-click a reputation bar to pick another faction** right there; right-click opens the reputation tab.
 
 ## Experience bar (optional)
-- An experience bar in the same style as the reputation bars, as wide as the whole strip: above the professions, between professions and reputation, or at the bottom.
+- An experience bar in the same style as the reputation bars, as wide as the whole strip (or a width of your own): above the professions, between professions and reputation, at the bottom, or **anywhere on the screen**.
 - A title line like the reputation bars: "Level 20" on the left, "730 / 23200 (3%)" on the right, with its own fonts and sizes (a big level, small numbers). Or the level as a badge of its own on the bar, placed at any of its points with its own style and size.
 - Rested experience shows ahead of the fill; the tooltip gives experience, progress, what is left to the next level and rested experience.
 - Hidden at the maximum level. While it is on, Blizzard's experience bar is hidden.
@@ -45,6 +45,7 @@ Everything you level, in one strip: two primary professions, two secondary skill
 - Its own options window, opened from the **minimap button** or with `/fpb`: General, Bars, Professions, Reputation, Level, XP bar, Background and Profiles.
 - Also listed in Blizzard's **addon compartment** next to the minimap: left-click opens the options, right-click locks or unlocks the strip.
 - **Profiles**: save your layout under a name and share it between characters.
+- **Presets** to start from: "Classic" (one row, level in the middle) and "Column with XP bar". Loading one keeps your reputations, hidden skills, lock and minimap button.
 - **Export and import**: your whole profile as a text string to pass on; paste one to take it over. Imports are only read as settings, never run as code.
 - Language: follows the game; a dropdown in the options window picks another one, and the change applies at once.
 

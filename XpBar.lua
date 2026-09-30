@@ -30,7 +30,7 @@ local Xp = {}
 ns.XpBar = Xp
 
 Xp.TEXT_MODES = { "CURRENT_MAX", "CURRENT_MAX_PERCENT", "PERCENT", "NONE" }
-Xp.ROWS = { "TOP", "MIDDLE", "BOTTOM" }
+Xp.ROWS = { "TOP", "MIDDLE", "BOTTOM", "FREE" }
 
 -- The numbers: plain values in, text out, so the tests need no game.
 function Xp.Text(mode, cur, max)

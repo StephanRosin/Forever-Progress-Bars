@@ -71,7 +71,12 @@ Settings.DEFAULTS = {
     -- professions and reputation) or at the BOTTOM; with its title line
     -- ("Level 20" and the numbers) or without.
     xpEnabled = false,
-    xpRow = "BOTTOM",
+    xpRow = "BOTTOM",       -- TOP, MIDDLE, BOTTOM or FREE
+    -- FREE: its centre by X/Y from the middle of the screen, no room in the
+    -- rows. Width: 0 is as wide as the strip.
+    xpFreeX = 0,
+    xpFreeY = -200,
+    xpWidth = 0,
     xpTitle = true,
     xpColor = { 0.58, 0.0, 0.55 },          -- Blizzard's classic purple
     xpRestedColor = { 0.0, 0.39, 0.88 },    -- and its rested blue
@@ -121,6 +126,9 @@ Settings.RANGES = {
     xpLevelFontSize = { 0, 60 },
     xpValueFontSize = { 0, 40 },
     xpGap = { -20, 80 },
+    xpFreeX = { -2000, 2000 },
+    xpFreeY = { -1200, 1200 },
+    xpWidth = { 0, 4000 },
     xpBadgeX = { -600, 600 },
     xpBadgeY = { -200, 200 },
     xpBadgeFontSize = { 8, 80 },
@@ -218,6 +226,53 @@ function Settings.SetHidden(name, value)
 end
 
 -- Back to the defaults, keeping the language (it is not in the profile).
+-- Presets: ready-made looks to start from. Loading one sets every setting
+-- to the preset's value (or the default), except what is the player's own:
+-- the lock, the minimap button, the chosen reputations and hidden skills.
+Settings.KEEP_ON_PRESET = { locked = true, minimapShow = true, minimapAngle = true }
+Settings.PRESETS = {
+    -- The look before the arrangements came: one row, level in the middle,
+    -- no XP bar. That is the defaults.
+    { id = "CLASSIC", values = {} },
+    -- One column on the left, the XP bar between professions and
+    -- reputation with its badge, the level free above.
+    { id = "COLUMN_XP", values = {
+        arrangement = "COLUMN", columnWidth = 232,
+        x = -1072, y = 0,
+        levelPlace = "FREE", levelOffsetY = 456, levelY = -33, levelGap = 93,
+        levelStyle = "WINGS", levelFontSize = 27,
+        levelBoxPadX = 4, levelBoxPadY = 8, levelBoxMinW = 44,
+        xpEnabled = true, xpRow = "MIDDLE", xpGap = 14, xpWidth = 222,
+        xpLevelMode = "BADGE", xpBadgeX = 15, xpBadgeY = 6, xpTextMode = "CURRENT_MAX_PERCENT",
+        labelFontSize = 12, textHeight = 11, textGap = 4, spacing = 15, segmentWidth = 21,
+        iconSize = 11, iconGap = 2, barBgAlpha = 30,
+        backdropBorder = "GOLD", backdropPadding = 8, backdropAlpha = 100,
+    } },
+}
+
+function Settings.ApplyPreset(id)
+    local preset
+    for _, p in ipairs(Settings.PRESETS) do
+        if p.id == id then preset = p end
+    end
+    if not preset then return false end
+    local db = ns.DB()
+    for key in pairs(Settings.DEFAULTS) do
+        if not Settings.KEEP_ON_PRESET[key] then
+            local v = preset.values[key]
+            if type(v) == "table" then
+                local copy = {}
+                for i, x in ipairs(v) do copy[i] = x end
+                v = copy
+            end
+            if v == Settings.DEFAULTS[key] then v = nil end
+            db[key] = v
+        end
+    end
+    Settings.Changed(nil)
+    return true
+end
+
 function Settings.ResetProfile()
     local db = ns.DB()
     for k in pairs(db) do db[k] = nil end

@@ -402,6 +402,40 @@ do
     check("unscaled again", c:GetScale(), 1)
 end
 
+section("Presets")
+do
+    local function copy(t)
+        if type(t) ~= "table" then return t end
+        local c = {}
+        for k, v in pairs(t) do c[k] = copy(v) end
+        return c
+    end
+    local saved = copy(ns.DB())
+    -- Every preset value is a real setting.
+    for _, p in ipairs(Settings.PRESETS) do
+        for k in pairs(p.values) do check(p.id .. ": " .. k .. " is a setting", Settings.DEFAULTS[k] ~= nil, true) end
+        check(p.id .. " has a name", ns.L["PRESET_" .. p.id] ~= "PRESET_" .. p.id, true)
+    end
+    Settings.Set("locked", false)
+    Settings.SetHidden("Cooking", true)
+    check("load the column preset", Settings.ApplyPreset("COLUMN_XP"), true)
+    check("column: arrangement", S("arrangement"), "COLUMN")
+    check("column: XP bar on", S("xpEnabled"), true)
+    check("column: level free", S("levelPlace"), "FREE")
+    check("own lock kept", S("locked"), false)
+    check("own hidden skills kept", Settings.IsHidden("Cooking", "COOKING"), true)
+    check("load the classic preset", Settings.ApplyPreset("CLASSIC"), true)
+    check("classic: a row again", S("arrangement"), "ROW")
+    check("classic: no XP bar", S("xpEnabled"), false)
+    check("classic: level in the row", S("levelPlace"), "TOP")
+    check("classic: own lock still kept", S("locked"), false)
+    check("unknown preset refused", Settings.ApplyPreset("NOPE"), false)
+    local db = ns.DB()
+    for k in pairs(db) do db[k] = nil end
+    for k, v in pairs(saved) do db[k] = v end
+    Settings.Changed(nil)
+end
+
 section("Export and import")
 do
     local Share = ns.Share
@@ -528,6 +562,19 @@ do
     check("two columns: middle means top", xp._points.BOTTOMLEFT[4], -Bars.XpHeight())
     check("two columns: over both", xp:GetWidth(), c:GetWidth())
     Settings.Set("arrangement", nil)
+    -- Free: from the screen's middle, no row in the strip, own width.
+    local repRowY = Bars.RepSlot(1)._points.BOTTOMLEFT[4]
+    Settings.Set("xpRow", "FREE")
+    Settings.Set("xpFreeX", 30)
+    Settings.Set("xpFreeY", -150)
+    local _, rel, rp, fx, fy = xp:GetPoint("CENTER")
+    check("free: from the screen's middle", rel == UIParent and rp == "CENTER", true)
+    check("free: at X/Y", fx .. "," .. fy, "30,-150")
+    check("free: the reputation row back in its place", Bars.RepSlot(1)._points.BOTTOMLEFT[4], -(rowH + gap))
+    check("free: as wide as the strip", xp:GetWidth(), c:GetWidth())
+    Settings.Set("xpWidth", 300)
+    check("free: a width of its own", xp:GetWidth(), 300)
+    for _, k in ipairs({ "xpFreeX", "xpFreeY", "xpWidth" }) do Settings.Set(k, nil) end
     Settings.Set("xpRow", nil)
     -- Tooltip in the bars' layout: title, then label / value lines.
     local lines = {}

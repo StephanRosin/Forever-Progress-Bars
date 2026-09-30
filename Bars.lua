@@ -1179,6 +1179,16 @@ end
 -- shows): as wide as the strip, on TOP or at the BOTTOM. Its height: the
 -- bar, and the title line above it when that is on.
 local function XpShown() return xpSlot ~= nil and xpSlot:IsShown() end
+-- Free: shown, but no row of its own in the strip.
+local function XpFree() return XpShown() and S("xpRow") == "FREE" end
+local function XpInRow() return XpShown() and S("xpRow") ~= "FREE" end
+
+-- The XP bar's width: its own, or (0) the strip's.
+local function XpWidth(stripWidth)
+    local own = S("xpWidth")
+    if own and own > 0 then return own end
+    return stripWidth
+end
 local function XpHeight()
     if not S("xpTitle") then return S("barHeight") end
     -- The title line is as tall as its largest font (a big level number).
@@ -1195,7 +1205,7 @@ local function XpGap() return CFG.REP_ROW_GAP + S("xpGap") end
 -- In a row with the XP row between professions and reputation: how far the
 -- reputation row moves down.
 local function RowXpShift()
-    if not (XpShown() and S("xpRow") == "MIDDLE") then return 0 end
+    if not (XpInRow() and S("xpRow") == "MIDDLE") then return 0 end
     return XpHeight() + 2 * XpGap() - CFG.REP_ROW_GAP
 end
 
@@ -1211,7 +1221,7 @@ local function LayoutStacked(mode)
     -- between professions and reputation (one column only; two columns
     -- have no between, it goes on top there), or at the BOTTOM.
     local xpGap = XpGap()
-    local xpRowH = XpShown() and (XpHeight() + xpGap) or 0
+    local xpRowH = XpInRow() and (XpHeight() + xpGap) or 0
     local xpWhere = S("xpRow")
     if xpWhere == "MIDDLE" and mode == "COLUMNS" then xpWhere = "TOP" end
     local xpAbove = xpWhere == "TOP" and xpRowH or 0
@@ -1242,14 +1252,14 @@ local function LayoutStacked(mode)
     if place == "TOP" then levelY = -(xpAbove + levelDown / 2) end
     if place == "BOTTOM" then levelY = -(top + barsH + levelDown / 2) end
     local below = levelBelow
-    if XpShown() then
+    if XpInRow() then
         if xpWhere == "TOP" then
             xpBottom = -XpHeight()
         elseif xpWhere == "BOTTOM" then
             xpBottom = -(top + barsH + levelBelow + xpGap + XpHeight())
             below = below + xpRowH
         end
-        PutBar(xpSlot, "TOPLEFT", 0, xpBottom, width, true)
+        PutBar(xpSlot, "TOPLEFT", 0, xpBottom, XpWidth(width), true)
     end
     container:SetWidth(width)
     container:SetHeight(top + barsH + below)
@@ -1269,6 +1279,21 @@ local function PlaceBadgeOnXp()
     xpBadge:ClearAllPoints()
     xpBadge:SetPoint("CENTER", xpSlot.sb, S("xpBadgePoint"), S("xpBadgeX"), S("xpBadgeY"))
     xpBadge:SetFrameLevel((xpSlot:GetFrameLevel() or 1) + 10)
+end
+
+-- The experience bar placed freely: its centre by X/Y from the middle of
+-- the screen, divided by the strip's scale to stay screen pixels.
+local function PlaceFreeXp()
+    if not XpFree() then return end
+    local scale = (container.GetScale and container:GetScale()) or 1
+    if scale <= 0 then scale = 1 end
+    local width = XpWidth(container:GetWidth() or 0)
+    xpSlot:ClearAllPoints()
+    xpSlot:SetPoint("CENTER", UIParent, "CENTER", S("xpFreeX") / scale, S("xpFreeY") / scale)
+    xpSlot:SetWidth(width)
+    LayoutDividers(xpSlot, width)
+    local valueWidth = xpSlot.valueText:GetStringWidth() or 0
+    xpSlot.nameText:SetWidth(math.max(1, width - valueWidth - 4))
 end
 
 -- The row's level badge placed freely: its centre by X/Y from the middle
@@ -1293,6 +1318,7 @@ local function Layout()
         lastWidth = container:GetWidth() or 0
         layoutBusy = false
         PlaceFreeLevel()
+        PlaceFreeXp()
         PlaceBadgeOnXp()
         Bars.LayoutBackdrop()
         return
@@ -1341,7 +1367,7 @@ local function Layout()
     end
     -- The experience bar: a row over the whole width, above the professions
     -- or below everything.
-    if XpShown() then
+    if XpInRow() then
         local y
         if S("xpRow") == "TOP" then
             y = rowHeight + XpGap()
@@ -1356,11 +1382,12 @@ local function Layout()
             local last = repShown and -(rowHeight + CFG.REP_ROW_GAP) or 0
             y = last - XpGap() - XpHeight()
         end
-        PutBar(xpSlot, "BOTTOMLEFT", 0, y, width, true)
+        PutBar(xpSlot, "BOTTOMLEFT", 0, y, XpWidth(width), true)
     end
     lastWidth = width
     layoutBusy = false
     PlaceFreeLevel()
+    PlaceFreeXp()
     PlaceBadgeOnXp()
     Bars.LayoutBackdrop()
 end
@@ -1385,7 +1412,7 @@ function Bars.ShownSpan()
             break
         end
     end
-    if XpShown() then
+    if XpInRow() then
         -- Its bar's bottom, relative to the container's bottom, and its top.
         local p = xpSlot._fpbY or 0
         top = math.max(top, -rowHeight + p + XpHeight())

@@ -261,6 +261,9 @@ local function xpRows()
         { type = "text", label = "OPT_XP_HINT", height = 40 },
         choice("xpRow", "OPT_XP_ROW", X.ROWS, "XP_ROW_"),
         num("xpGap", "OPT_XP_GAP"),
+        num("xpFreeX", "OPT_XP_FREE_X"),
+        num("xpFreeY", "OPT_XP_FREE_Y"),
+        num("xpWidth", "OPT_XP_WIDTH"),
         colorRow("xpColor", "OPT_XP_COLOR", true),
         colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true),
 
@@ -319,6 +322,9 @@ local function backdropRows()
     }
 end
 
+-- The preset picked in the list (loaded only with the button).
+local presetChoice = { id = "CLASSIC" }
+
 -- The export/import field; Window.shareField for the tests.
 local shareField = {}
 Window.shareField = shareField
@@ -342,6 +348,26 @@ local function profileRows()
         { type = "buttons", buttons = {
             { label = "OPT_PROFILE_SAVE_AS", width = 150, onClick = function() ns.AskProfileName() end },
             { label = "OPT_PROFILE_DELETE", width = 110, onClick = function() ns.AskDeleteProfile() end },
+        } },
+        { type = "header", label = "OPT_PRESETS" },
+        { type = "text", label = "OPT_PRESET_HINT", height = 40 },
+        {
+            type = "select", label = "OPT_PRESET",
+            choices = function()
+                local list = {}
+                for _, p in ipairs(Settings.PRESETS) do list[#list + 1] = { label = L["PRESET_" .. p.id], value = p.id } end
+                return list
+            end,
+            get = function() return presetChoice.id end,
+            set = function(v) presetChoice.id = v end,
+        },
+        { type = "buttons", buttons = {
+            { label = "OPT_PRESET_LOAD", width = 200, onClick = function()
+                if Settings.ApplyPreset(presetChoice.id) then
+                    ns.Print(L.MSG_PRESET_LOADED)
+                    Window.Refresh()
+                end
+            end },
         } },
         { type = "header", label = "OPT_SHARE" },
         { type = "text", label = "OPT_SHARE_HINT", height = 40 },
