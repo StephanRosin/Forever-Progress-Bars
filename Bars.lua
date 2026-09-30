@@ -543,40 +543,26 @@ local function WindowShown()
     return (f and f.IsShown and f:IsShown()) and true or false
 end
 
--- Blizzard's own tab for this profession, if the window is open. The tabs
--- carry their skill line (frame.skillLine) and a plain OnClick method.
-local function TabFor(skillLine)
-    if not skillLine then return nil end
-    local f = _G.ProfessionsFrame
-    if not (f and type(f.rightProfessionTabs) == "table") then return nil end
-    for _, tab in ipairs(f.rightProfessionTabs) do
-        if tab and tab.skillLine == skillLine and type(tab.OnClick) == "function"
-           and tab.IsShown and tab:IsShown() then
-            return tab
-        end
-    end
-    return nil
-end
-Bars.TabFor = TabFor
-
 -- The profession to show once the window stands.
 --
 -- On showing, the window makes EVERY tab cast its profession spell
 -- (EventRegistry "ProfessionsFrame.Show"), and the last answer wins: a click
 -- on Cooking loaded Cooking and then jumped to another profession. So until
--- the deadline, every trade skill event presses our tab again; our press
--- comes after the last answer and wins. Blizzard's CastProfessionSpell does
--- nothing for the profession already selected, so pressing is harmless.
+-- the deadline, every trade skill event switches back to ours; it comes
+-- after the last answer and wins. Nothing happens while ours is selected.
 local wantedTab, wantedUntil
 local TAB_DEADLINE = 2
 
--- In combat Blizzard's profession tabs may not be pressed from an addon:
--- they are secure buttons, and what the window does after a press (hiding
--- tabs) is refused, "Interface action failed because of an AddOn", eight
--- times at once. C_TradeSkillUI.OpenTradeSkill switches the window to a
--- profession directly and is allowed; Blizzard's own bootstrap uses it the
--- same way, only when another profession is shown.
-local function SelectInCombat(skillLine)
+-- Switching the window to a profession: C_TradeSkillUI.OpenTradeSkill, as
+-- Blizzard's own bootstrap does, only when another profession is shown.
+-- Never Blizzard's profession tabs: pressing them from an addon runs
+-- Blizzard's window code in the addon's execution, which leaves the window
+-- tainted. In combat that is refused at once (Frame:Hide on the tabs); out
+-- of combat a later protected action in the window (crafting) is then
+-- refused: "ForeverProgressBars has been blocked from an action only
+-- available to the Blizzard UI". OpenTradeSkill changes the profession in
+-- the game; the window follows through its own events, untainted.
+local function SelectProfession(skillLine)
     local api = C_TradeSkillUI
     if not (api and api.OpenTradeSkill) then return false end
     local ok, info = pcall(function() return api.GetBaseProfessionInfo and api.GetBaseProfessionInfo() end)
@@ -585,31 +571,20 @@ local function SelectInCombat(skillLine)
     return true
 end
 
-local function InCombat()
-    return InCombatLockdown and InCombatLockdown() and true or false
-end
-
 local function OpenProfession(skillLine, spellOffset)
     if not spellOffset then return "no data" end
-    -- Open and already selected: close it (Blizzard's tabs cannot do that).
+    -- Open and already selected: close it.
     if WindowShown() and IsSelected(skillLine) then
         wantedTab, wantedUntil = nil, nil
         if C_TradeSkillUI and C_TradeSkillUI.CloseTradeSkill then pcall(C_TradeSkillUI.CloseTradeSkill) end
         return "closed"
     end
-    -- Open on another profession: press Blizzard's own tab; in combat switch
-    -- directly instead.
-    if WindowShown() and InCombat() and SelectInCombat(skillLine) then
+    -- Open on another profession: switch to this one.
+    if WindowShown() and SelectProfession(skillLine) then
         wantedTab, wantedUntil = nil, nil
         return "switched"
     end
-    local tab = WindowShown() and TabFor(skillLine) or nil
-    if tab then
-        wantedTab, wantedUntil = nil, nil
-        pcall(tab.OnClick, tab)
-        return "tab"
-    end
-    -- Closed: cast and remember the tab.
+    -- Closed: cast and remember which profession is wanted.
     local cast = C_SpellBook and C_SpellBook.CastSpellBookItem
     local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player
     if type(cast) ~= "function" or bank == nil then return "no spellbook" end
@@ -620,6 +595,9 @@ local function OpenProfession(skillLine, spellOffset)
 end
 Bars.OpenProfession = OpenProfession
 
+-- After opening, every tab of the window casts its profession and the last
+-- answer wins; until the deadline each trade skill event switches back to
+-- the wanted one.
 local function PressWantedTab()
     if not wantedTab then return "none" end
     local now = (GetTime and GetTime()) or 0
@@ -627,16 +605,8 @@ local function PressWantedTab()
         wantedTab, wantedUntil = nil, nil
         return "expired"
     end
-    -- In combat the tab may not be pressed (see SelectInCombat).
-    if InCombat() then
-        if SelectInCombat(wantedTab) then return "switched" end
-        return "combat"
-    end
-    local tab = TabFor(wantedTab)
-    if not tab then return "no tab" end
-    -- The wish stays until the deadline: the storm of answers comes later.
-    pcall(tab.OnClick, tab)
-    return "tab"
+    if SelectProfession(wantedTab) then return "switched" end
+    return "no api"
 end
 Bars.PressWantedTab = PressWantedTab
 

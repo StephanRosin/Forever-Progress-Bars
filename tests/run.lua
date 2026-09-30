@@ -122,56 +122,54 @@ M.Fire("PLAYER_REGEN_ENABLED")
 check("after combat: rewired", slot(1).open.spellOffset, 30)
 M.state.professions[1][6] = 10
 Bars.Refresh()
--- An open window on this profession closes; on another one the tab is pressed.
+-- An open window on this profession closes; on another one it switches
+-- with OpenTradeSkill. Blizzard's tabs are never pressed (in or out of
+-- combat): that leaves the window tainted and WoW blames the addon.
 _G.ProfessionsFrame = M.newWidget("ProfessionsFrame")
 local pressed
 local tab = M.newWidget()
 tab.skillLine = 186
 function tab:OnClick() pressed = self.skillLine end
 ProfessionsFrame.rightProfessionTabs = { tab }
-local closed = false
-C_TradeSkillUI = { CloseTradeSkill = function() closed = true end }
-_G.Professions = { IsSelectedProfession = function(line) return line == 171 end }
+local closed, opened = false, {}
+local current = 171
+C_TradeSkillUI = { CloseTradeSkill = function() closed = true end,
+                   OpenTradeSkill = function(id) opened[#opened + 1] = id; return true end,
+                   GetBaseProfessionInfo = function() return { professionID = current } end }
+_G.Professions = { IsSelectedProfession = function(line) return line == current end }
 check("same profession open: closes", Bars.OpenProfession(171, 10), "closed")
 check("closed", closed, true)
-check("other profession: its tab", Bars.OpenProfession(186, 12), "tab")
-check("tab pressed", pressed, 186)
+check("other profession: switched", Bars.OpenProfession(186, 12), "switched")
+check("other profession: OpenTradeSkill with the skill line", opened[1], 186)
+check("other profession: no tab pressed", pressed, nil)
 ProfessionsFrame._shown = false
 check("closed window: cast", Bars.OpenProfession(186, 12), "opened")
-pressed = nil
 ProfessionsFrame._shown = true
 M.Fire("TRADE_SKILL_SHOW")
-check("once shown, the wanted tab is pressed", pressed, 186)
--- In combat Blizzard's secure tabs may not be pressed (WoW refuses what the
--- window does next): the profession is switched with OpenTradeSkill.
-local opened = {}
-C_TradeSkillUI = { OpenTradeSkill = function(id) opened[#opened + 1] = id; return true end,
-                   GetBaseProfessionInfo = function() return { professionID = 171 } end }
+check("once shown, the wanted profession wins", opened[#opened], 186)
+check("once shown: no tab pressed", pressed, nil)
+-- In combat the same way.
 M.state.combat = true
-pressed = nil
-check("in combat, window open: switched directly", Bars.OpenProfession(186, 12), "switched")
-check("in combat: OpenTradeSkill with the skill line", opened[1], 186)
-check("in combat: no tab pressed", pressed, nil)
--- Closed window: cast as always, then the storm of answers is overruled
--- with OpenTradeSkill too.
+opened = {}
+check("in combat, window open: switched", Bars.OpenProfession(186, 12), "switched")
+check("in combat: OpenTradeSkill", opened[1], 186)
 ProfessionsFrame._shown = false
 M.casts = {}
 check("in combat, window closed: cast", Bars.OpenProfession(186, 12), "opened")
 check("in combat: cast done", #M.casts, 1)
 ProfessionsFrame._shown = true
 check("in combat: the wanted profession wins", Bars.PressWantedTab(), "switched")
-check("in combat: no tab pressed after the cast", pressed, nil)
 check("in combat: switched to it", opened[#opened], 186)
-C_TradeSkillUI.GetBaseProfessionInfo = function() return { professionID = 186 } end
+check("in combat: no tab pressed", pressed, nil)
+current = 186
 local before = #opened
 Bars.PressWantedTab()
 check("already shown: not switched again", #opened, before)
 M.state.combat = false
-C_TradeSkillUI = nil
 M.state.time = M.state.time + 5
-pressed = nil
+before = #opened
 M.Fire("TRADE_SKILL_LIST_UPDATE")
-check("after the deadline nothing more", pressed, nil)
+check("after the deadline nothing more", #opened, before)
 _G.ProfessionsFrame, _G.Professions, C_TradeSkillUI = nil, nil, nil
 
 section("In combat: protected bars stay untouched")
