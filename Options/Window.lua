@@ -144,6 +144,7 @@ local function barRows()
           set = function(v) Settings.Set("barBgAlpha", v) end },
         { type = "header", label = "OPT_ICONS" },
         check("showIcons", "OPT_SHOW_ICONS"),
+        check("showRank", "OPT_SHOW_RANK"),
         num("iconSize", "OPT_ICON_SIZE"),
         num("iconGap", "OPT_ICON_GAP"),
     }
@@ -430,7 +431,7 @@ local function buildSkillPage(content)
             end
             c.skillName = line.name
             if c.label and c.label.SetText then
-                c.label:SetText(("%s  |cff888888%d/%d|r"):format(line.name, line.rank, line.maxRank))
+                c.label:SetText(("%s  |cff888888%d/%d|r"):format(ns.Bars.ProfessionLabel(line), line.rank, line.maxRank))
             end
             c:SetChecked(not Settings.IsHidden(line.name, line.key))
             c:Show()

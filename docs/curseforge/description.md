@@ -10,11 +10,12 @@ Everything you level, in one strip: two primary professions, two secondary skill
 
 ## Professions and skills
 - Two primary professions on the left, two secondary skills on the right (First Aid and Cooking by default), each with its icon, name and rank.
+- Your rank in the middle of each profession bar: Apprentice, Journeyman, Expert, Artisan, Master (can be switched off).
 - Fishing and Riding are hidden by default; every skill can be shown or hidden in the options.
 - Coloured per profession: flask green for Alchemy, arcane purple for Enchanting, bolt-of-cloth blue for Tailoring, and so on.
 - **Click a bar to open the profession**, the same way Blizzard's own profession tabs do. Click again to close it. Gathering skills without a window stay unclickable.
 - The tooltip shows rank, points to the next cap and any bonus.
-- Works in every client language: professions are recognised by their spells, not by English names.
+- Works in every client language: professions are recognised by their spells, not by English names. Profession names, ranks and standings also follow the language you pick in the options.
 
 ## Reputation
 - A second row with up to four factions, lined up under the profession bars.

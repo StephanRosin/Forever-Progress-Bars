@@ -113,6 +113,54 @@ local function Print(fmt, ...)
 end
 ns.Print = Print
 
+-- The standing in the addon's language (Friendly, Honored, ...): own
+-- strings, so they follow the language chosen in the options, not only the
+-- client's.
+-- In the client's own language Blizzard's label wins: it follows the
+-- character's gender where the language does (French, Spanish).
+local function SameAsClient()
+    local client = GetLocale and GetLocale()
+    local current = ns.Locale and ns.Locale.Current and ns.Locale.Current()
+    if client == "esMX" then client = "esES" end
+    return client == nil or current == nil or client == current
+end
+
+local function StandingText(standing)
+    if not standing then return "" end
+    if SameAsClient() then
+        if type(GetText) == "function" then
+            local ok, text = pcall(GetText, "FACTION_STANDING_LABEL" .. standing, UnitSex and UnitSex("player") or nil)
+            if ok and type(text) == "string" and text ~= "" then return text end
+        end
+        local blizzard = _G["FACTION_STANDING_LABEL" .. standing]
+        if blizzard then return blizzard end
+    end
+    local key = "STANDING_" .. standing
+    local own = L[key]
+    if own and own ~= key then return own end
+    return _G["FACTION_STANDING_LABEL" .. standing] or ""
+end
+
+-- A profession's name in the addon's language; the client's name for one
+-- the addon does not know.
+local function ProfessionLabel(line)
+    if not line then return "" end
+    local key = line.key and ("PROF_" .. line.key)
+    local own = key and L[key]
+    if own and own ~= key then return own end
+    return line.name or ""
+end
+Bars.ProfessionLabel = ProfessionLabel
+
+-- The rank a skill cap stands for: 75 Apprentice, 150 Journeyman, 225
+-- Expert, 300 Artisan, 375 Master.
+Bars.RANKS = { [75] = "APPRENTICE", [150] = "JOURNEYMAN", [225] = "EXPERT", [300] = "ARTISAN", [375] = "MASTER" }
+local function RankText(maxRank)
+    local rank = Bars.RANKS[maxRank]
+    return rank and L["RANK_" .. rank] or ""
+end
+Bars.RankText = RankText
+
 local function ColorTexture(tex, r, g, b, a)
     if tex.SetColorTexture then tex:SetColorTexture(r, g, b, a) else tex:SetTexture(r, g, b, a) end
 end
@@ -631,7 +679,7 @@ local function ShowTooltip(bar)
     local d = bar.data
     if not d then return end
     GameTooltip:SetOwner(bar, "ANCHOR_RIGHT")
-    GameTooltip:AddLine(d.name, 1, 1, 1)
+    GameTooltip:AddLine(d.isRep and d.name or ProfessionLabel(d), 1, 1, 1)
     if d.isRep then
         GameTooltip:AddDoubleLine(d.standingText or "", string.format("%d / %d", d.rank, d.maxRank),
             0.8, 0.8, 0.8, 1, 1, 1)
@@ -703,6 +751,19 @@ local function BuildBar(index, plain)
     value:SetTextColor(unpack(CFG.VALUE_COLOR))
     if value.SetWordWrap then value:SetWordWrap(false) end
     bar.valueText = value
+
+    -- In the middle of the bar: the rank (professions) or the standing
+    -- (reputation), with a shadow for bright fills such as yellow.
+    local standing = sb:CreateFontString(nil, "OVERLAY", CFG.FONT_TEMPLATE)
+    standing:SetPoint("CENTER", sb, "CENTER", 0, 0)
+    standing:SetJustifyH("CENTER")
+    standing:SetTextColor(1, 1, 1)
+    if standing.SetShadowColor then
+        standing:SetShadowColor(0, 0, 0, 1)
+        standing:SetShadowOffset(1, -1)
+    end
+    if standing.SetWordWrap then standing:SetWordWrap(false) end
+    bar.standing = standing
 
     bar:SetScript("OnEnter", ShowTooltip)
     bar:SetScript("OnLeave", HideTooltip)
@@ -1063,16 +1124,6 @@ end
 -- no attributes here, so a click never casts anything.
 local function BuildRepBar(slot)
     local bar = BuildBar(1000 + slot)
-    bar.standing = bar.sb:CreateFontString(nil, "OVERLAY", CFG.FONT_TEMPLATE)
-    bar.standing:SetPoint("CENTER", bar.sb, "CENTER", 0, 0)
-    bar.standing:SetJustifyH("CENTER")
-    bar.standing:SetTextColor(1, 1, 1)
-    -- A shadow keeps it readable on a bright fill such as yellow.
-    if bar.standing.SetShadowColor then
-        bar.standing:SetShadowColor(0, 0, 0, 1)
-        bar.standing:SetShadowOffset(1, -1)
-    end
-    if bar.standing.SetWordWrap then bar.standing:SetWordWrap(false) end
 
     bar.click:RegisterForClicks("LeftButtonDown", "LeftButtonUp", "RightButtonDown", "RightButtonUp")
     bar.click:SetScript("OnClick", function(_, button, down)
@@ -1669,7 +1720,8 @@ local function FillSlot(index, line)
     end
     bar.nameText:ClearAllPoints()
     bar.nameText:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", bar.nameOffset, S("textGap"))
-    bar.nameText:SetText(line.name)
+    bar.nameText:SetText(ProfessionLabel(line))
+    bar.standing:SetText(S("showRank") and RankText(line.maxRank) or "")
     bar.valueText:SetText(string.format("%d/%d", line.rank, line.maxRank))
     bar.sb:SetMinMaxValues(0, math.max(1, line.maxRank))
     bar.sb:SetValue(math.min(line.rank, line.maxRank))
@@ -1805,14 +1857,6 @@ end
 
 -- "Friendly", "Honored", ... by the player's gender, as Blizzard's own
 -- reputation page does it (GetText); the constant is the fallback.
-local function StandingText(standing)
-    if not standing then return "" end
-    if type(GetText) == "function" then
-        local ok, text = pcall(GetText, "FACTION_STANDING_LABEL" .. standing, UnitSex and UnitSex("player") or nil)
-        if ok and type(text) == "string" and text ~= "" then return text end
-    end
-    return _G["FACTION_STANDING_LABEL" .. standing] or ""
-end
 Bars.StandingText = StandingText
 
 local function FactionColour(standing)
@@ -1942,6 +1986,13 @@ function Bars.ApplyAll()
     Refresh()
     ns.RefreshReputation()
 end
+
+-- Another language: the names, ranks and standings are written again.
+ns.Locale.OnChange(function()
+    if not container then return end
+    Refresh()
+    ns.RefreshReputation()
+end)
 
 Settings.OnChange(function(key)
     if not container then return end

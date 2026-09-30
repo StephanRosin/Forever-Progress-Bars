@@ -43,6 +43,7 @@ Settings.DEFAULTS = {
     barBgAlpha = 30,                -- percent
     labelFontSize = 12,     -- 0 = the font object's own size
     showIcons = true,
+    showRank = true,        -- Apprentice, Journeyman, ... in the profession bars
     iconSize = 11,
     iconGap = 2,
 

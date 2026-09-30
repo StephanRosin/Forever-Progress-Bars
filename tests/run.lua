@@ -372,6 +372,24 @@ do
     Settings.Set("arrangement", nil)
 end
 
+section("Ranks, names and standings follow the language")
+do
+    check("rank in the profession bar", slot(1).standing:GetText(), "Master")
+    check("rank from the cap", Bars.RankText(150), "Journeyman")
+    Settings.Set("showRank", false)
+    check("rank can be switched off", slot(1).standing:GetText(), "")
+    Settings.Set("showRank", nil)
+    ns.Locale.Set("deDE")
+    check("German profession name", slot(1).nameText:GetText(), "Alchimie")
+    check("German rank", slot(1).standing:GetText(), "Meister")
+    local repText = Bars.RepSlot(1).standing:GetText()
+    local isGerman = false
+    for i = 1, 8 do if repText == ns.Locales.deDE["STANDING_" .. i] then isGerman = true end end
+    check("German standing (the client speaks English)", isGerman, true)
+    ns.Locale.Set("AUTO")
+    check("back in English", slot(1).nameText:GetText(), "Alchemy")
+end
+
 section("Position references")
 do
     local c = Bars.container
