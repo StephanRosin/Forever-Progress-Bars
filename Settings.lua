@@ -27,6 +27,9 @@ Settings.DEFAULTS = {
     -- level sits on TOP, in the MIDDLE or at the BOTTOM; bars are
     -- columnWidth wide. levelPlace FREE places it freely everywhere.
     arrangement = "ROW",
+    -- What shows at all: the profession bars, the reputation bars.
+    showProfessions = true,
+    showReputation = true,
     levelPlace = "TOP",
     columnWidth = 240,
 
@@ -105,6 +108,11 @@ Settings.DEFAULTS = {
     xpLevelFont = "",
     xpLevelFontSize = 0,
     xpValueFontSize = 0,
+    -- Where the numbers sit: ABOVE, IN or BELOW the bar, _LEFT, _CENTER or
+    -- _RIGHT, plus X/Y.
+    xpValuePlace = "ABOVE_RIGHT",
+    xpValueX = 0,
+    xpValueY = 0,
     xpGap = 0,
 
     -- Minimap button
@@ -134,6 +142,8 @@ Settings.RANGES = {
     xpLevelFontSize = { 0, 60 },
     xpValueFontSize = { 0, 40 },
     xpGap = { -20, 80 },
+    xpValueX = { -500, 500 },
+    xpValueY = { -100, 100 },
     xpFreeX = { -2000, 2000 },
     xpFreeY = { -3000, 200 },
     xpWidth = { 0, 4000 },
@@ -246,13 +256,14 @@ Settings.PRESETS = {
     -- badge, the row's level switched off. Positions in the new reckoning:
     -- the strip from the left edge, free places from the top edge.
     { id = "COLUMN_XP", values = {
-        arrangement = "COLUMN", columnWidth = 232,
-        xFrom = "LEFT", x = 13, y = -10,
+        arrangement = "COLUMN", columnWidth = 191, width = 889,
+        xFrom = "LEFT", x = 10, y = -10,
         levelShow = false, levelPlace = "FREE", levelOffsetY = -21, levelY = -33, levelGap = 93,
         levelStyle = "WINGS", levelFontSize = 27,
         levelBoxPadX = 4, levelBoxPadY = 8, levelBoxMinW = 44,
-        xpEnabled = true, xpRow = "FREE", xpFreeY = 0, xpWidth = 984, xpGap = 14,
-        xpLevelMode = "BADGE", xpBadgeY = 2, xpBadgeFontSize = 22, xpBadgeFollow = true,
+        xpEnabled = true, xpRow = "FREE", xpFreeY = 2, xpWidth = 1161, xpGap = 14,
+        xpValuePlace = "IN_CENTER",
+        xpLevelMode = "BADGE", xpBadgeY = -1, xpBadgeFontSize = 22, xpBadgeFollow = true,
     } },
 }
 

@@ -31,6 +31,8 @@ ns.XpBar = Xp
 
 Xp.TEXT_MODES = { "CURRENT_MAX", "CURRENT_MAX_PERCENT", "PERCENT", "NONE" }
 Xp.ROWS = { "TOP", "MIDDLE", "BOTTOM", "FREE" }
+Xp.VALUE_PLACES = { "ABOVE_LEFT", "ABOVE_CENTER", "ABOVE_RIGHT", "IN_LEFT", "IN_CENTER", "IN_RIGHT",
+    "BELOW_LEFT", "BELOW_CENTER", "BELOW_RIGHT" }
 
 -- The numbers: plain values in, text out, so the tests need no game.
 function Xp.Text(mode, cur, max)
@@ -117,6 +119,8 @@ function Xp.TitleSize()
     local bar = slot()
     if not bar then return 0 end
     local val = S("xpValueFontSize") > 0 and S("xpValueFontSize") or labelSize(bar.valueText)
+    -- Numbers in or below the bar take no room in the title line.
+    if S("xpValuePlace"):sub(1, 5) ~= "ABOVE" then val = 0 end
     -- As a badge the level is no text in the line: only the numbers count.
     if S("xpLevelMode") == "BADGE" then return val end
     local lvl = S("xpLevelFontSize") > 0 and S("xpLevelFontSize") or labelSize(bar.nameText)
@@ -136,6 +140,36 @@ function Xp.StyleTitle()
     local vsize = S("xpValueFontSize") > 0 and S("xpValueFontSize") or labelSize(value)
     if vpath then pcall(value.SetFont, value, vpath, vsize, vflags) end
     value:SetHeight(vsize)
+    Xp.PlaceValue()
+end
+
+-- The numbers' place. In the bar they need a layer above the fill, so the
+-- text moves onto one of its own once.
+local SIDES = { LEFT = { "LEFT", 4 }, CENTER = { "", 0 }, RIGHT = { "RIGHT", -4 } }
+function Xp.PlaceValue()
+    local bar = slot()
+    if not bar then return end
+    local value = bar.valueText
+    if not bar.valueLayer then
+        bar.valueLayer = CreateFrame("Frame", nil, bar)
+        bar.valueLayer:SetAllPoints(bar)
+        bar.valueLayer:SetFrameLevel((bar.sb:GetFrameLevel() or 1) + 3)
+        value:SetParent(bar.valueLayer)
+    end
+    local where, side = S("xpValuePlace"):match("^(%u+)_(%u+)$")
+    local s = SIDES[side] or SIDES.RIGHT
+    local gap = S("textGap")
+    local x, y = S("xpValueX"), S("xpValueY")
+    value:ClearAllPoints()
+    if where == "IN" then
+        local p = s[1] == "" and "CENTER" or s[1]
+        value:SetPoint(p, bar.sb, p, s[2] + x, y)
+    elseif where == "BELOW" then
+        value:SetPoint("TOP" .. s[1], bar, "BOTTOM" .. s[1], x, -gap + y)
+    else
+        value:SetPoint("BOTTOM" .. s[1], bar, "TOP" .. s[1], x, gap + y)
+    end
+    value:SetJustifyH(side == "LEFT" and "LEFT" or side == "CENTER" and "CENTER" or "RIGHT")
 end
 
 -- Values and visibility. A change in visibility lays the strip out again

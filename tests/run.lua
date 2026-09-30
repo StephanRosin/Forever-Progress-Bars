@@ -350,6 +350,28 @@ ns.ToggleLock()
 
 local function RowHeightForTest() return S("textHeight") + S("textGap") + S("barHeight") end
 
+section("Professions and reputation can be switched off")
+do
+    local rowH = RowHeightForTest()
+    Settings.Set("showProfessions", false)
+    check("professions hidden", slot(1):IsShown(), false)
+    check("reputation takes their place", Bars.RepSlot(1)._points.BOTTOMLEFT[4], 0)
+    Settings.Set("showProfessions", nil)
+    check("professions back", slot(1):IsShown(), true)
+    check("reputation below again", Bars.RepSlot(1)._points.BOTTOMLEFT[4] < 0, true)
+    Settings.Set("showReputation", false)
+    check("reputation hidden", Bars.RepSlot(1):IsShown(), false)
+    Settings.Set("arrangement", "COLUMNS")
+    check("columns: one column left", Bars.container:GetWidth(), S("columnWidth"))
+    Settings.Set("arrangement", "COLUMN")
+    Settings.Set("showReputation", nil)
+    local firstY = slot(1)._points.BOTTOMLEFT[4]
+    Settings.Set("showProfessions", false)
+    check("column: reputation where the first profession was", Bars.RepSlot(1)._points.BOTTOMLEFT[4], firstY)
+    Settings.Set("showProfessions", nil)
+    Settings.Set("arrangement", nil)
+end
+
 section("Position references")
 do
     local c = Bars.container
@@ -448,9 +470,9 @@ do
     check("column: arrangement", S("arrangement"), "COLUMN")
     check("column: XP bar on", S("xpEnabled"), true)
     check("column: level free", S("levelPlace"), "FREE")
-    check("column: XP bar free and wide", S("xpRow") .. " " .. S("xpWidth"), "FREE 984")
-    check("column: from the left edge", S("xFrom") .. " " .. S("x"), "LEFT 13")
-    check("column: XP bar at the top edge", S("xpFreeY"), 0)
+    check("column: XP bar free and wide", S("xpRow") .. " " .. S("xpWidth"), "FREE 1161")
+    check("column: from the left edge", S("xFrom") .. " " .. S("x"), "LEFT 10")
+    check("column: XP bar near the top edge", S("xpFreeY"), 2)
     check("column: badge rides on the fill", S("xpBadgeFollow"), true)
     check("own lock kept", S("locked"), false)
     check("own hidden skills kept", Settings.IsHidden("Cooking", "COOKING"), true)
@@ -570,6 +592,17 @@ do
     Settings.Set("xpLevelFont", "Morpheus")
     check("level font of its own", xp.nameText:GetFont(), ns.Media.FontPath("Morpheus"))
     for _, k in ipairs({ "xpLevelFontSize", "xpValueFontSize", "xpLevelFont" }) do Settings.Set(k, nil) end
+    -- The numbers' place: above (default), in or below the bar.
+    local val = xp.valueText
+    check("numbers: above, right by default", val._points.BOTTOMRIGHT and val._points.BOTTOMRIGHT[2], "TOPRIGHT")
+    Settings.Set("xpValuePlace", "IN_CENTER")
+    check("numbers: in the bar, middle", val._points.CENTER and val._points.CENTER[1], xp.sb)
+    check("numbers: above the fill", val:GetParent():GetFrameLevel() > xp.sb:GetFrameLevel(), true)
+    Settings.Set("xpValuePlace", "BELOW_LEFT")
+    Settings.Set("xpValueX", 5)
+    check("numbers: below, left", val._points.TOPLEFT and val._points.TOPLEFT[2], "BOTTOMLEFT")
+    check("numbers: offset", val._points.TOPLEFT[3], 5)
+    for _, k in ipairs({ "xpValuePlace", "xpValueX" }) do Settings.Set(k, nil) end
     -- Extra space to the other bars.
     local yMid = xp._points.BOTTOMLEFT[4]
     Settings.Set("xpGap", 10)

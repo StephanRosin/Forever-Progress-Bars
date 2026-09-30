@@ -23,7 +23,7 @@ Everything you level, in one strip: two primary professions, two secondary skill
 
 ## Experience bar (optional)
 - An experience bar in the same style as the reputation bars, as wide as the whole strip (or a width of your own): above the professions, between professions and reputation, at the bottom, or **anywhere on the screen**.
-- A title line like the reputation bars: "Level 20" on the left, "730 / 23200 (3%)" on the right, with its own fonts and sizes (a big level, small numbers). Or the level as a badge of its own on the bar, placed at any of its points or riding on the end of the fill, with its own style and size.
+- A title line like the reputation bars: "Level 20" on the left, "730 / 23200 (3%)" on the right (or in or below the bar, left, middle or right), with its own fonts and sizes (a big level, small numbers). Or the level as a badge of its own on the bar, placed at any of its points or riding on the end of the fill, with its own style and size.
 - Rested experience shows ahead of the fill; the tooltip gives experience, progress, what is left to the next level and rested experience.
 - Hidden at the maximum level. While it is on, Blizzard's experience bar is hidden.
 
@@ -37,6 +37,7 @@ Everything you level, in one strip: two primary professions, two secondary skill
 
 ## Layout
 - **In a row** (professions side by side, reputation below), **in two columns** (professions left, reputation right) or **in one column** (professions, then reputation), with a bar width of your choice for the columns.
+- Switch professions, reputation, level and XP bar on or off; the rest closes up.
 - **Scale everything together** from 50 to 200 %.
 - Position from the screen's centre or left edge, and from its top edge or centre, so it lands in the same place on other resolutions.
 - The strip starts at the top of the screen, 60 % of the screen wide (at most 1180), so it fits small screens and large UI scales too, and **locked** (click-through). Right-click the minimap button or type `/fpb unlock` to drag it somewhere else, or set position and width exactly in the options.

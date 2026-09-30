@@ -1205,7 +1205,7 @@ local function XpGap() return CFG.REP_ROW_GAP + S("xpGap") end
 -- In a row with the XP row between professions and reputation: how far the
 -- reputation row moves down.
 local function RowXpShift()
-    if not (XpInRow() and S("xpRow") == "MIDDLE") then return 0 end
+    if not (XpInRow() and S("xpRow") == "MIDDLE" and S("showProfessions")) then return 0 end
     return XpHeight() + 2 * XpGap() - CFG.REP_ROW_GAP
 end
 
@@ -1231,22 +1231,30 @@ local function LayoutStacked(mode)
     local top = xpAbove + levelAbove
     local blockH = CFG.NUM_SLOTS * rowH + (CFG.NUM_SLOTS - 1) * gap
     local function y(start, k) return -(start + k * rowH + (k - 1) * gap) end
+    -- A block switched off takes no room: the other one closes up.
+    local profOn, repOn = S("showProfessions"), S("showReputation")
     local width, barsH, levelY, xpBottom
     if mode == "COLUMNS" then
-        local colGap = middle and math.max(S("spacing"), levelAcross) or S("spacing")
-        width, barsH = 2 * colW + colGap, blockH
+        local both = profOn and repOn
+        local colGap = both and (middle and math.max(S("spacing"), levelAcross) or S("spacing")) or 0
+        width = (both and 2 or 1) * colW + colGap
+        barsH = (profOn or repOn) and blockH or 0
         for k = 1, CFG.NUM_SLOTS do PutBar(slots[k], "TOPLEFT", 0, y(top, k), colW) end
-        for k = 1, CFG.NUM_REP_SLOTS do PutBar(repSlots[k], "TOPLEFT", colW + colGap, y(top, k), colW, true) end
-        if middle then levelY = -(top + blockH / 2) end
+        local repX = profOn and (colW + colGap) or 0
+        for k = 1, CFG.NUM_REP_SLOTS do PutBar(repSlots[k], "TOPLEFT", repX, y(top, k), colW, true) end
+        if middle then levelY = -(top + barsH / 2) end
     else
-        local groupGap = middle and levelDown or (xpMid > 0 and 0 or 3 * gap)
-        width, barsH = colW, 2 * blockH + groupGap + xpMid
+        local profH, repH = profOn and blockH or 0, repOn and blockH or 0
+        -- Between the blocks only when both show.
+        if not (profOn and repOn) and xpMid > 0 then xpMid = xpRowH end
+        local groupGap = (profOn and repOn) and (middle and levelDown or (xpMid > 0 and 0 or 3 * gap)) or 0
+        width, barsH = colW, profH + repH + groupGap + xpMid
         for k = 1, CFG.NUM_SLOTS do PutBar(slots[k], "TOPLEFT", 0, y(top, k), colW) end
         -- Between the blocks: the XP row first, then the level's room.
-        if xpMid > 0 then xpBottom = -(top + blockH + xpGap + XpHeight()) end
-        local repStart = top + blockH + xpMid + groupGap
+        if xpMid > 0 then xpBottom = -(top + profH + xpGap + XpHeight()) end
+        local repStart = top + profH + xpMid + groupGap
         for k = 1, CFG.NUM_REP_SLOTS do PutBar(repSlots[k], "TOPLEFT", 0, y(repStart, k), colW, true) end
-        if middle then levelY = -(top + blockH + xpMid + groupGap / 2) end
+        if middle then levelY = -(top + profH + xpMid + groupGap / 2) end
     end
     local levelBelow = place == "BOTTOM" and levelDown or 0
     if place == "TOP" then levelY = -(xpAbove + levelDown / 2) end
@@ -1393,7 +1401,9 @@ local function Layout()
     for i = 1, CFG.NUM_REP_SLOTS do
         local bar = repSlots[i]
         bar:ClearAllPoints()
-        bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", offsets[i], -(rowHeight + CFG.REP_ROW_GAP) - xpMid)
+        -- Without the professions the reputation row takes their place.
+        local repY = S("showProfessions") and (-(rowHeight + CFG.REP_ROW_GAP) - xpMid) or 0
+        bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", offsets[i], repY)
         bar:SetWidth(barWidth)
         LayoutDividers(bar, barWidth)
         local valueWidth = bar.valueText:GetStringWidth() or 0
@@ -1413,7 +1423,7 @@ local function Layout()
                 if repSlots[i]:IsShown() then repShown = true end
             end
             -- Below the lowest row's bottom: its gap, then the whole XP row.
-            local last = repShown and -(rowHeight + CFG.REP_ROW_GAP) or 0
+            local last = (repShown and S("showProfessions")) and -(rowHeight + CFG.REP_ROW_GAP) or 0
             y = last - XpGap() - XpHeight()
         end
         PutBar(xpSlot, "BOTTOMLEFT", 0, y, XpWidth(width), true)
@@ -1441,7 +1451,7 @@ function Bars.ShownSpan()
     local rowHeight = RowHeight()
     local top, bottom = 0, -rowHeight
     for i = 1, CFG.NUM_REP_SLOTS do
-        if repSlots[i] and repSlots[i]:IsShown() then
+        if repSlots[i] and repSlots[i]:IsShown() and S("showProfessions") then
             bottom = -(2 * rowHeight + CFG.REP_ROW_GAP) - RowXpShift()
             break
         end
@@ -1643,7 +1653,7 @@ local function FillSlot(index, line)
     local bar = slots[index]
     bar.data = line
     ApplyClickTarget(bar)
-    if not line then
+    if not line or not S("showProfessions") then
         SetBarShown(bar, false)
         return
     end
@@ -1821,7 +1831,7 @@ local function FillRepSlot(index)
             if f.id == wanted then found = f break end
         end
     end
-    if not found then
+    if not found or not S("showReputation") then
         bar.data = nil
         SetBarShown(bar, false)
         return
@@ -1952,8 +1962,10 @@ Settings.OnChange(function(key)
         ApplyLock()
     elseif key == "reps" then
         ns.RefreshReputation()
-    elseif key == "hidden" then
+    elseif key == "hidden" or key == "showProfessions" then
         Refresh()
+    elseif key == "showReputation" then
+        ns.RefreshReputation()
     elseif key == "minimapShow" or key == "minimapAngle" then
         return
     elseif type(key) == "string" and key:sub(1, 2) == "xp" then

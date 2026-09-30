@@ -49,6 +49,8 @@ local function newWidget(name, kind)
     function w:IsShown() return self._shown end
     function w:IsVisible() return self._shown end
     function w:GetFrameLevel() return self._level or 3 end
+    function w:SetParent(p) self._parent = p end
+    function w:GetParent() return self._parent end
     function w:SetFrameLevel(v) self._level = v end
     function w:GetEffectiveScale() return 1 end
     function w:SetMovable(v) self._movable = v end

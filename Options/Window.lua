@@ -82,9 +82,19 @@ local function choice(key, label, values, prefix)
     }
 end
 
+-- Allgemein: what shows, how it is arranged, where it sits.
 local function generalRows()
     local w, h = screenSize()
     return {
+        { type = "header", label = "OPT_SHOW" },
+        check("showProfessions", "OPT_SHOW_PROFESSIONS"),
+        check("showReputation", "OPT_SHOW_REPUTATION"),
+        check("levelShow", "OPT_LEVEL_SHOW"),
+        check("xpEnabled", "OPT_XP_ENABLED"),
+        { type = "header", label = "OPT_ARRANGEMENT" },
+        choice("arrangement", "OPT_ARRANGE", { "ROW", "COLUMNS", "COLUMN" }, "ARRANGE_"),
+        { label = "OPT_SCALE", min = 50, max = 200, step = 5, unit = "%",
+          get = function() return S("scale") end, set = function(v) Settings.Set("scale", v) end },
         { type = "header", label = "OPT_POSITION" },
         choice("xFrom", "OPT_X_FROM", { "CENTER", "LEFT" }, "FROM_"),
         choice("yFrom", "OPT_Y_FROM", { "TOP", "CENTER" }, "FROM_"),
@@ -93,14 +103,7 @@ local function generalRows()
           get = function() return S("x") end, set = function(v) Settings.Set("x", v) end },
         { label = "OPT_Y", min = -h, max = h, step = 1, unit = "px",
           get = function() return S("y") end, set = function(v) Settings.Set("y", v) end },
-        { label = "OPT_WIDTH", min = 200, max = w, step = 1, unit = "px",
-          get = function() return math.min(Settings.Width(w), w) end, set = function(v) Settings.Set("width", v) end },
         check("locked", "OPT_LOCK"),
-        { label = "OPT_SCALE", min = 50, max = 200, step = 5, unit = "%",
-          get = function() return S("scale") end, set = function(v) Settings.Set("scale", v) end },
-        { type = "header", label = "OPT_ARRANGEMENT" },
-        choice("arrangement", "OPT_ARRANGE", { "ROW", "COLUMNS", "COLUMN" }, "ARRANGE_"),
-        num("columnWidth", "OPT_COLUMN_WIDTH"),
         { type = "header", label = "OPT_MINIMAP" },
         check("minimapShow", "OPT_MINIMAP_SHOW"),
     }
@@ -119,15 +122,22 @@ local function colorRow(key, label, noOpacity)
     }
 end
 
+-- Leisten: their size (both widths), text line, look, icons.
 local function barRows()
+    local w = screenSize()
     return {
-        { type = "header", label = "OPT_BARS" },
+        { type = "header", label = "OPT_BAR_SIZE" },
+        { label = "OPT_ROW_WIDTH", min = 200, max = w, step = 1, unit = "px",
+          get = function() return math.min(Settings.Width(w), w) end, set = function(v) Settings.Set("width", v) end },
+        num("columnWidth", "OPT_COLUMN_WIDTH"),
         num("barHeight", "OPT_BAR_HEIGHT"),
-        num("textHeight", "OPT_TEXT_HEIGHT"),
-        num("textGap", "OPT_TEXT_GAP"),
         num("spacing", "OPT_SPACING"),
         num("segmentWidth", "OPT_SEGMENT_WIDTH"),
+        { type = "header", label = "OPT_BAR_TEXT" },
+        num("textHeight", "OPT_TEXT_HEIGHT"),
+        num("textGap", "OPT_TEXT_GAP"),
         num("labelFontSize", "OPT_LABEL_FONT_SIZE"),
+        { type = "header", label = "OPT_BAR_LOOK" },
         colorRow("barBgColor", "OPT_BAR_BG_COLOR", true),
         { label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
           get = function() return S("barBgAlpha") end,
@@ -239,7 +249,6 @@ end)
 local function levelRows()
     local rows = {
         { type = "header", label = "OPT_LEVEL" },
-        check("levelShow", "OPT_LEVEL_SHOW"),
         choice("levelPlace", "OPT_LEVEL_PLACE", { "TOP", "MIDDLE", "BOTTOM", "FREE" }, "LEVEL_PLACE_"),
         -- With "Free" the two become its coordinates.
         freeLabelled(num("levelOffsetX", "OPT_LEVEL_X"), "OPT_LEVEL_FREE_X"),
@@ -260,7 +269,6 @@ local function xpRows()
     local X = ns.XpBar
     local rows = {
         { type = "header", label = "OPT_XP" },
-        check("xpEnabled", "OPT_XP_ENABLED"),
         { type = "text", label = "OPT_XP_HINT", height = 40 },
         choice("xpRow", "OPT_XP_ROW", X.ROWS, "XP_ROW_"),
         num("xpGap", "OPT_XP_GAP"),
@@ -286,6 +294,9 @@ local function xpRows()
         num("xpLevelFontSize", "OPT_XP_LEVEL_SIZE"),
         choice("xpTextMode", "OPT_XP_TEXT_MODE", X.TEXT_MODES, "XP_MODE_"),
         num("xpValueFontSize", "OPT_XP_VALUE_SIZE"),
+        choice("xpValuePlace", "OPT_XP_VALUE_PLACE", X.VALUE_PLACES, "XP_VALUE_"),
+        num("xpValueX", "OPT_XP_VALUE_X"),
+        num("xpValueY", "OPT_XP_VALUE_Y"),
 
         { type = "header", label = "OPT_XP_BADGE" },
         { type = "text", label = "OPT_XP_BADGE_HINT" },
