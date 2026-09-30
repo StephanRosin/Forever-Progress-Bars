@@ -390,6 +390,46 @@ do
     check("back in English", slot(1).nameText:GetText(), "Alchemy")
 end
 
+section("Hide in combat or in a group")
+do
+    local drivers = {}
+    _G.RegisterStateDriver = function(f, what, cond) drivers[f] = cond end
+    _G.UnregisterStateDriver = function(f) drivers[f] = nil end
+    local c = Bars.container
+    check("nothing hidden by default", Bars.StripCondition(), nil)
+    Settings.Set("hideInCombat", true)
+    check("strip: Blizzard's secure driver", drivers[c], "[combat] hide; show")
+    Settings.Set("hideInGroup", true)
+    check("strip: combat and group", drivers[c], "[combat] hide; [group] hide; show")
+    Settings.Set("hideInCombat", nil)
+    Settings.Set("hideInGroup", nil)
+    check("strip: driver gone", drivers[c], nil)
+    -- A change in combat waits (setting up the driver is protected).
+    M.state.combat = true
+    Settings.Set("hideInCombat", true)
+    check("in combat: not yet", drivers[c], nil)
+    M.state.combat = false
+    M.Fire("PLAYER_REGEN_ENABLED")
+    check("after combat: set", drivers[c], "[combat] hide; show")
+    Settings.Set("hideInCombat", nil)
+    -- The XP bar on its own rules.
+    local holder = Bars.XpHolder()
+    Settings.Set("xpHideInCombat", true)
+    M.Fire("PLAYER_REGEN_DISABLED")
+    check("XP bar hidden in combat", holder:IsShown(), false)
+    M.Fire("PLAYER_REGEN_ENABLED")
+    check("XP bar back after combat", holder:IsShown(), true)
+    _G.IsInGroup = function() return true end
+    Settings.Set("xpHideInGroup", true)
+    check("XP bar hidden in a group", holder:IsShown(), false)
+    _G.IsInGroup = nil
+    M.Fire("GROUP_ROSTER_UPDATE")
+    check("XP bar back without a group", holder:IsShown(), true)
+    Settings.Set("xpHideInCombat", nil)
+    Settings.Set("xpHideInGroup", nil)
+    _G.RegisterStateDriver, _G.UnregisterStateDriver = nil, nil
+end
+
 section("Position references")
 do
     local c = Bars.container
@@ -583,7 +623,7 @@ do
     StatusTrackingBarManager:GetScript("OnShow")(StatusTrackingBarManager)
     check("and kept hidden", StatusTrackingBarManager:IsShown(), false)
     check("shown", xp:IsShown(), true)
-    check("a bar of the strip", xp._parent, c)
+    check("on a plain holder of its own", xp._parent, Bars.XpHolder())
     check("as wide as the strip", xp:GetWidth(), c:GetWidth())
     check("title: the level", xp.nameText:GetText(), ns.L.XP_LEVEL:format(20))
     check("title: the numbers", xp.valueText:GetText(), "730 / 23200 (3%)")
@@ -864,28 +904,32 @@ local function shown(want)
     return false
 end
 check("pages listed", shown("Reputation"), true)
-local function sliderFor(label)
+-- The widgets are rows with a label and their control (Widgets.lua).
+local function rowFor(label, field)
     for _, f in ipairs(M.frames) do
-        local t = f._name and _G[f._name .. "Text"]
-        if f._kind == "Slider" and t and t._text == label then return f end
+        if f[field] and f.label and f.label._text and f.label._text:find(label, 1, true)
+           and f:IsShown() ~= false then
+            return f
+        end
     end
 end
 ns.Window.ShowPage("bars")
-local height = sliderFor("Bar height")
+local height = rowFor("Bar height", "slider")
 check("bar height slider", height ~= nil, true)
-height:GetScript("OnValueChanged")(height, 20)
+height.slider:GetScript("OnValueChanged")(height.slider, 20, true)
 check("the slider sets the value", S("barHeight"), 20)
-local box = M.byName[height._name .. "Box"]
-box:SetText("99")
-box:GetScript("OnEnterPressed")(box)
-check("the text field clamps", S("barHeight"), 40)
+height.edit:SetText("30")
+height.edit:GetScript("OnEnterPressed")(height.edit)
+check("the number box sets it", S("barHeight"), 30)
+height.edit:SetText("99")
+height.edit:GetScript("OnEnterPressed")(height.edit)
+check("out of range: refused", S("barHeight"), 30)
 Settings.Set("barHeight", nil)
 ns.Window.ShowPage("professions")
-local skillCheck = M.byName["ForeverProgressBarsSkillCheck1"]
-check("a checkbox per skill", skillCheck ~= nil, true)
-check("ticked when shown", skillCheck:GetChecked(), true)
-skillCheck:SetChecked(false)
-skillCheck:GetScript("OnClick")(skillCheck)
+local skillRow = rowFor("Alchemy", "box")
+check("a checkbox per skill", skillRow ~= nil, true)
+check("ticked when shown", skillRow.box:GetChecked(), true)
+skillRow.box:GetScript("OnClick")(skillRow.box)
 check("unticking hides it", Settings.IsHidden("Alchemy", "ALCHEMY"), true)
 Settings.SetHidden("Alchemy", false)
 ns.Window.Toggle()

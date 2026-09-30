@@ -702,8 +702,10 @@ local function HideTooltip() GameTooltip:Hide() end
 
 -- plain: no click buttons (the experience bar): no secure child, so the
 -- bar stays unprotected and may change in combat.
-local function BuildBar(index, plain)
-    local bar = CreateFrame("Frame", nil, container)
+local xpHolder          -- plain parent of the XP bar and its badge (own visibility)
+
+local function BuildBar(index, plain, parent)
+    local bar = CreateFrame("Frame", nil, parent or container)
     bar:EnableMouse(true)
     bar:Hide()
 
@@ -1089,8 +1091,8 @@ local function ApplyBackdropLook()
     end
 end
 
-local function BuildBadge()
-    local box = CreateFrame("Frame", nil, container)
+local function BuildBadge(parent)
+    local box = CreateFrame("Frame", nil, parent or container)
     local bg = box:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(box)
     box.bg = bg
@@ -1114,7 +1116,7 @@ end
 local function BuildLevelBox()
     levelBox = BuildBadge()
     levelText = levelBox.text
-    xpBadge = BuildBadge()
+    xpBadge = BuildBadge(xpHolder)
     xpBadge:Hide()
     Bars.levelBox, Bars.levelText = levelBox, levelText
 end
@@ -1584,6 +1586,7 @@ local function Place()
     -- so divided they stay screen pixels.
     local scale = math.max(0.1, S("scale") / 100)
     container:SetScale(scale)
+    if xpHolder then xpHolder:SetScale(scale) end
     container:ClearAllPoints()
     local point = PositionPoint()
     container:SetPoint(point, UIParent, point, S("x") / scale, S("y") / scale)
@@ -1952,9 +1955,16 @@ local function Build()
     container = CreateFrame("Frame", "ForeverProgressBarsFrame", UIParent)
     container:SetClampedToScreen(true)
     container:SetFrameStrata("MEDIUM")
+    -- The XP bar and its badge hang from a plain frame of their own: the
+    -- strip is protected (secure click buttons), and they must be able to
+    -- hide on their own rules, in combat too. Same strata and scale.
+    xpHolder = CreateFrame("Frame", "ForeverProgressBarsXpHolder", UIParent)
+    xpHolder:SetFrameStrata("MEDIUM")
+    xpHolder:SetSize(1, 1)
+    xpHolder:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     for i = 1, CFG.NUM_SLOTS do slots[i] = BuildBar(i) end
     for i = 1, CFG.NUM_REP_SLOTS do repSlots[i] = BuildRepBar(i) end
-    xpSlot = BuildBar(3000, true)
+    xpSlot = BuildBar(3000, true, xpHolder)
     -- The rested part: a second bar under the fill, up to current + rested.
     xpSlot.rested = CreateFrame("StatusBar", nil, xpSlot)
     xpSlot.rested:SetPoint("TOPLEFT", xpSlot.sb, "TOPLEFT", 0, 0)
@@ -1971,6 +1981,62 @@ local function Build()
 end
 
 -- Everything that depends on the settings.
+-- Hiding in combat or in a group. The strip is protected, so Blizzard's
+-- secure state driver shows and hides it, in combat too; setting it up is
+-- itself protected, so a change during combat waits. The XP bar's holder
+-- is a plain frame: events are enough.
+local visibilityPending = false
+local function StripCondition()
+    local parts = {}
+    if S("hideInCombat") then parts[#parts + 1] = "[combat] hide" end
+    if S("hideInGroup") then parts[#parts + 1] = "[group] hide" end
+    if #parts == 0 then return nil end
+    parts[#parts + 1] = "show"
+    return table.concat(parts, "; ")
+end
+Bars.StripCondition = StripCondition
+
+local function ApplyVisibility()
+    if not container then return end
+    if Locked() then visibilityPending = true; return end
+    visibilityPending = false
+    local condition = StripCondition()
+    if condition and RegisterStateDriver then
+        RegisterStateDriver(container, "visibility", condition)
+    else
+        if UnregisterStateDriver then UnregisterStateDriver(container, "visibility") end
+        container:Show()
+    end
+end
+
+local inCombat = false
+local function InGroup()
+    if IsInGroup then return IsInGroup() and true or false end
+    return (GetNumGroupMembers and GetNumGroupMembers() or 0) > 0
+end
+
+function Bars.UpdateXpVisibility()
+    if not xpHolder then return end
+    local hide = (S("xpHideInCombat") and inCombat) or (S("xpHideInGroup") and InGroup())
+    xpHolder:SetShown(not hide)
+end
+
+local visEvents = CreateFrame("Frame")
+for _, e in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "GROUP_ROSTER_UPDATE",
+    "PARTY_MEMBERS_CHANGED", "PLAYER_ENTERING_WORLD" }) do
+    pcall(visEvents.RegisterEvent, visEvents, e)
+end
+visEvents:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_REGEN_DISABLED" then inCombat = true
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        inCombat = false
+        if visibilityPending then ApplyVisibility() end
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        inCombat = UnitAffectingCombat and UnitAffectingCombat("player") and true or false
+    end
+    Bars.UpdateXpVisibility()
+end)
+
 function Bars.ApplyAll()
     if not container then return end
     for i = 1, #slots do ApplyBarGeometry(slots[i]) end
@@ -1983,6 +2049,8 @@ function Bars.ApplyAll()
     ApplyBackdropLook()
     Place()
     ApplyLock()
+    ApplyVisibility()
+    Bars.UpdateXpVisibility()
     Refresh()
     ns.RefreshReputation()
 end
@@ -2013,6 +2081,8 @@ Settings.OnChange(function(key)
         ApplyLock()
     elseif key == "reps" then
         ns.RefreshReputation()
+    elseif key == "hideInCombat" or key == "hideInGroup" then
+        ApplyVisibility()
     elseif key == "hidden" or key == "showProfessions" then
         Refresh()
     elseif key == "showReputation" then
@@ -2022,6 +2092,7 @@ Settings.OnChange(function(key)
     elseif type(key) == "string" and key:sub(1, 2) == "xp" then
         -- The experience bar (XpBar.lua) listens itself; its badge's look
         -- is drawn here.
+        if key == "xpHideInCombat" or key == "xpHideInGroup" then Bars.UpdateXpVisibility() end
         if key:sub(1, 7) == "xpBadge" then
             ApplyLevelLook()
             Layout()
@@ -2037,6 +2108,7 @@ Bars.LevelBox = function() return levelBox end
 Bars.XpBadge = function() return xpBadge end
 Bars.Relayout = function() return Layout() end
 Bars.XpSlot = function() return xpSlot end
+Bars.XpHolder = function() return xpHolder end
 Bars.Container = function() return container end
 Bars.RepSlot = function(i) return repSlots[i] end
 

@@ -30,6 +30,12 @@ Settings.DEFAULTS = {
     -- What shows at all: the profession bars, the reputation bars.
     showProfessions = true,
     showReputation = true,
+    -- Hide while in combat / in a group: the strip (professions,
+    -- reputation, level) and the XP bar each on its own.
+    hideInCombat = false,
+    hideInGroup = false,
+    xpHideInCombat = false,
+    xpHideInGroup = false,
     levelPlace = "TOP",
     columnWidth = 240,
 

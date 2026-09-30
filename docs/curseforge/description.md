@@ -39,13 +39,14 @@ Everything you level, in one strip: two primary professions, two secondary skill
 ## Layout
 - **In a row** (professions side by side, reputation below), **in two columns** (professions left, reputation right) or **in one column** (professions, then reputation), with a bar width of your choice for the columns.
 - Switch professions, reputation, level and XP bar on or off; the rest closes up.
+- **Hide in combat or in a group**, the bars and the XP bar each on their own (safe in combat: the game hides them itself).
 - **Scale everything together** from 50 to 200 %.
 - Position from the screen's centre or left edge, and from its top edge or centre, so it lands in the same place on other resolutions.
 - The strip starts at the top of the screen, 60 % of the screen wide (at most 1180), so it fits small screens and large UI scales too, and **locked** (click-through). Right-click the minimap button or type `/fpb unlock` to drag it somewhere else, or set position and width exactly in the options.
 - Bar height, text height, the space between text and bar, spacing, segment width, label font size and icon size are all adjustable, as are the colour and opacity of the bars' empty part.
 
 ## Options
-- Its own options window, opened from the **minimap button** or with `/fpb`: General, Bars, Professions, Reputation, Level, XP bar, Background and Profiles.
+- Its own options window in the style of Forever Unit Frames, opened from the **minimap button** or with `/fpb`: General, Bars, Professions, Reputation, Level, XP bar, Background and Profiles.
 - Also listed in Blizzard's **addon compartment** next to the minimap: left-click opens the options, right-click locks or unlocks the strip.
 - **Profiles**: save your layout under a name and share it between characters.
 - **Presets** in the profile list: "Classic" (one row, level in the middle) and "Column with XP bar". They are read-only (changes last until the next reload); "Save as..." turns one into a profile of your own. Your reputations, hidden skills, lock and minimap button come along.

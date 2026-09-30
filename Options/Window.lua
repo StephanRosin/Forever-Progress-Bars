@@ -2,42 +2,15 @@ local ADDON, ns = ...
 local L, Settings = ns.L, ns.Settings
 local S = Settings.Get
 
--- The options window: pages on the left, the chosen page on the right, the
--- language at the bottom left. Opened from the minimap button or /fpb; the
--- page under Interface Options -> AddOns only has a button to open it.
+-- The options window, built like Forever Unit Frames' (Style.lua and
+-- Widgets.lua are the same): a title bar, the pages on the left with the
+-- language at the bottom, the chosen page on the right, a footer. Opened
+-- from the minimap button or /fpb; the page under Interface Options ->
+-- AddOns only has a button to open it.
 local Window = {}
 ns.Window = Window
 
-local WIDTH, HEIGHT, NAV_WIDTH = 760, 560, 170
-local COLORS = {
-    bg = { 0.07, 0.07, 0.08, 0.96 },
-    nav = { 0.10, 0.10, 0.12, 1 },
-    title = { 0.12, 0.12, 0.14, 1 },
-    border = { 0, 0, 0, 1 },
-    accent = { 1.00, 0.82, 0.00, 1 },
-    text = { 0.90, 0.90, 0.90, 1 },
-    selected = { 1, 1, 1, 0.08 },
-}
-
-local function Fill(frame, color, layer)
-    local t = frame:CreateTexture(nil, layer or "BACKGROUND")
-    t:SetAllPoints(frame)
-    t:SetColorTexture(color[1], color[2], color[3], color[4])
-    return t
-end
-
-local function Border(frame)
-    local c = COLORS.border
-    local edges = {}
-    for i = 1, 4 do
-        edges[i] = frame:CreateTexture(nil, "BORDER")
-        edges[i]:SetColorTexture(c[1], c[2], c[3], c[4])
-    end
-    edges[1]:SetPoint("TOPLEFT"); edges[1]:SetPoint("TOPRIGHT"); edges[1]:SetHeight(1)
-    edges[2]:SetPoint("BOTTOMLEFT"); edges[2]:SetPoint("BOTTOMRIGHT"); edges[2]:SetHeight(1)
-    edges[3]:SetPoint("TOPLEFT"); edges[3]:SetPoint("BOTTOMLEFT"); edges[3]:SetWidth(1)
-    edges[4]:SetPoint("TOPRIGHT"); edges[4]:SetPoint("BOTTOMRIGHT"); edges[4]:SetWidth(1)
-end
+local Style, Widgets = ns.Style, ns.Widgets
 
 local function num(key, label)
     local range = Settings.RANGES[key]
@@ -65,8 +38,8 @@ local function screenSize()
 end
 
 -- --------------------------------------------------------------------------
--- The pages. `rows` is a spec for ns.BuildRows; `build` builds a page by
--- itself (the skill list changes at runtime).
+-- The pages. `rows` is a spec turned into widgets below; `build` builds a
+-- page by itself (the skill list changes at runtime).
 -- --------------------------------------------------------------------------
 -- A dropdown over fixed values, labelled prefix .. value.
 local function choice(key, label, values, prefix)
@@ -91,6 +64,11 @@ local function generalRows()
         check("showReputation", "OPT_SHOW_REPUTATION"),
         check("levelShow", "OPT_LEVEL_SHOW"),
         check("xpEnabled", "OPT_XP_ENABLED"),
+        { type = "header", label = "OPT_HIDE" },
+        check("hideInCombat", "OPT_HIDE_COMBAT"),
+        check("hideInGroup", "OPT_HIDE_GROUP"),
+        check("xpHideInCombat", "OPT_XP_HIDE_COMBAT"),
+        check("xpHideInGroup", "OPT_XP_HIDE_GROUP"),
         { type = "header", label = "OPT_ARRANGEMENT" },
         choice("arrangement", "OPT_ARRANGE", { "ROW", "COLUMNS", "COLUMN" }, "ARRANGE_"),
         { label = "OPT_SCALE", min = 50, max = 200, step = 5, unit = "%",
@@ -241,10 +219,8 @@ local function freeLabelled(row, freeLabel)
     return row
 end
 
--- Choosing "Free" or back relabels the two sliders at once.
-Settings.OnChange(function(key)
-    if (key == "levelPlace" or key == nil) and ns.RelabelOptions then ns.RelabelOptions() end
-end)
+-- Choosing "Free" or back relabels the two sliders at once (labels that
+-- are functions are read again on every refresh).
 
 -- Stufe: where the row's badge sits, then how it looks.
 local function levelRows()
@@ -394,52 +370,179 @@ local function profileRows()
     }
 end
 
+-- --------------------------------------------------------------------------
+-- Spec rows into widgets
+-- --------------------------------------------------------------------------
+local WIDTH, HEIGHT = 780, 560
+local TITLE_H, NAV_W, FOOTER_H = 32, 160, 40
+local NAV_ROW_H, NAV_TOP, NAV_BAR_W = 28, 8, 3
+local SCROLLBAR_W, WHEEL_STEP = 10, 40
+local CONTENT_W = WIDTH - NAV_W - SCROLLBAR_W
+local PAGE_TOP, PAGE_BOTTOM, SECTION_GAP, INSET = 4, 16, 8, 16
+local TEXT_AREA_H, HINT_ROW_H = 70, 26
+local BUTTON_H, BUTTON_W, BUTTON_GAP = 24, 140, 8
+
+-- A label: a locale key or a function (read again on refresh).
+local function labelText(label)
+    if type(label) == "function" then return label() end
+    return L[label]
+end
+
+-- Stacks rows top to bottom; a header after other rows gets a gap.
+local function newStack(page)
+    local stack = { y = PAGE_TOP, rows = {} }
+    function stack.add(row, height)
+        if row.isSection and #stack.rows > 0 then stack.y = stack.y + SECTION_GAP end
+        row:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -stack.y)
+        row:SetPoint("TOPRIGHT", page, "TOPRIGHT", 0, -stack.y)
+        row:SetHeight(height or row:GetHeight())
+        stack.rows[#stack.rows + 1] = row
+        stack.y = stack.y + (height or row:GetHeight())
+    end
+    return stack
+end
+
+-- A muted line of explanation.
+local function hintRow(page, opt)
+    local row = CreateFrame("Frame", nil, page)
+    row.text = Style.Text(row, 11, "muted")
+    row.text:SetPoint("TOPLEFT", row, "TOPLEFT", INSET, -4)
+    row.text:SetPoint("RIGHT", row, "RIGHT", -INSET, 0)
+    row.text:SetJustifyH("LEFT")
+    row.text:SetWordWrap(true)
+    row.text:SetText(labelText(opt.label))
+    function row:Refresh() end
+    function row:SetEnabled() end
+    return row, opt.height or HINT_ROW_H
+end
+
+-- Several buttons side by side.
+local function buttonsRow(page, opt)
+    local row = CreateFrame("Frame", nil, page)
+    local x = INSET
+    row.buttons = {}
+    for _, b in ipairs(opt.buttons) do
+        local button = Widgets.Button(row, { text = labelText(b.label), width = b.width or BUTTON_W,
+            onClick = b.onClick })
+        button:SetPoint("LEFT", row, "LEFT", x, 0)
+        x = x + (b.width or BUTTON_W) + BUTTON_GAP
+        row.buttons[#row.buttons + 1] = button
+    end
+    function row:Refresh() end
+    function row:SetEnabled(on) for _, button in ipairs(row.buttons) do button:SetEnabled(on) end end
+    return row, BUTTON_H + 12
+end
+
+-- A text area to copy from or paste into (export / import).
+local function editRow(page, opt)
+    local row = CreateFrame("Frame", nil, page)
+    local area = Widgets.TextArea(row, { width = CONTENT_W - 2 * INSET, height = TEXT_AREA_H })
+    area:SetPoint("TOPLEFT", row, "TOPLEFT", INSET, -4)
+    -- The buttons use it like an edit box.
+    function area:SetFocus() area.edit:SetFocus() end
+    function area:HighlightText() area.edit:HighlightText() end
+    if opt.ref then opt.ref.box = area end
+    function row:Refresh() end
+    function row:SetEnabled() end
+    return row, TEXT_AREA_H + 12
+end
+
+-- The widget for one spec row, and its height (nil: the widget's own).
+local function widgetFor(page, opt)
+    local kind = opt.type or "slider"
+    if kind == "header" then
+        local row = Widgets.Header(page, labelText(opt.label))
+        row.isSection = true
+        return row
+    elseif kind == "text" then
+        return hintRow(page, opt)
+    elseif kind == "buttons" then
+        return buttonsRow(page, opt)
+    elseif kind == "edit" then
+        return editRow(page, opt)
+    end
+    local o = { label = labelText(opt.label), get = opt.get, set = opt.set }
+    local row
+    if kind == "check" then
+        row = Widgets.Checkbox(page, o)
+    elseif kind == "select" then
+        o.items = function()
+            local items = {}
+            for _, c in ipairs(opt.choices()) do
+                items[#items + 1] = { value = c.value, text = c.label, font = c.font }
+            end
+            return items
+        end
+        row = Widgets.Dropdown(page, o)
+    elseif kind == "color" then
+        o.noOpacity = opt.noOpacity
+        row = Widgets.Color(page, o)
+    else
+        o.min, o.max, o.step = opt.min, opt.max, opt.step or 1
+        row = Widgets.Slider(page, o)
+    end
+    -- A label that follows the settings (e.g. "X" for a free level).
+    if type(opt.label) == "function" then
+        local refresh = row.Refresh
+        function row:Refresh()
+            row:SetLabel(opt.label())
+            refresh(self)
+        end
+    end
+    return row
+end
+
+local function buildRows(page, spec)
+    local stack = newStack(page)
+    for _, opt in ipairs(spec) do
+        local row, height = widgetFor(page, opt)
+        stack.add(row, height)
+    end
+    page.rows, page.height = stack.rows, stack.y + PAGE_BOTTOM
+end
+
 -- The professions page: one checkbox per known skill, rebuilt on every
 -- show, since skills are learned and unlearned.
-local function buildSkillPage(content)
-    local header = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    header:SetPoint("TOPLEFT", 18, -8)
-    local hint = content:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-    hint:SetPoint("TOPLEFT", 20, -34)
-    hint:SetWidth(480)
-    hint:SetJustifyH("LEFT")
-    local empty = content:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    empty:SetPoint("TOPLEFT", 26, -64)
+local function buildSkillPage(page)
+    local stack = newStack(page)
+    local header = Widgets.Header(page, L.OPT_PROFESSIONS)
+    header.isSection = true
+    stack.add(header)
+    local hint = hintRow(page, { label = "OPT_PROFESSIONS_HINT", height = 40 })
+    stack.add(hint, 40)
+    local top = stack.y
+    local empty = Style.Text(page, 12, "muted")
+    empty:SetPoint("TOPLEFT", page, "TOPLEFT", INSET, -top - 6)
+    empty:SetText(L.OPT_NO_SKILLS)
     local checks = {}
-
-    local function relabel()
-        header:SetText(L.OPT_PROFESSIONS)
-        hint:SetText(L.OPT_PROFESSIONS_HINT)
-        empty:SetText(L.OPT_NO_SKILLS)
-    end
-    ns.Locale.OnChange(relabel)
-    relabel()
-
-    return function()
+    page.fixedRows = stack.rows
+    page.rebuild = function()
         local skills = ns.Bars.KnownSkills()
         for i, line in ipairs(skills) do
             local c = checks[i]
             if not c then
-                c = CreateFrame("CheckButton", "ForeverProgressBarsSkillCheck" .. i, content,
-                                "InterfaceOptionsCheckButtonTemplate")
-                c:SetPoint("TOPLEFT", 22, -58 - (i - 1) * 30)
-                c.label = _G[c:GetName() .. "Text"] or c.Text
-                c:SetScript("OnClick", function(self)
-                    Settings.SetHidden(self.skillName, not self:GetChecked())
-                end)
+                c = Widgets.Checkbox(page, {
+                    label = "",
+                    get = function() return not Settings.IsHidden(c.skillName, c.skillKey) end,
+                    set = function(v) Settings.SetHidden(c.skillName, not v) end,
+                })
+                c:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -(top + (i - 1) * Widgets.ROW_H))
+                c:SetPoint("TOPRIGHT", page, "TOPRIGHT", 0, -(top + (i - 1) * Widgets.ROW_H))
                 checks[i] = c
             end
-            c.skillName = line.name
-            if c.label and c.label.SetText then
-                c.label:SetText(("%s  |cff888888%d/%d|r"):format(ns.Bars.ProfessionLabel(line), line.rank, line.maxRank))
-            end
-            c:SetChecked(not Settings.IsHidden(line.name, line.key))
+            c.skillName, c.skillKey = line.name, line.key
+            c:SetLabel(("%s  |cff888888%d/%d|r"):format(ns.Bars.ProfessionLabel(line), line.rank, line.maxRank))
             c:Show()
         end
         for i = #skills + 1, #checks do checks[i]:Hide() end
         empty:SetShown(#skills == 0)
-        content:SetHeight(80 + #skills * 30)
+        local rows = {}
+        for _, r in ipairs(page.fixedRows) do rows[#rows + 1] = r end
+        for i = 1, #skills do rows[#rows + 1] = checks[i] end
+        page.rows = rows
+        page.height = top + math.max(1, #skills) * Widgets.ROW_H + PAGE_BOTTOM
     end
+    page.rebuild()
 end
 
 Window.PAGES = {
@@ -454,194 +557,310 @@ Window.PAGES = {
 }
 
 -- --------------------------------------------------------------------------
--- Building the window
+-- The window
 -- --------------------------------------------------------------------------
-local frame, scroll, current
+local frame, current
 local pages = {}
 
-local function showPage(id)
-    current = id
-    for _, page in ipairs(Window.PAGES) do
-        local p = pages[page.id]
-        if p then
-            p.content:SetShown(page.id == id)
-            p.button.selected:SetShown(page.id == id)
-        end
-    end
-    local p = pages[id]
-    scroll:SetScrollChild(p.content)
-    if scroll.SetVerticalScroll then scroll:SetVerticalScroll(0) end
-    p.refresh()
+local function line(parent, colorKey)
+    local t = parent:CreateTexture(nil, "BORDER")
+    t:SetColorTexture(unpack(Style.COLORS[colorKey]))
+    return t
 end
 
--- The language dropdown at the bottom left.
-local function languageRow(nav)
-    local label = nav:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-    label:SetPoint("BOTTOMLEFT", 12, 44)
-    local choices = function()
-        local list = { { value = "AUTO", label = L.LANGUAGE_AUTO } }
-        for _, c in ipairs(ns.Locale.CHOICES) do list[#list + 1] = c end
-        return list
-    end
-    local function labelFor(v)
-        for _, c in ipairs(choices()) do if c.value == v then return c.label end end
-        return tostring(v)
-    end
-    local refresh
-    if UIDropDownMenu_Initialize and UIDropDownMenu_CreateInfo and UIDropDownMenu_AddButton and UIDropDownMenu_SetText then
-        local dd = CreateFrame("Frame", "ForeverProgressBarsLanguage", nav, "UIDropDownMenuTemplate")
-        dd:SetPoint("BOTTOMLEFT", -6, 8)
-        if UIDropDownMenu_SetWidth then UIDropDownMenu_SetWidth(dd, 130) end
-        UIDropDownMenu_Initialize(dd, function(_, level)
-            for _, c in ipairs(choices()) do
-                local info = UIDropDownMenu_CreateInfo()
-                info.text = c.label
-                info.checked = (c.value == ns.Locale.Setting())
-                info.func = function() ns.Locale.Set(c.value) end
-                UIDropDownMenu_AddButton(info, level)
-            end
-        end)
-        refresh = function() UIDropDownMenu_SetText(dd, labelFor(ns.Locale.Setting())) end
-    else
-        local button = CreateFrame("Button", "ForeverProgressBarsLanguage", nav, "UIPanelButtonTemplate")
-        button:SetSize(146, 22)
-        button:SetPoint("BOTTOMLEFT", 12, 14)
-        button:SetScript("OnClick", function()
-            local list, now = choices(), ns.Locale.Setting()
-            for i, c in ipairs(list) do
-                if c.value == now then
-                    ns.Locale.Set(list[(i % #list) + 1].value)
-                    return
-                end
-            end
-            ns.Locale.Set(list[1].value)
-        end)
-        refresh = function() button:SetText(labelFor(ns.Locale.Setting())) end
-    end
-    local function relabel()
-        label:SetText(L.OPT_LANGUAGE)
-        refresh()
-    end
-    ns.Locale.OnChange(relabel)
-    relabel()
+local function horizontalLine(parent, anchor)
+    local t = line(parent, "border")
+    t:SetHeight(1)
+    t:SetPoint(anchor .. "LEFT"); t:SetPoint(anchor .. "RIGHT")
+    return t
 end
 
-local function navButton(nav, page, i)
+local function pageFor(id)
+    if pages[id] then return pages[id] end
+    local spec
+    for _, p in ipairs(Window.PAGES) do if p.id == id then spec = p end end
+    if not spec then return nil end
+    local page = CreateFrame("Frame", "ForeverProgressBarsPage" .. id, frame.scrollChild)
+    page:SetPoint("TOPLEFT", frame.scrollChild, "TOPLEFT", 0, 0)
+    page:SetWidth(CONTENT_W)
+    if spec.build then spec.build(page) else buildRows(page, spec.rows()) end
+    page:SetHeight(page.height)
+    page:Hide()
+    pages[id] = page
+    return page
+end
+
+-- Scrolling: a thin accent thumb, as in Forever Unit Frames.
+local function updateScrollbar()
+    local scroll, thumb = frame.scroll, frame.scrollThumb
+    local range, view = scroll:GetVerticalScrollRange() or 0, scroll:GetHeight() or 0
+    if range <= 0 or view <= 0 then thumb:Hide(); return end
+    local thumbH = view * view / (view + range)
+    thumb:SetHeight(thumbH)
+    thumb:ClearAllPoints()
+    thumb:SetPoint("TOPRIGHT", scroll, "TOPRIGHT", SCROLLBAR_W - 3,
+        -(view - thumbH) * (scroll:GetVerticalScroll() or 0) / range)
+    thumb:Show()
+end
+
+local function onWheel(scroll, delta)
+    local v = (scroll:GetVerticalScroll() or 0) - delta * WHEEL_STEP
+    scroll:SetVerticalScroll(math.max(0, math.min(scroll:GetVerticalScrollRange() or 0, v)))
+    updateScrollbar()
+end
+
+local function createScroll(body)
+    local scroll = CreateFrame("ScrollFrame", "ForeverProgressBarsOptionsScroll", body)
+    scroll:SetPoint("TOPLEFT", body, "TOPLEFT", 0, 0)
+    scroll:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -SCROLLBAR_W, 0)
+    scroll:EnableMouseWheel(true)
+    scroll:SetScript("OnMouseWheel", onWheel)
+    scroll:SetScript("OnScrollRangeChanged", updateScrollbar)
+    local child = CreateFrame("Frame", nil, scroll)
+    child:SetSize(CONTENT_W, 1)
+    scroll:SetScrollChild(child)
+    local thumb = body:CreateTexture(nil, "ARTWORK")
+    thumb:SetColorTexture(unpack(Style.COLORS.accent))
+    thumb:SetWidth(2)
+    thumb:Hide()
+    frame.scroll, frame.scrollChild, frame.scrollThumb = scroll, child, thumb
+end
+
+-- Navigation ----------------------------------------------------------------------
+local function paintNav()
+    for id, b in pairs(frame.navButtons) do
+        local selected = id == current
+        Style.Paint(b.text, selected and "accent" or "text")
+        b.selected = selected
+        b.bar:SetShown(selected)
+    end
+end
+
+local function navButton(nav, page, y)
     local b = CreateFrame("Button", "ForeverProgressBarsNav" .. page.id, nav)
-    b:SetSize(NAV_WIDTH - 2, 28)
-    b:SetPoint("TOPLEFT", 1, -8 - (i - 1) * 30)
-    b.selected = Fill(b, COLORS.selected, "BACKGROUND")
-    b.selected:Hide()
-    b:SetHighlightTexture("Interface\\Buttons\\WHITE8X8")
-    local hl = b:GetHighlightTexture()
-    if hl then hl:SetVertexColor(1, 1, 1, 0.05) end
-    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    b.text:SetPoint("LEFT", 14, 0)
-    b:SetScript("OnClick", function() showPage(page.id) end)
-    local function relabel() b.text:SetText(L[page.label]) end
-    ns.Locale.OnChange(relabel)
-    relabel()
+    b:SetHeight(NAV_ROW_H)
+    b:SetPoint("TOPLEFT", nav, "TOPLEFT", 0, -y)
+    b:SetPoint("TOPRIGHT", nav, "TOPRIGHT", -1, -y)
+    b.hover = Style.Fill(b, "hover", "ARTWORK")
+    b.hover:Hide()
+    b.bar = line(b, "accent")
+    b.bar:SetPoint("TOPLEFT"); b.bar:SetPoint("BOTTOMLEFT"); b.bar:SetWidth(NAV_BAR_W)
+    b.text = Style.Text(b, 12, "text")
+    b.text:SetPoint("LEFT", b, "LEFT", INSET, 0)
+    b.text:SetText(L[page.label])
+    b:SetScript("OnEnter", function(self) self.hover:Show() end)
+    b:SetScript("OnLeave", function(self) self.hover:Hide() end)
+    b:SetScript("OnClick", function() Window.ShowPage(page.id) end)
+    frame.navButtons[page.id] = b
+end
+
+-- The language, at the bottom of the navigation: a label above a dropdown
+-- as wide as the column; the list opens upwards.
+local LANGUAGE_BUTTON_H, LANGUAGE_LABEL_H, LANGUAGE_BOTTOM = 22, 18, 10
+
+local function languageRow(nav)
+    local row = Widgets.Dropdown(nav, {
+        label = L.OPT_LANGUAGE,
+        items = function()
+            local list = { { value = "AUTO", text = L.LANGUAGE_AUTO } }
+            for _, c in ipairs(ns.Locale.CHOICES) do list[#list + 1] = { value = c.value, text = c.label } end
+            return list
+        end,
+        get = function() return ns.Locale.Setting() end,
+        set = function(v) ns.Locale.Set(v) end,
+        listAbove = true,
+    })
+    row:SetHeight(LANGUAGE_LABEL_H + LANGUAGE_BUTTON_H)
+    row:SetPoint("BOTTOMLEFT", nav, "BOTTOMLEFT", INSET, LANGUAGE_BOTTOM)
+    row:SetPoint("BOTTOMRIGHT", nav, "BOTTOMRIGHT", -INSET, LANGUAGE_BOTTOM)
+    row:EnableMouse(false)
+    row.hover:SetAlpha(0)
+    row.label:ClearAllPoints()
+    row.label:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+    Style.Paint(row.label, "muted")
+    row.button:ClearAllPoints()
+    row.button:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
+    row.button:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
+    row.button:SetHeight(LANGUAGE_BUTTON_H)
+    row:Refresh()
+    frame.languageRow = row
+end
+
+local function createNav(parent)
+    local nav = CreateFrame("Frame", nil, parent)
+    nav:SetWidth(NAV_W)
+    Style.Fill(nav, "panel")
+    local edge = line(nav, "border")
+    edge:SetPoint("TOPRIGHT"); edge:SetPoint("BOTTOMRIGHT"); edge:SetWidth(1)
+    frame.navButtons = {}
+    for i, page in ipairs(Window.PAGES) do navButton(nav, page, NAV_TOP + (i - 1) * NAV_ROW_H) end
+    languageRow(nav)
+    return nav
+end
+
+-- Footer: lock or unlock the strip (drag it while unlocked).
+local function refreshFooter()
+    if frame and frame.lockButton then
+        frame.lockButton.text:SetText(S("locked") and L.OPT_UNLOCK_STRIP or L.OPT_LOCK_STRIP)
+    end
+end
+
+local function createFooter(parent)
+    local footer = CreateFrame("Frame", nil, parent)
+    footer:SetHeight(FOOTER_H)
+    footer:SetPoint("BOTTOMLEFT"); footer:SetPoint("BOTTOMRIGHT")
+    Style.Fill(footer, "panel")
+    horizontalLine(footer, "TOP")
+    local lock = Widgets.Button(footer, { text = L.OPT_UNLOCK_STRIP, width = 160,
+        onClick = function() Settings.Set("locked", not S("locked")) end })
+    lock:SetPoint("LEFT", footer, "LEFT", 12, 0)
+    frame.lockButton = lock
+    refreshFooter()
+    return footer
+end
+
+-- Title bar with the version and a drawn close cross.
+local CROSS_SIZE, CROSS_ANGLE = 14, math.pi / 4
+
+local function closeButton(titleBar)
+    local b = CreateFrame("Button", nil, titleBar)
+    b:SetSize(TITLE_H, TITLE_H)
+    b:SetPoint("RIGHT", titleBar, "RIGHT", 0, 0)
+    b.lines = {}
+    for i, angle in ipairs({ CROSS_ANGLE, -CROSS_ANGLE }) do
+        local t = line(b, "muted")
+        t:SetSize(CROSS_SIZE, 2)
+        t:SetPoint("CENTER")
+        if t.SetRotation then t:SetRotation(angle) end
+        b.lines[i] = t
+    end
+    local function paint(colorKey)
+        for _, t in ipairs(b.lines) do t:SetColorTexture(unpack(Style.COLORS[colorKey])) end
+    end
+    b:SetScript("OnEnter", function() paint("accent") end)
+    b:SetScript("OnLeave", function() paint("muted") end)
+    b:SetScript("OnClick", function() frame:Hide() end)
     return b
 end
 
+local function createTitleBar(parent)
+    local bar = CreateFrame("Frame", nil, parent)
+    bar:SetHeight(TITLE_H)
+    bar:SetPoint("TOPLEFT"); bar:SetPoint("TOPRIGHT")
+    Style.Fill(bar, "panel")
+    horizontalLine(bar, "BOTTOM")
+    bar:EnableMouse(true)
+    bar:RegisterForDrag("LeftButton")
+    bar:SetScript("OnDragStart", function() frame:StartMoving() end)
+    bar:SetScript("OnDragStop", function() frame:StopMovingOrSizing() end)
+    local title = Style.Text(bar, 16, "text")
+    title:SetPoint("LEFT", bar, "LEFT", INSET, 0)
+    title:SetText(L.ADDON_NAME)
+    local getMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+    local version = Style.Text(bar, 11, "muted")
+    version:SetPoint("BOTTOMLEFT", title, "BOTTOMRIGHT", 8, 1)
+    version:SetText("v" .. ((getMetadata and getMetadata(ADDON, "Version")) or ""))
+    bar.close = closeButton(bar)
+    return bar
+end
+
+local WINDOW_NAME = "ForeverProgressBarsOptions"
+
 local function createWindow()
-    frame = CreateFrame("Frame", "ForeverProgressBarsOptions", UIParent)
+    frame = CreateFrame("Frame", WINDOW_NAME, UIParent)
     frame:SetSize(WIDTH, HEIGHT)
     frame:SetPoint("CENTER")
-    frame:SetFrameStrata("DIALOG")
+    frame:SetFrameStrata("HIGH")
     frame:SetToplevel(true)
-    frame:SetClampedToScreen(true)
     frame:SetMovable(true)
+    frame:SetClampedToScreen(true)
     frame:EnableMouse(true)
-    frame:Hide()
-    Fill(frame, COLORS.bg)
-    Border(frame)
-    -- Esc closes it.
-    if UISpecialFrames then tinsert(UISpecialFrames, "ForeverProgressBarsOptions") end
-
-    local titleBar = CreateFrame("Frame", nil, frame)
-    titleBar:SetPoint("TOPLEFT", 1, -1)
-    titleBar:SetPoint("TOPRIGHT", -1, -1)
-    titleBar:SetHeight(30)
-    Fill(titleBar, COLORS.title)
-    titleBar:EnableMouse(true)
-    titleBar:RegisterForDrag("LeftButton")
-    titleBar:SetScript("OnDragStart", function() frame:StartMoving() end)
-    titleBar:SetScript("OnDragStop", function() frame:StopMovingOrSizing() end)
-    local title = titleBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("LEFT", 12, 0)
-    title:SetText(L.ADDON_NAME)
-    local close = CreateFrame("Button", nil, titleBar, "UIPanelCloseButton")
-    close:SetPoint("RIGHT", 2, 0)
-    close:SetScript("OnClick", function() frame:Hide() end)
-
-    local nav = CreateFrame("Frame", nil, frame)
-    nav:SetPoint("TOPLEFT", titleBar, "BOTTOMLEFT", 0, 0)
-    nav:SetPoint("BOTTOMLEFT", 1, 1)
-    nav:SetWidth(NAV_WIDTH)
-    Fill(nav, COLORS.nav)
-
+    Style.Fill(frame, "bg")
+    Style.Border(frame)
+    frame.titleBar = createTitleBar(frame)
+    local footer = createFooter(frame)
+    local nav = createNav(frame)
+    nav:SetPoint("TOPLEFT", frame.titleBar, "BOTTOMLEFT", 0, 0)
+    nav:SetPoint("BOTTOMLEFT", footer, "TOPLEFT", 0, 0)
     local body = CreateFrame("Frame", nil, frame)
-    body:SetPoint("TOPLEFT", nav, "TOPRIGHT", 0, 0)
-    body:SetPoint("BOTTOMRIGHT", -1, 1)
-
-    scroll = CreateFrame("ScrollFrame", "ForeverProgressBarsOptionsScroll", body, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 8, -8)
-    scroll:SetPoint("BOTTOMRIGHT", -28, 8)
-    scroll:EnableMouseWheel(true)
-    scroll:SetScript("OnMouseWheel", function(self, delta)
-        local now = self.GetVerticalScroll and self:GetVerticalScroll() or 0
-        local range = self.GetVerticalScrollRange and self:GetVerticalScrollRange() or 0
-        local target = math.max(0, math.min(range or 0, now - delta * 40))
-        if self.SetVerticalScroll then self:SetVerticalScroll(target) end
-    end)
-
-    for i, page in ipairs(Window.PAGES) do
-        local content = CreateFrame("Frame", "ForeverProgressBarsPage" .. page.id, scroll)
-        content:SetSize(WIDTH - NAV_WIDTH - 40, 10)
-        content:Hide()
-        local refresh
-        if page.build then
-            refresh = page.build(content)
-        else
-            local height
-            refresh, height = ns.BuildRows(content, "ForeverProgressBarsPage" .. page.id, page.rows())
-            content:SetHeight(height)
-        end
-        pages[page.id] = { content = content, refresh = refresh, button = navButton(nav, page, i) }
-    end
-    languageRow(nav)
-
+    body:SetPoint("TOPLEFT", frame.titleBar, "BOTTOMLEFT", NAV_W, 0)
+    body:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", 0, 0)
+    frame.body = body
+    createScroll(body)
+    -- Hiding the window (ESC, the cross) takes an open dropdown list along.
+    frame:SetScript("OnHide", function() Widgets.CloseList() end)
     frame:SetScript("OnShow", function() Window.Refresh() end)
-    showPage("general")
+    frame:Hide()
+    if UISpecialFrames then
+        local listed = false
+        for _, name in ipairs(UISpecialFrames) do if name == WINDOW_NAME then listed = true end end
+        if not listed then table.insert(UISpecialFrames, WINDOW_NAME) end
+    end
+end
+
+local function ensureWindow()
+    if not frame then createWindow() end
+end
+
+-- Public API ----------------------------------------------------------------------
+
+function Window.ShowPage(id)
+    ensureWindow()
+    local page = pageFor(id)
+    if not page then return end
+    Widgets.CloseList()
+    for _, p in pairs(pages) do if p ~= page then p:Hide() end end
+    current = id
+    if page.rebuild then
+        page.rebuild()
+        page:SetHeight(page.height)
+    end
+    frame.scrollChild:SetHeight(page.height)
+    frame.scroll:SetVerticalScroll(0)
+    page:Show()
+    for _, row in ipairs(page.rows or {}) do row:Refresh() end
+    paintNav()
+    updateScrollbar()
 end
 
 -- Fetches every value on the visible page again.
 function Window.Refresh()
     if not frame or not current then return end
-    pages[current].refresh()
+    local page = pages[current]
+    if not page then return end
+    for _, row in ipairs(page.rows or {}) do row:Refresh() end
+    if frame.languageRow then frame.languageRow:Refresh() end
+    refreshFooter()
 end
 ns.RefreshOptions = Window.Refresh
 
-function Window.Toggle()
-    if not frame then createWindow() end
-    frame:SetShown(not frame:IsShown())
+function Window.Open(pageID)
+    ensureWindow()
+    frame:Show()
+    Window.ShowPage(pageID or current or "general")
 end
 
-function Window.Open(pageID)
-    if not frame then createWindow() end
-    frame:Show()
-    if pageID and pages[pageID] then showPage(pageID) end
+function Window.Toggle()
+    if Window.IsShown() then frame:Hide() else Window.Open() end
 end
 
 function Window.IsShown()
     return frame ~= nil and frame:IsShown()
 end
 
-Window.ShowPage = function(id) return showPage(id) end
-
--- A change from elsewhere (dragging, a slash command) shows on the page.
+-- A change from elsewhere (dragging, a slash command, a profile) shows on
+-- the page.
 Settings.OnChange(function()
     if frame and frame:IsShown() then Window.Refresh() end
 end)
-ns.Locale.OnChange(function() ns.RelabelOptions() end)
+
+-- Every label is set when its widget is built: a new language gets a new
+-- window. Frames cannot be destroyed, so the old one stays hidden and
+-- unreferenced; the new one takes over its global name and page.
+ns.Locale.OnChange(function()
+    if not frame then return end
+    local wasOpen, page = frame:IsShown(), current
+    frame:Hide()
+    frame, pages = nil, {}
+    if wasOpen then Window.Open(page) end
+end)
