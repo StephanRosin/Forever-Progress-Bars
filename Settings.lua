@@ -12,6 +12,11 @@ Settings.DEFAULTS = {
     -- screen, and the strip's width. Dragging writes the same values.
     x = 0,
     y = -25,
+    -- What x and y count from: x from the screen's CENTER (the strip's
+    -- centre) or LEFT edge (the strip's left edge); y from the screen's TOP
+    -- edge (the strip's top) or CENTER (the strip's centre).
+    xFrom = "CENTER",
+    yFrom = "TOP",
     width = 0,              -- 0: automatic, see Settings.AutoWidth
     locked = true,
     scale = 100,            -- percent, everything together
@@ -42,9 +47,10 @@ Settings.DEFAULTS = {
     levelShow = true,
     levelY = -25,           -- the row's own place for it (kept for old profiles)
     -- Moves the level (and the XP bar hanging from it) in every arrangement.
-    -- With levelPlace FREE (in every arrangement) these are its coordinates:
-    -- its centre from the middle of the screen (0 / 0: exactly in the
-    -- middle); it takes no room in the rows then.
+    -- With levelPlace FREE (in every arrangement) these are its coordinates,
+    -- as the strip's own: X from the middle of the screen, Y from its top
+    -- edge (0: at the top, negative: down), for the badge's top edge; it
+    -- takes no room in the rows then.
     levelOffsetX = 0,
     levelOffsetY = 0,
     levelGap = 87,          -- the least room kept free for the level box
@@ -72,7 +78,8 @@ Settings.DEFAULTS = {
     -- ("Level 20" and the numbers) or without.
     xpEnabled = false,
     xpRow = "BOTTOM",       -- TOP, MIDDLE, BOTTOM or FREE
-    -- FREE: its centre by X/Y from the middle of the screen, no room in the
+    -- FREE: X from the middle of the screen, Y from its top edge (0: at the
+    -- top, negative: down) for the top of its title line; no room in the
     -- rows. Width: 0 is as wide as the strip.
     xpFreeX = 0,
     xpFreeY = -200,
@@ -127,13 +134,13 @@ Settings.RANGES = {
     xpValueFontSize = { 0, 40 },
     xpGap = { -20, 80 },
     xpFreeX = { -2000, 2000 },
-    xpFreeY = { -1200, 1200 },
+    xpFreeY = { -3000, 200 },
     xpWidth = { 0, 4000 },
     xpBadgeX = { -600, 600 },
     xpBadgeY = { -200, 200 },
     xpBadgeFontSize = { 8, 80 },
     levelOffsetX = { -2000, 2000 },
-    levelOffsetY = { -1200, 1200 },
+    levelOffsetY = { -3000, 1200 },
     columnWidth = { 80, 800 },
     backdropAlpha = { 0, 100 },
     backdropPadding = { 0, 40 },
@@ -235,14 +242,15 @@ Settings.PRESETS = {
     -- no XP bar. That is the defaults.
     { id = "CLASSIC", values = {} },
     -- One column on the left, the XP bar free and wide above it with its
-    -- badge, the row's level switched off.
+    -- badge, the row's level switched off. Positions in the new reckoning:
+    -- the strip from the left edge, free places from the top edge.
     { id = "COLUMN_XP", values = {
         arrangement = "COLUMN", columnWidth = 232,
-        x = -1062, y = -10,
-        levelShow = false, levelPlace = "FREE", levelOffsetY = 456, levelY = -33, levelGap = 93,
+        xFrom = "LEFT", x = 13, y = -10,
+        levelShow = false, levelPlace = "FREE", levelOffsetY = -13, levelY = -33, levelGap = 93,
         levelStyle = "WINGS", levelFontSize = 27,
         levelBoxPadX = 4, levelBoxPadY = 8, levelBoxMinW = 44,
-        xpEnabled = true, xpRow = "FREE", xpFreeY = 472, xpWidth = 984, xpGap = 14,
+        xpEnabled = true, xpRow = "FREE", xpFreeY = 0, xpWidth = 984, xpGap = 14,
         xpLevelMode = "BADGE", xpBadgeY = 2, xpBadgeFontSize = 22,
     } },
 }

@@ -350,6 +350,32 @@ ns.ToggleLock()
 
 local function RowHeightForTest() return S("textHeight") + S("textGap") + S("barHeight") end
 
+section("Position references")
+do
+    local c = Bars.container
+    check("default: top centre", Bars.PositionPoint(), "TOP")
+    -- The mock container reports where it is.
+    local oldLeft, oldTop, oldCenter = c.GetLeft, c.GetTop, c.GetCenter
+    function c:GetLeft() return 300 end
+    function c:GetTop() return 1000 end
+    function c:GetCenter() return 876, 980 end
+    Settings.Set("xFrom", "LEFT")
+    check("from the left: point", Bars.PositionPoint(), "TOPLEFT")
+    check("from the left: x is the left edge", S("x"), 300)
+    check("anchored at the screen's top left", c._points.TOPLEFT[2], "TOPLEFT")
+    Settings.Set("yFrom", "CENTER")
+    check("from the centre: point", Bars.PositionPoint(), "LEFT")
+    check("from the centre: y is the strip's centre", S("y"), 980 - 540)
+    Settings.Set("xFrom", "CENTER")
+    check("both centre", Bars.PositionPoint(), "CENTER")
+    check("x from the screen's middle again", S("x"), 876 - 960)
+    Settings.Set("yFrom", nil)
+    Settings.Set("xFrom", nil)
+    c.GetLeft, c.GetTop, c.GetCenter = oldLeft, oldTop, oldCenter
+    Settings.Set("x", nil); Settings.Set("y", TEST_VALUES.y)
+    check("back to the top centre", Bars.PositionPoint(), "TOP")
+end
+
 section("Arrangement and scale")
 do
     local c = Bars.container
@@ -423,6 +449,8 @@ do
     check("column: XP bar on", S("xpEnabled"), true)
     check("column: level free", S("levelPlace"), "FREE")
     check("column: XP bar free and wide", S("xpRow") .. " " .. S("xpWidth"), "FREE 984")
+    check("column: from the left edge", S("xFrom") .. " " .. S("x"), "LEFT 13")
+    check("column: XP bar at the top edge", S("xpFreeY"), 0)
     check("own lock kept", S("locked"), false)
     check("own hidden skills kept", Settings.IsHidden("Cooking", "COOKING"), true)
     check("load the classic preset", Settings.ApplyPreset("CLASSIC"), true)
@@ -563,14 +591,16 @@ do
     check("two columns: middle means top", xp._points.BOTTOMLEFT[4], -Bars.XpHeight())
     check("two columns: over both", xp:GetWidth(), c:GetWidth())
     Settings.Set("arrangement", nil)
-    -- Free: from the screen's middle, no row in the strip, own width.
+    -- Free: X from the screen's middle, Y from its top edge (for the top
+    -- of the title line), no row in the strip, own width.
     local repRowY = Bars.RepSlot(1)._points.BOTTOMLEFT[4]
     Settings.Set("xpRow", "FREE")
     Settings.Set("xpFreeX", 30)
     Settings.Set("xpFreeY", -150)
-    local _, rel, rp, fx, fy = xp:GetPoint("CENTER")
-    check("free: from the screen's middle", rel == UIParent and rp == "CENTER", true)
-    check("free: at X/Y", fx .. "," .. fy, "30,-150")
+    local _, rel, rp, fx, fy = xp:GetPoint("TOP")
+    check("free: from the screen's top", rel == UIParent and rp == "TOP", true)
+    check("free: X", fx, 30)
+    check("free: Y for the title line's top", fy, -150 - (Bars.XpHeight() - S("barHeight")))
     check("free: the reputation row back in its place", Bars.RepSlot(1)._points.BOTTOMLEFT[4], -(rowH + gap))
     check("free: as wide as the strip", xp:GetWidth(), c:GetWidth())
     Settings.Set("xpWidth", 300)
@@ -645,23 +675,41 @@ check("level box hidden", Bars.LevelBox():IsShown(), false)
 check("the row closes up", slot(3)._points.BOTTOMLEFT[3] < slot3x, true)
 Settings.Set("levelShow", nil)
 check("shown again", Bars.LevelBox():IsShown(), true)
--- Free: X/Y from the middle of the screen, no room kept.
+-- Free: X from the screen's middle, Y from its top edge, no room kept.
 Settings.Set("levelPlace", "FREE")
 Settings.Set("levelOffsetX", 50)
 Settings.Set("levelOffsetY", -20)
-local _, rel, rp, fx, fy = Bars.LevelBox():GetPoint("CENTER")
-check("free: from the screen's middle", rel == UIParent and rp == "CENTER", true)
+local _, rel, rp, fx, fy = Bars.LevelBox():GetPoint("TOP")
+check("free: from the screen's top", rel == UIParent and rp == "TOP", true)
 check("free: at X/Y", fx .. "," .. fy, "50,-20")
 check("free: the row closes up", slot(3)._points.BOTTOMLEFT[3] < slot3x, true)
 Settings.Set("arrangement", "COLUMN")
-_, rel, rp, fx, fy = Bars.LevelBox():GetPoint("CENTER")
+_, rel, rp, fx, fy = Bars.LevelBox():GetPoint("TOP")
 check("free in a column too", fx .. "," .. fy, "50,-20")
 Settings.Set("scale", 200)
-_, rel, rp, fx, fy = Bars.LevelBox():GetPoint("CENTER")
+_, rel, rp, fx, fy = Bars.LevelBox():GetPoint("TOP")
 check("free: screen pixels at any scale", fx * 2 .. "," .. fy * 2, "50,-20")
 Settings.Set("scale", nil)
 for _, k in ipairs({ "arrangement", "levelPlace", "levelOffsetX", "levelOffsetY" }) do Settings.Set(k, nil) end
 check("back in the row", slot(3)._points.BOTTOMLEFT[3], slot3x)
+
+-- Free places from before (1.1.0/1.1.1: from the screen's middle) move to
+-- the new reckoning once, to the same spot.
+do
+    local account = ns.AccountDB()
+    account.freeFromTop = nil
+    local db = ns.DB()
+    db.levelPlace, db.levelOffsetY = "FREE", 100
+    local boxHalf = Bars.LevelBox():GetHeight() / 2
+    Bars.MigrateFreeToTop()
+    check("migrated: the same spot from the top", S("levelOffsetY"), math.floor(100 + boxHalf - 540 + 0.5))
+    check("migrated once", account.freeFromTop, true)
+    local once = S("levelOffsetY")
+    Bars.MigrateFreeToTop()
+    check("not twice", S("levelOffsetY"), once)
+    db.levelPlace, db.levelOffsetY = nil, nil
+    Settings.Changed(nil)
+end
 
 section("Space between text and bar")
 local function nameY() return slot(1).nameText._points.BOTTOMLEFT[4] end

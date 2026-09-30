@@ -86,9 +86,12 @@ local function generalRows()
     local w, h = screenSize()
     return {
         { type = "header", label = "OPT_POSITION" },
-        { label = "OPT_X", min = -math.floor(w / 2), max = math.floor(w / 2), step = 1, unit = "px",
+        choice("xFrom", "OPT_X_FROM", { "CENTER", "LEFT" }, "FROM_"),
+        choice("yFrom", "OPT_Y_FROM", { "TOP", "CENTER" }, "FROM_"),
+        -- Ranges wide enough for either reference.
+        { label = "OPT_X", min = -w, max = w, step = 1, unit = "px",
           get = function() return S("x") end, set = function(v) Settings.Set("x", v) end },
-        { label = "OPT_Y", min = -h, max = 0, step = 1, unit = "px",
+        { label = "OPT_Y", min = -h, max = h, step = 1, unit = "px",
           get = function() return S("y") end, set = function(v) Settings.Set("y", v) end },
         { label = "OPT_WIDTH", min = 200, max = w, step = 1, unit = "px",
           get = function() return math.min(Settings.Width(w), w) end, set = function(v) Settings.Set("width", v) end },

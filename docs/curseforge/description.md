@@ -28,7 +28,7 @@ Everything you level, in one strip: two primary professions, two secondary skill
 - Hidden at the maximum level. While it is on, Blizzard's experience bar is hidden.
 
 ## Level
-- Your level in a box between the bars, above, in the middle of or below the columns, or **anywhere on the screen** (X/Y from the screen's middle). It can also be switched off.
+- Your level in a box between the bars, above, in the middle of or below the columns, or **anywhere on the screen** (X from the screen's middle, Y from its top edge). It can also be switched off.
 - Box styles: Classic, **Gold** (shaded like a bevel), Class colour or the number alone, plus **hand-drawn gold badges** (crest, laurel wreath, wings) and two gold rings from Blizzard's own art. Every badge grows with the number. The number in gold, white or your class colour; font, size and outline adjustable.
 
 ## Background
@@ -38,6 +38,7 @@ Everything you level, in one strip: two primary professions, two secondary skill
 ## Layout
 - **In a row** (professions side by side, reputation below), **in two columns** (professions left, reputation right) or **in one column** (professions, then reputation), with a bar width of your choice for the columns.
 - **Scale everything together** from 50 to 200 %.
+- Position from the screen's centre or left edge, and from its top edge or centre, so it lands in the same place on other resolutions.
 - The strip starts at the top of the screen, 60 % of the screen wide (at most 1180), so it fits small screens and large UI scales too, and **locked** (click-through). Right-click the minimap button or type `/fpb unlock` to drag it somewhere else, or set position and width exactly in the options.
 - Bar height, text height, the space between text and bar, spacing, segment width, label font size and icon size are all adjustable, as are the colour and opacity of the bars' empty part.
 

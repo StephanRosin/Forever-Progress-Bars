@@ -5,7 +5,7 @@
 ## Notes-esES: Profesiones, habilidades secundarias y reputaciones como barras, con tu nivel en el centro.
 ## Notes-esMX: Profesiones, habilidades secundarias y reputaciones como barras, con tu nivel en el centro.
 ## Notes-frFR: Métiers, compétences secondaires et réputations en barres, avec votre niveau au centre.
-## Version: 1.1.1
+## Version: 1.1.2
 ## X-Curse-Project-ID: 1714182
 ## IconTexture: Interface\AddOns\ForeverProgressBars\Media\MinimapIcon.tga
 ## AddonCompartmentFunc: ForeverProgressBars_OnAddonCompartmentClick

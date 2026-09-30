@@ -1281,31 +1281,55 @@ local function PlaceBadgeOnXp()
     xpBadge:SetFrameLevel((xpSlot:GetFrameLevel() or 1) + 10)
 end
 
--- The experience bar placed freely: its centre by X/Y from the middle of
--- the screen, divided by the strip's scale to stay screen pixels.
+-- The experience bar placed freely: X from the middle of the screen, Y
+-- from its top edge for the top of the title line (the bar sits a title
+-- line lower), divided by the strip's scale to stay screen pixels.
 local function PlaceFreeXp()
     if not XpFree() then return end
     local scale = (container.GetScale and container:GetScale()) or 1
     if scale <= 0 then scale = 1 end
     local width = XpWidth(container:GetWidth() or 0)
+    local title = XpHeight() - S("barHeight")
     xpSlot:ClearAllPoints()
-    xpSlot:SetPoint("CENTER", UIParent, "CENTER", S("xpFreeX") / scale, S("xpFreeY") / scale)
+    xpSlot:SetPoint("TOP", UIParent, "TOP", S("xpFreeX") / scale, S("xpFreeY") / scale - title)
     xpSlot:SetWidth(width)
     LayoutDividers(xpSlot, width)
     local valueWidth = xpSlot.valueText:GetStringWidth() or 0
     xpSlot.nameText:SetWidth(math.max(1, width - valueWidth - 4))
 end
 
--- The row's level badge placed freely: its centre by X/Y from the middle
--- of the screen (0 / 0: the exact middle), in every arrangement, no longer
--- tied to the strip's place. The badge is a child of the scaled strip, so
--- the offsets are divided by the scale to stay screen pixels.
+-- The row's level badge placed freely, as the strip is placed: X from the
+-- middle of the screen, Y from its top edge for the badge's top, in every
+-- arrangement; divided by the strip's scale to stay screen pixels.
 local function PlaceFreeLevel()
     if S("levelPlace") ~= "FREE" then return end
     local scale = (container.GetScale and container:GetScale()) or 1
     if scale <= 0 then scale = 1 end
     levelBox:ClearAllPoints()
-    levelBox:SetPoint("CENTER", UIParent, "CENTER", S("levelOffsetX") / scale, S("levelOffsetY") / scale)
+    levelBox:SetPoint("TOP", UIParent, "TOP", S("levelOffsetX") / scale, S("levelOffsetY") / scale)
+end
+
+-- 1.1.0 and 1.1.1 measured free places from the middle of the screen (the
+-- element's centre). Once per account every profile moves to the new
+-- reckoning so nothing jumps: the same spot, now from the top edge.
+function Bars.MigrateFreeToTop()
+    local account = ns.AccountDB()
+    if account.freeFromTop then return end
+    account.freeFromTop = true
+    local half = ((UIParent.GetHeight and UIParent:GetHeight()) or 0) / 2
+    if half <= 0 then return end
+    local boxHalf = ((levelBox and levelBox:GetHeight()) or 0) / 2
+    local barHalf = S("barHeight") / 2
+    local title = XpHeight() - S("barHeight")
+    for _, p in pairs(account.profiles or {}) do
+        if p.levelPlace == "FREE" and type(p.levelOffsetY) == "number" then
+            p.levelOffsetY = math.floor(p.levelOffsetY + boxHalf - half + 0.5)
+        end
+        if p.xpRow == "FREE" and type(p.xpFreeY) == "number" then
+            p.xpFreeY = math.floor(p.xpFreeY + barHalf + title - half + 0.5)
+        end
+    end
+    Bars.ApplyAll()
 end
 
 local function Layout()
@@ -1446,6 +1470,42 @@ function Bars.LayoutBackdrop()
 end
 
 -- Position and width, from the settings. The width never exceeds the screen.
+-- The anchor point for the chosen references: the same point on the
+-- strip and on the screen (TOP, TOPLEFT, CENTER or LEFT).
+local function PositionPoint()
+    local y = S("yFrom") == "CENTER" and "" or "TOP"
+    local x = S("xFrom") == "LEFT" and "LEFT" or ""
+    local point = y .. x
+    if point == "" then point = "CENTER" end
+    return point
+end
+Bars.PositionPoint = PositionPoint
+
+-- Where the strip is now, in the chosen references (screen pixels): after
+-- dragging, and when the references change, so it stays in place.
+local function CurrentPosition()
+    local scale = (container.GetScale and container:GetScale()) or 1
+    local x, y
+    if S("xFrom") == "LEFT" then
+        local l, ul = container:GetLeft(), UIParent:GetLeft() or 0
+        if l then x = l * scale - ul end
+    else
+        local cx, ux = container:GetCenter(), UIParent:GetCenter()
+        if cx and ux then x = cx * scale - ux end
+    end
+    if S("yFrom") == "CENTER" then
+        local _, cy = container:GetCenter()
+        local _, uy = UIParent:GetCenter()
+        if cy and uy then y = cy * scale - uy end
+    else
+        local t, ut = container:GetTop(), UIParent:GetTop()
+        if t and ut then y = t * scale - ut end
+    end
+    if not x or not y then return nil end
+    return math.floor(x + 0.5), math.floor(y + 0.5)
+end
+Bars.CurrentPosition = CurrentPosition
+
 local function Place()
     if not container then return end
     if Locked() then placePending = true; return end
@@ -1454,7 +1514,8 @@ local function Place()
     local scale = math.max(0.1, S("scale") / 100)
     container:SetScale(scale)
     container:ClearAllPoints()
-    container:SetPoint("TOP", UIParent, "TOP", S("x") / scale, S("y") / scale)
+    local point = PositionPoint()
+    container:SetPoint(point, UIParent, point, S("x") / scale, S("y") / scale)
     local mode = S("arrangement")
     if mode == "COLUMNS" or mode == "COLUMN" then return end   -- Layout sizes it
     local screen = (UIParent.GetWidth and UIParent:GetWidth()) or 0
@@ -1474,15 +1535,11 @@ end
 
 local function OnDragStop()
     container:StopMovingOrSizing()
-    local cx = container:GetCenter()
-    local ux = UIParent:GetCenter()
-    local top, uiTop = container:GetTop(), UIParent:GetTop()
-    -- The container's own coordinates are scaled; the settings are not.
-    local scale = (container.GetScale and container:GetScale()) or 1
-    if cx and ux and top and uiTop then
+    local x, y = CurrentPosition()
+    if x then
         -- One write for both: the second Set re-places with both values.
-        ns.DB().x = math.floor(cx * scale - ux + 0.5)
-        Settings.Set("y", math.floor(top * scale - uiTop + 0.5))
+        ns.DB().x = x
+        Settings.Set("y", y)
     else
         Place()
     end
@@ -1868,7 +1925,17 @@ end
 
 Settings.OnChange(function(key)
     if not container then return end
-    if key == "x" or key == "y" or key == "width" then
+    if key == "xFrom" or key == "yFrom" then
+        -- New references: the same spot, counted from them.
+        local x, y = CurrentPosition()
+        if x then
+            local db = ns.DB()
+            db.x = x ~= Settings.DEFAULTS.x and x or nil
+            db.y = y ~= Settings.DEFAULTS.y and y or nil
+        end
+        Place()
+        Layout()
+    elseif key == "x" or key == "y" or key == "width" then
         Place()
         Layout()
     elseif key == "locked" then
@@ -1956,6 +2023,7 @@ events:SetScript("OnEvent", function(_, event, ...)
         ResolveProfessionNames()
         Build()
         Bars.ApplyAll()
+        Bars.MigrateFreeToTop()
         ScheduleRefresh(0)
         -- The faction list is not ready at login yet.
         if C_Timer and C_Timer.After then C_Timer.After(2, ns.RefreshReputation) end
