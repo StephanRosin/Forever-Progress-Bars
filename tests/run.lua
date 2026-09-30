@@ -450,42 +450,42 @@ do
     check("unscaled again", c:GetScale(), 1)
 end
 
-section("Presets")
+section("Presets are read-only profiles")
 do
-    local function copy(t)
-        if type(t) ~= "table" then return t end
-        local c = {}
-        for k, v in pairs(t) do c[k] = copy(v) end
-        return c
-    end
-    local saved = copy(ns.DB())
-    -- Every preset value is a real setting.
+    local own = ns.ActiveProfile()
+    local list = ns.ProfileList()
+    check("presets in the profile list", list[#list], ns.PresetName("COLUMN_XP"))
+    check("own profiles first", list[1], own)
     for _, p in ipairs(Settings.PRESETS) do
         for k in pairs(p.values) do check(p.id .. ": " .. k .. " is a setting", Settings.DEFAULTS[k] ~= nil, true) end
         check(p.id .. " has a name", ns.L["PRESET_" .. p.id] ~= "PRESET_" .. p.id, true)
     end
     Settings.Set("locked", false)
     Settings.SetHidden("Cooking", true)
-    check("load the column preset", Settings.ApplyPreset("COLUMN_XP"), true)
-    check("column: arrangement", S("arrangement"), "COLUMN")
-    check("column: XP bar on", S("xpEnabled"), true)
-    check("column: level free", S("levelPlace"), "FREE")
-    check("column: XP bar free and wide", S("xpRow") .. " " .. S("xpWidth"), "FREE 1161")
-    check("column: from the left edge", S("xFrom") .. " " .. S("x"), "LEFT 10")
-    check("column: XP bar near the top edge", S("xpFreeY"), 2)
-    check("column: badge rides on the fill", S("xpBadgeFollow"), true)
-    check("own lock kept", S("locked"), false)
-    check("own hidden skills kept", Settings.IsHidden("Cooking", "COOKING"), true)
-    check("load the classic preset", Settings.ApplyPreset("CLASSIC"), true)
-    check("classic: a row again", S("arrangement"), "ROW")
+    ns.SwitchProfile(ns.PresetName("COLUMN_XP"))
+    check("column preset: arrangement", S("arrangement"), "COLUMN")
+    check("column preset: XP bar on", S("xpEnabled"), true)
+    check("column preset: XP bar free and wide", S("xpRow") .. " " .. S("xpWidth"), "FREE 1161")
+    check("column preset: from the left edge", S("xFrom") .. " " .. S("x"), "LEFT 10")
+    check("column preset: badge rides on the fill", S("xpBadgeFollow"), true)
+    check("own lock came along", S("locked"), false)
+    check("own hidden skills came along", Settings.IsHidden("Cooking", "COOKING"), true)
+    -- A change lasts until the next rebuild (a reload).
+    M.chat = {}
+    Settings.Set("barHeight", 33)
+    check("changed for now", S("barHeight"), 33)
+    check("told it is a preset", (M.chat[1] or ""):find(ns.L.MSG_PRESET_READONLY, 1, true) ~= nil, true)
+    ns.RebuildPresets()
+    check("back after a reload", S("barHeight"), Settings.DEFAULTS.barHeight)
+    check("own lock kept over the rebuild", S("locked"), false)
+    check("presets cannot be deleted", ns.DeleteProfile(ns.PresetName("COLUMN_XP")), false)
+    ns.SwitchProfile(ns.PresetName("CLASSIC"))
+    check("classic: a row", S("arrangement"), "ROW")
     check("classic: no XP bar", S("xpEnabled"), false)
-    check("classic: level in the row", S("levelPlace"), "TOP")
-    check("classic: own lock still kept", S("locked"), false)
-    check("unknown preset refused", Settings.ApplyPreset("NOPE"), false)
-    local db = ns.DB()
-    for k in pairs(db) do db[k] = nil end
-    for k, v in pairs(saved) do db[k] = v end
-    Settings.Changed(nil)
+    ns.SwitchProfile(own)
+    check("back on the own profile", ns.ActiveProfile(), own)
+    Settings.Set("locked", nil)
+    Settings.SetHidden("Cooking", false)
 end
 
 section("Export and import")

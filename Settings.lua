@@ -202,7 +202,16 @@ function Settings.Get(key)
     return v
 end
 
+-- A preset is read-only: changes last until the next reload. Said once.
+local presetHintShown = false
+local function presetHint()
+    if presetHintShown or not ns.IsPreset or not ns.IsPreset(ns.ActiveProfile()) then return end
+    presetHintShown = true
+    if ns.Print then ns.Print(ns.L.MSG_PRESET_READONLY) end
+end
+
 function Settings.Set(key, value)
+    presetHint()
     local range = Settings.RANGES[key]
     if range and type(value) == "number" then
         value = math.max(range[1], math.min(range[2], math.floor(value + 0.5)))
@@ -244,10 +253,8 @@ function Settings.SetHidden(name, value)
 end
 
 -- Back to the defaults, keeping the language (it is not in the profile).
--- Presets: ready-made looks to start from. Loading one sets every setting
--- to the preset's value (or the default), except what is the player's own:
--- the lock, the minimap button, the chosen reputations and hidden skills.
-Settings.KEEP_ON_PRESET = { locked = true, minimapShow = true, minimapAngle = true }
+-- Presets: ready-made looks, offered as read-only profiles (Profiles.lua):
+-- the values here, everything else at its default.
 Settings.PRESETS = {
     -- The look before the arrangements came: one row, level in the middle,
     -- no XP bar. That is the defaults.
@@ -267,28 +274,6 @@ Settings.PRESETS = {
     } },
 }
 
-function Settings.ApplyPreset(id)
-    local preset
-    for _, p in ipairs(Settings.PRESETS) do
-        if p.id == id then preset = p end
-    end
-    if not preset then return false end
-    local db = ns.DB()
-    for key in pairs(Settings.DEFAULTS) do
-        if not Settings.KEEP_ON_PRESET[key] then
-            local v = preset.values[key]
-            if type(v) == "table" then
-                local copy = {}
-                for i, x in ipairs(v) do copy[i] = x end
-                v = copy
-            end
-            if v == Settings.DEFAULTS[key] then v = nil end
-            db[key] = v
-        end
-    end
-    Settings.Changed(nil)
-    return true
-end
 
 function Settings.ResetProfile()
     local db = ns.DB()

@@ -47,7 +47,7 @@ Everything you level, in one strip: two primary professions, two secondary skill
 - Its own options window, opened from the **minimap button** or with `/fpb`: General, Bars, Professions, Reputation, Level, XP bar, Background and Profiles.
 - Also listed in Blizzard's **addon compartment** next to the minimap: left-click opens the options, right-click locks or unlocks the strip.
 - **Profiles**: save your layout under a name and share it between characters.
-- **Presets** to start from: "Classic" (one row, level in the middle) and "Column with XP bar". Loading one keeps your reputations, hidden skills, lock and minimap button.
+- **Presets** in the profile list: "Classic" (one row, level in the middle) and "Column with XP bar". They are read-only (changes last until the next reload); "Save as..." turns one into a profile of your own. Your reputations, hidden skills, lock and minimap button come along.
 - **Export and import**: your whole profile as a text string to pass on; paste one to take it over. Imports are only read as settings, never run as code.
 - Language: follows the game; a dropdown in the options window picks another one, and the change applies at once.
 

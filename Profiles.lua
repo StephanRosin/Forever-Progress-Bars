@@ -66,12 +66,63 @@ function ns.ActiveProfile()
     return ForeverProgressBarsChar.active
 end
 
+-- Presets are profiles too, read-only: stored under "@" .. their id and
+-- rebuilt from Settings.PRESETS when chosen and at every load, so changes
+-- to them last only until the next reload. What is the player's own (lock,
+-- minimap button, reputations, hidden skills) stays across rebuilds.
+local PRESET_MARK = "@"
+function ns.IsPreset(name) return type(name) == "string" and name:sub(1, 1) == PRESET_MARK end
+function ns.PresetName(id) return PRESET_MARK .. id end
+function ns.PresetId(name) return ns.IsPreset(name) and name:sub(2) or nil end
+
+local OWN = { "locked", "minimapShow", "minimapAngle", "reps", "hidden" }
+
+local function buildPreset(preset, keepFrom)
+    local t = Copy(preset.values)
+    for _, k in ipairs(OWN) do
+        if keepFrom and keepFrom[k] ~= nil then t[k] = Copy(keepFrom[k]) end
+    end
+    -- Values equal to the default need not be stored.
+    local defaults = ns.Settings.DEFAULTS
+    for k, v in pairs(t) do
+        if type(v) ~= "table" and v == defaults[k] then t[k] = nil end
+    end
+    return t
+end
+
+-- Rebuilds every preset profile (keepFrom: where the player's own values
+-- come from; each preset's own stored ones by default).
+function ns.RebuildPresets(keepFrom)
+    Init()
+    if not (ns.Settings and ns.Settings.PRESETS) then return end
+    local profiles = ForeverProgressBarsProfiles.profiles
+    for _, preset in ipairs(ns.Settings.PRESETS) do
+        local name = PRESET_MARK .. preset.id
+        profiles[name] = buildPreset(preset, keepFrom or profiles[name])
+    end
+end
+
+-- The player's own profiles (sorted), then the presets in their order.
 function ns.ProfileList()
     Init()
     local list = {}
-    for name in pairs(ForeverProgressBarsProfiles.profiles) do list[#list + 1] = name end
+    for name in pairs(ForeverProgressBarsProfiles.profiles) do
+        if not ns.IsPreset(name) then list[#list + 1] = name end
+    end
     table.sort(list)
+    for _, preset in ipairs((ns.Settings and ns.Settings.PRESETS) or {}) do
+        list[#list + 1] = PRESET_MARK .. preset.id
+    end
     return list
+end
+
+-- The player's own profiles only (the last one cannot be deleted).
+function ns.OwnProfileCount()
+    local n = 0
+    for _, name in ipairs(ns.ProfileList()) do
+        if not ns.IsPreset(name) then n = n + 1 end
+    end
+    return n
 end
 
 local function applyLook()
@@ -83,7 +134,19 @@ end
 function ns.SwitchProfile(name)
     if type(name) ~= "string" or name == "" then return false end
     Init()
-    if not ForeverProgressBarsProfiles.profiles[name] then
+    if ns.IsPreset(name) then
+        -- Fresh from the code; the player's own values come along from the
+        -- profile being left when that is one of theirs.
+        local id = ns.PresetId(name)
+        local from = ns.DB()
+        for _, preset in ipairs(ns.Settings.PRESETS) do
+            if preset.id == id then
+                ForeverProgressBarsProfiles.profiles[name] = buildPreset(preset,
+                    ns.IsPreset(ForeverProgressBarsChar.active) and ForeverProgressBarsProfiles.profiles[name] or from)
+            end
+        end
+        if not ForeverProgressBarsProfiles.profiles[name] then return false end
+    elseif not ForeverProgressBarsProfiles.profiles[name] then
         ForeverProgressBarsProfiles.profiles[name] = Copy(ns.DB())
     end
     ForeverProgressBarsChar.active = name
@@ -105,6 +168,7 @@ end
 -- the default profile instead of pointing to nothing.
 function ns.DeleteProfile(name)
     Init()
+    if ns.IsPreset(name) then return false end   -- presets stay
     local profiles = ForeverProgressBarsProfiles.profiles
     if not profiles[name] then return false end
     local wasActive = (ForeverProgressBarsChar.active == name)
@@ -176,8 +240,14 @@ end
 
 function ns.AskDeleteProfile()
     local name = ns.ActiveProfile()
+    if ns.IsPreset(name) then
+        if DEFAULT_CHAT_FRAME then
+            DEFAULT_CHAT_FRAME:AddMessage("|cffffd100" .. L.ADDON_NAME .. ":|r " .. L.MSG_PRESET_NO_DELETE)
+        end
+        return
+    end
     -- The last profile stays, or the character would have none.
-    if #ns.ProfileList() <= 1 then
+    if ns.OwnProfileCount() <= 1 then
         if DEFAULT_CHAT_FRAME then
             DEFAULT_CHAT_FRAME:AddMessage("|cffffd100" .. L.ADDON_NAME .. ":|r " .. L.MSG_LAST_PROFILE)
         end

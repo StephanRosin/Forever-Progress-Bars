@@ -2043,6 +2043,9 @@ for _, e in ipairs(WANTED_EVENTS) do pcall(events.RegisterEvent, events, e) end
 events:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_LOGIN" then
         ResolveProfessionNames()
+        -- The presets as profiles, fresh at every load (after the saved
+        -- variables are there).
+        ns.RebuildPresets()
         Build()
         Bars.ApplyAll()
         Bars.MigrateFreeToTop()
