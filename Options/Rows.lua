@@ -24,7 +24,7 @@ local floor, max, min = math.floor, math.max, math.min
 
 -- Height of each row. A dropdown hangs 16 below its label and is about 32
 -- tall; the row after it needs room for its own label above it too.
-local ROW = { slider = 58, check = 32, header = 34, select = 70, buttons = 34, text = 26, color = 32 }
+local ROW = { slider = 58, check = 32, header = 34, select = 70, buttons = 34, text = 26, color = 32, edit = 30 }
 
 -- Every text on the page, as a function that sets it again.
 local relabelers = {}
@@ -297,6 +297,21 @@ local function AddText(panel, opt, y)
     return nil
 end
 
+-- A text field to copy from or paste into (export and import strings).
+-- opt.ref, if given, receives the box as .box.
+local function AddEdit(panel, opt, y, index, panelName)
+    local box = CreateFrame("EditBox", panelName .. "Edit" .. index, panel, "InputBoxTemplate")
+    box:SetPoint("TOPLEFT", 30, y)
+    box:SetSize(opt.width or 400, 20)
+    box:SetAutoFocus(false)
+    if box.SetMaxLetters then box:SetMaxLetters(0) end
+    box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    -- Clicking in selects everything, ready for Ctrl+C.
+    box:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+    if opt.ref then opt.ref.box = box end
+    return nil
+end
+
 local function AddHeader(panel, opt, y)
     local header = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     header:SetPoint("TOPLEFT", 18, y)
@@ -315,7 +330,7 @@ end
 -- --------------------------------------------------------------------------
 local BUILDERS = {
     slider = AddSlider, check = AddCheck, select = AddSelect,
-    buttons = AddButtons, color = AddColor,
+    buttons = AddButtons, color = AddColor, edit = AddEdit,
 }
 
 function ns.BuildRows(content, name, spec, startY)

@@ -59,6 +59,8 @@ local function newWidget(name, kind)
         M.placed[self] = { p, rel, p2, x, y }
     end
     function w:ClearAllPoints() self._points = {} end
+    function w:SetScale(v) self._scale = v end
+    function w:GetScale() return self._scale or 1 end
     function w:GetPoint(p) local a = self._points and self._points[p]; if a then return p, a[1], a[2], a[3], a[4] end end
     function w:SetColorTexture(r, g, b, a) self._texColor = { r, g, b, a } end
     function w:SetVertexColor(r, g, b, a) self._vertex = { r, g, b, a } end
@@ -145,6 +147,15 @@ M.state = { combat = false, time = 1000, level = 43, faction = "Alliance", class
 function InCombatLockdown() return M.state.combat end
 function GetTime() return M.state.time end
 function UnitLevel() return M.state.level end
+-- Experience: M.state.xp, xpMax, rested (nil = none), xpOff.
+function UnitXP() return M.state.xp or 0 end
+function UnitXPMax() return M.state.xpMax or 0 end
+function GetXPExhaustion() return M.state.rested end
+function IsXPUserDisabled() return M.state.xpOff == true end
+function GetMaxPlayerLevel() return 60 end
+-- Forever: the state only, no name or multiplier (M.state.restName to vary).
+function GetRestState() return 1, M.state.restName, M.state.restMult end
+function IsResting() return false end
 function UnitFactionGroup() return M.state.faction end
 function UnitClass() return "Warlock", M.state.class end
 function UnitSex() return M.state.sex end

@@ -348,6 +348,273 @@ check("locked: not movable", c:IsMovable(), false)
 check("locked: click-through", c._mouse, false)
 ns.ToggleLock()
 
+local function RowHeightForTest() return S("textHeight") + S("textGap") + S("barHeight") end
+
+section("Arrangement and scale")
+do
+    local c = Bars.container
+    local levelBox = Bars.LevelBox and Bars.LevelBox() or nil
+    local function at(bar) local p = bar._points.BOTTOMLEFT; return p[3], p[4], p[2] end
+    local colW = S("columnWidth")
+    check("default: in a row", S("arrangement"), "ROW")
+
+    Settings.Set("arrangement", "COLUMNS")
+    local x1, y1, rel = at(slot(1))
+    check("columns: hangs from the top", rel, "TOPLEFT")
+    check("columns: professions on the left", x1, 0)
+    check("columns: bars are the column width", slot(1):GetWidth(), colW)
+    local rx, ry = at(Bars.RepSlot(1))
+    check("columns: reputation on the right", rx, colW + S("spacing"))
+    check("columns: side by side", ry, y1)
+    local _, y4 = at(slot(4))
+    check("columns: stacked downwards", y4 < y1, true)
+    check("columns: two columns wide", c:GetWidth(), 2 * colW + S("spacing"))
+    check("level above: the bars start below it", y1 < -RowHeightForTest(), true)
+
+    Settings.Set("levelPlace", "MIDDLE")
+    rx = at(Bars.RepSlot(1))
+    check("level in the middle: the columns make room", rx > colW + S("spacing"), true)
+    local _, ym = at(slot(1))
+    check("level in the middle: bars start at the top", ym, -RowHeightForTest())
+
+    Settings.Set("levelPlace", "BOTTOM")
+    local _, yb = at(slot(1))
+    check("level below: bars start at the top", yb, -RowHeightForTest())
+    check("level below: the container reaches past the bars", c:GetHeight() > -select(2, at(slot(4))), true)
+
+    Settings.Set("arrangement", "COLUMN")
+    Settings.Set("levelPlace", "TOP")
+    local cx = at(Bars.RepSlot(1))
+    local _, cy = at(Bars.RepSlot(1))
+    local _, p4 = at(slot(4))
+    check("one column: reputation under the professions", cx == 0 and cy < p4, true)
+    check("one column: one bar wide", c:GetWidth(), colW)
+
+    Settings.Set("arrangement", nil)
+    Settings.Set("levelPlace", nil)
+    check("back in a row: automatic width again", c:GetWidth(), TEST_VALUES.width)
+
+    -- Scale: everything together, the position stays in screen pixels.
+    Settings.Set("scale", 150)
+    check("scaled", c:GetScale(), 1.5)
+    check("position kept in screen pixels", c._points.TOP[4] * 1.5, S("y"))
+    Settings.Set("scale", nil)
+    check("unscaled again", c:GetScale(), 1)
+end
+
+section("Export and import")
+do
+    local Share = ns.Share
+    local function copy(t)
+        if type(t) ~= "table" then return t end
+        local c = {}
+        for k, v in pairs(t) do c[k] = copy(v) end
+        return c
+    end
+    local saved = copy(ns.DB())
+    Settings.Set("barHeight", 30)
+    Settings.Set("arrangement", "COLUMNS")
+    Settings.Set("barBgColor", { 0.5, 0.25, 0.125 })
+    Settings.SetHidden("Cooking", true)
+    local text = Share.Export()
+    check("export starts with the marker", text:sub(1, 5), "FPB1:")
+    -- Round trip: reset, import, the same settings again.
+    Settings.ResetProfile()
+    check("reset: default height", S("barHeight"), ns.Settings.DEFAULTS.barHeight)
+    check("import accepted", Share.Import(text), true)
+    check("imported: bar height", S("barHeight"), 30)
+    check("imported: arrangement", S("arrangement"), "COLUMNS")
+    check("imported: colour", S("barBgColor")[2], 0.25)
+    check("imported: hidden skill", Settings.IsHidden("Cooking", "COOKING"), true)
+    check("imported: layout applied", slot(1)._points.BOTTOMLEFT[2], "TOPLEFT")
+    -- Rubbish, and strings that try to be code, change nothing.
+    for _, bad in ipairs({ "", "hello", "FPB1:", "FPB1:t", "FPB1:tn1;", "FPB1:s99:x",
+                           "FPB1:ts9:barHeightn1e999;}", "return os.exit()" }) do
+        check("refused: " .. bad, (Share.Import(bad)), nil)
+    end
+    check("refused strings keep the profile", S("barHeight"), 30)
+    -- Unknown keys and wrong types are skipped, the rest imports.
+    local clean = Share.Decode("FPB1:ts9:barHeightn25;s7:unknownn1;s6:lockeds3:yes}")
+    check("wrong type skipped", clean.locked, nil)
+    check("unknown key skipped", clean.unknown, nil)
+    check("known key kept", clean.barHeight, 25)
+    -- Numbers are clamped to their range.
+    Share.Import("FPB1:ts9:barHeightn999;}")
+    check("clamped", S("barHeight"), ns.Settings.RANGES.barHeight[2])
+    -- The options page: export fills the field, import reads it.
+    local W = ns.Window
+    if W and W.shareField and W.shareField.box then
+        W.shareField.box:SetText(text)
+    end
+    local db = ns.DB()
+    for k in pairs(db) do db[k] = nil end
+    for k, v in pairs(saved) do db[k] = v end
+    Settings.Changed(nil)
+end
+
+section("Own XP bar")
+do
+    local X = ns.XpBar
+    check("off by default", S("xpEnabled"), false)
+    check("text: current / max", X.Text("CURRENT_MAX", 2256, 24000), "2256 / 24000")
+    check("text: with percent", X.Text("CURRENT_MAX_PERCENT", 2256, 24000), "2256 / 24000 (9%)")
+    check("text: percent", X.Text("PERCENT", 2256, 24000), "9%")
+    check("text: none", X.Text("NONE", 2256, 24000), "")
+    -- Blizzard's template carries "XP: " in front: not used.
+    _G.XP_STATUS_BAR_TEXT = "XP: %s/%s"
+    check("text: no XP prefix", X.Text("CURRENT_MAX_PERCENT", 730, 23200), "730 / 23200 (3%)")
+    _G.XP_STATUS_BAR_TEXT = nil
+    M.state.xp, M.state.xpMax, M.state.rested = 730, 23200, 3000
+    local lvl = M.state.level
+    M.state.level = 20
+    _G.StatusTrackingBarManager = M.newWidget("StatusTrackingBarManager")
+    local xp = Bars.XpSlot()
+    local c = Bars.container
+    local rowH = RowHeightForTest()
+    local gap = ns.CFG.REP_ROW_GAP
+    check("hidden while off", xp:IsShown(), false)
+    Settings.Set("xpEnabled", true)
+    check("Blizzard's bars hidden", StatusTrackingBarManager:IsShown(), false)
+    StatusTrackingBarManager:Show()
+    StatusTrackingBarManager:GetScript("OnShow")(StatusTrackingBarManager)
+    check("and kept hidden", StatusTrackingBarManager:IsShown(), false)
+    check("shown", xp:IsShown(), true)
+    check("a bar of the strip", xp._parent, c)
+    check("as wide as the strip", xp:GetWidth(), c:GetWidth())
+    check("title: the level", xp.nameText:GetText(), ns.L.XP_LEVEL:format(20))
+    check("title: the numbers", xp.valueText:GetText(), "730 / 23200 (3%)")
+    check("fill value", xp.sb:GetValue(), 730)
+    check("rested part ahead of it", xp.rested:GetValue(), 730 + 3000)
+    check("no click buttons: not protected", xp.click, nil)
+    -- Row places (in a row): at the bottom, below the reputation row.
+    local repY = Bars.RepSlot(1)._points.BOTTOMLEFT[4]
+    check("bottom: below the reputation", xp._points.BOTTOMLEFT[4] < repY, true)
+    Settings.Set("xpRow", "TOP")
+    check("top: above the professions", xp._points.BOTTOMLEFT[4], rowH + gap)
+    Settings.Set("xpRow", "MIDDLE")
+    check("middle: right below the professions", xp._points.BOTTOMLEFT[4], -(gap + rowH))
+    check("middle: the reputation row moves down", Bars.RepSlot(1)._points.BOTTOMLEFT[4], repY - (rowH + gap))
+    -- Title fonts: a big level, the numbers as they were.
+    local valueSize = select(2, xp.valueText:GetFont())
+    local h0 = Bars.XpHeight()
+    Settings.Set("xpLevelFontSize", 30)
+    check("big level number", select(2, xp.nameText:GetFont()), 30)
+    check("numbers unchanged", select(2, xp.valueText:GetFont()), valueSize)
+    check("the row grows with it", Bars.XpHeight() > h0, true)
+    Settings.Set("xpValueFontSize", 9)
+    check("numbers smaller", select(2, xp.valueText:GetFont()), 9)
+    Settings.Set("xpLevelFont", "Morpheus")
+    check("level font of its own", xp.nameText:GetFont(), ns.Media.FontPath("Morpheus"))
+    for _, k in ipairs({ "xpLevelFontSize", "xpValueFontSize", "xpLevelFont" }) do Settings.Set(k, nil) end
+    -- Extra space to the other bars.
+    local yMid = xp._points.BOTTOMLEFT[4]
+    Settings.Set("xpGap", 10)
+    check("more space above it", xp._points.BOTTOMLEFT[4], yMid - 10)
+    check("and below it", Bars.RepSlot(1)._points.BOTTOMLEFT[4], repY - (rowH + gap) - 20)
+    Settings.Set("xpGap", nil)
+    -- Without a title line: only the bar, the numbers gone.
+    Settings.Set("xpTitle", false)
+    check("no title: no level text", xp.nameText:GetText(), "")
+    check("no title: only the bar's height", Bars.XpHeight(), S("barHeight"))
+    Settings.Set("xpTitle", nil)
+    -- Stacked: one column, between professions and reputation.
+    Settings.Set("arrangement", "COLUMN")
+    local p4 = slot(4)._points.BOTTOMLEFT[4]
+    local r1 = Bars.RepSlot(1)._points.BOTTOMLEFT[4]
+    local xy = xp._points.BOTTOMLEFT[4]
+    check("column: between the blocks", xy < p4 and xy > r1, true)
+    check("column: as wide as the column", xp:GetWidth(), S("columnWidth"))
+    Settings.Set("arrangement", "COLUMNS")
+    check("two columns: middle means top", xp._points.BOTTOMLEFT[4], -Bars.XpHeight())
+    check("two columns: over both", xp:GetWidth(), c:GetWidth())
+    Settings.Set("arrangement", nil)
+    Settings.Set("xpRow", nil)
+    -- Tooltip in the bars' layout: title, then label / value lines.
+    local lines = {}
+    local oldAdd, oldDouble = GameTooltip.AddLine, GameTooltip.AddDoubleLine
+    GameTooltip.AddLine = function(_, t) lines[#lines + 1] = t end
+    GameTooltip.AddDoubleLine = function(_, l, r) lines[#lines + 1] = l .. "=" .. r end
+    xp:GetScript("OnEnter")(xp)
+    check("tooltip: level as the title", lines[1], ns.L.XP_LEVEL:format(20))
+    check("tooltip: experience", lines[2], ns.L.TIP_XP .. "=730 / 23200")
+    check("tooltip: rested", lines[5], ns.L.TIP_XP_RESTED .. "=3000 (12%)")
+    GameTooltip.AddLine, GameTooltip.AddDoubleLine = oldAdd, oldDouble
+    xp:GetScript("OnLeave")(xp)
+    -- A badge of its own instead of the text, on the bar.
+    local rowBox = Bars.LevelBox()
+    Settings.Set("xpLevelMode", "BADGE")
+    local box = Bars.XpBadge()
+    check("badge: a second badge", box ~= rowBox, true)
+    check("badge: shown", box:IsShown(), true)
+    check("badge: the level", box.text:GetText(), tostring(M.state.level))
+    check("badge: no level text", xp.nameText:GetText(), "")
+    check("badge: on the bar's left end", select(2, box:GetPoint("CENTER")), xp.sb)
+    check("badge: in front of the bar", box:GetFrameLevel() > xp:GetFrameLevel(), true)
+    Settings.Set("xpBadgePoint", "TOPRIGHT")
+    Settings.Set("xpBadgeX", -6)
+    Settings.Set("xpBadgeY", 3)
+    local _, _, rp, bx, by = box:GetPoint("CENTER")
+    check("badge: at any point of the bar", rp, "TOPRIGHT")
+    check("badge: moved by its own X/Y", bx .. "," .. by, "-6,3")
+    Settings.Set("xpBadgeFontSize", 40)
+    check("badge: its own size", select(2, box.text:GetFont()), 40)
+    check("row badge unchanged", select(2, rowBox.text:GetFont()), S("levelFontSize"))
+    check("row badge still shown", rowBox:IsShown(), true)
+    for _, k in ipairs({ "xpLevelMode", "xpBadgePoint", "xpBadgeX", "xpBadgeY", "xpBadgeFontSize" }) do
+        Settings.Set(k, nil)
+    end
+    check("badge gone with the text mode", box:IsShown(), false)
+    -- As a badge, the level's text size does not make the line taller.
+    local plain = Bars.XpHeight()
+    Settings.Set("xpLevelMode", "BADGE")
+    Settings.Set("xpLevelFontSize", 40)
+    check("badge: the text size does not move the bar", Bars.XpHeight(), plain)
+    Settings.Set("xpLevelMode", nil)
+    check("text: the text size does", Bars.XpHeight() > plain, true)
+    Settings.Set("xpLevelFontSize", nil)
+    check("text again", xp.nameText:GetText(), ns.L.XP_LEVEL:format(20))
+    -- Hidden at the maximum level and with XP switched off.
+    M.state.level = 60
+    M.Fire("PLAYER_LEVEL_UP")
+    check("max level: hidden", xp:IsShown(), false)
+    M.state.level = 20
+    M.state.xpOff = true
+    M.Fire("DISABLE_XP_GAIN")
+    check("XP switched off: hidden", xp:IsShown(), false)
+    M.state.xpOff = nil
+    Settings.Set("xpEnabled", nil)
+    check("switched off: hidden", xp:IsShown(), false)
+    check("switched off: Blizzard's bars back", StatusTrackingBarManager:IsShown(), true)
+    _G.StatusTrackingBarManager = nil
+    M.state.level = lvl
+end
+
+section("Level number can be hidden")
+check("level box shown by default", Bars.LevelBox():IsShown(), true)
+local slot3x = slot(3)._points.BOTTOMLEFT[3]
+Settings.Set("levelShow", false)
+check("level box hidden", Bars.LevelBox():IsShown(), false)
+check("the row closes up", slot(3)._points.BOTTOMLEFT[3] < slot3x, true)
+Settings.Set("levelShow", nil)
+check("shown again", Bars.LevelBox():IsShown(), true)
+-- Free: X/Y from the middle of the screen, no room kept.
+Settings.Set("levelPlace", "FREE")
+Settings.Set("levelOffsetX", 50)
+Settings.Set("levelOffsetY", -20)
+local _, rel, rp, fx, fy = Bars.LevelBox():GetPoint("CENTER")
+check("free: from the screen's middle", rel == UIParent and rp == "CENTER", true)
+check("free: at X/Y", fx .. "," .. fy, "50,-20")
+check("free: the row closes up", slot(3)._points.BOTTOMLEFT[3] < slot3x, true)
+Settings.Set("arrangement", "COLUMN")
+_, rel, rp, fx, fy = Bars.LevelBox():GetPoint("CENTER")
+check("free in a column too", fx .. "," .. fy, "50,-20")
+Settings.Set("scale", 200)
+_, rel, rp, fx, fy = Bars.LevelBox():GetPoint("CENTER")
+check("free: screen pixels at any scale", fx * 2 .. "," .. fy * 2, "50,-20")
+Settings.Set("scale", nil)
+for _, k in ipairs({ "arrangement", "levelPlace", "levelOffsetX", "levelOffsetY" }) do Settings.Set(k, nil) end
+check("back in the row", slot(3)._points.BOTTOMLEFT[3], slot3x)
+
 section("Space between text and bar")
 local function nameY() return slot(1).nameText._points.BOTTOMLEFT[4] end
 check("default: 1 px", nameY(), 1)

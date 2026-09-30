@@ -68,6 +68,20 @@ end
 -- The pages. `rows` is a spec for ns.BuildRows; `build` builds a page by
 -- itself (the skill list changes at runtime).
 -- --------------------------------------------------------------------------
+-- A dropdown over fixed values, labelled prefix .. value.
+local function choice(key, label, values, prefix)
+    return {
+        type = "select", label = label,
+        choices = function()
+            local list = {}
+            for _, v in ipairs(values) do list[#list + 1] = { label = L[prefix .. v], value = v } end
+            return list
+        end,
+        get = function() return S(key) end,
+        set = function(v) Settings.Set(key, v) end,
+    }
+end
+
 local function generalRows()
     local w, h = screenSize()
     return {
@@ -79,6 +93,11 @@ local function generalRows()
         { label = "OPT_WIDTH", min = 200, max = w, step = 1, unit = "px",
           get = function() return math.min(Settings.Width(w), w) end, set = function(v) Settings.Set("width", v) end },
         check("locked", "OPT_LOCK"),
+        { label = "OPT_SCALE", min = 50, max = 200, step = 5, unit = "%",
+          get = function() return S("scale") end, set = function(v) Settings.Set("scale", v) end },
+        { type = "header", label = "OPT_ARRANGEMENT" },
+        choice("arrangement", "OPT_ARRANGE", { "ROW", "COLUMNS", "COLUMN" }, "ARRANGE_"),
+        num("columnWidth", "OPT_COLUMN_WIDTH"),
         { type = "header", label = "OPT_MINIMAP" },
         check("minimapShow", "OPT_MINIMAP_SHOW"),
     }
@@ -145,47 +164,10 @@ local function repRows()
     return rows
 end
 
-local function levelRows()
+-- The look of a level badge: font, size, outline, colour, style. keys: the
+-- settings it reads (ns.Bars.ROW_BADGE or ns.Bars.XP_BADGE).
+local function badgeLookRows(keys)
     return {
-        { type = "header", label = "OPT_LEVEL" },
-        {
-            type = "select", label = "OPT_FONT",
-            choices = function()
-                local list = {}
-                for _, name in ipairs(ns.Media.FontNames()) do list[#list + 1] = { label = name, value = name } end
-                return list
-            end,
-            get = function() return S("levelFont") end,
-            set = function(v) Settings.Set("levelFont", v) end,
-        },
-        num("levelFontSize", "OPT_FONT_SIZE"),
-        {
-            type = "select", label = "OPT_OUTLINE",
-            choices = function()
-                return {
-                    { label = L.OUTLINE_NONE, value = "" },
-                    { label = L.OUTLINE_NORMAL, value = "OUTLINE" },
-                    { label = L.OUTLINE_THICK, value = "THICKOUTLINE" },
-                }
-            end,
-            get = function() return S("levelFontFlag") end,
-            set = function(v) Settings.Set("levelFontFlag", v) end,
-        },
-        num("levelY", "OPT_LEVEL_Y"),
-        num("levelGap", "OPT_LEVEL_GAP"),
-        {
-            type = "select", label = "OPT_LEVEL_COLOR",
-            choices = function()
-                return {
-                    { label = L.COLOR_GOLD, value = "GOLD" },
-                    { label = L.COLOR_WHITE, value = "WHITE" },
-                    { label = L.COLOR_CLASS, value = "CLASS" },
-                }
-            end,
-            get = function() return S("levelColor") end,
-            set = function(v) Settings.Set("levelColor", v) end,
-        },
-        { type = "header", label = "OPT_LEVEL_BOX" },
         {
             type = "select", label = "OPT_LEVEL_STYLE",
             choices = function()
@@ -195,13 +177,119 @@ local function levelRows()
                 end
                 return list
             end,
-            get = function() return ns.Bars.LevelStyle() end,
-            set = function(v) Settings.Set("levelStyle", v) end,
+            get = function() return ns.Bars.LevelStyle(keys) end,
+            set = function(v) Settings.Set(keys.style, v) end,
         },
-        num("levelBoxPadX", "OPT_LEVEL_BOX_PAD_X"),
-        num("levelBoxPadY", "OPT_LEVEL_BOX_PAD_Y"),
-        num("levelBoxMinW", "OPT_LEVEL_BOX_MIN_W"),
+        {
+            type = "select", label = "OPT_FONT",
+            choices = function()
+                local list = {}
+                for _, name in ipairs(ns.Media.FontNames()) do list[#list + 1] = { label = name, value = name } end
+                return list
+            end,
+            get = function() return S(keys.font) end,
+            set = function(v) Settings.Set(keys.font, v) end,
+        },
+        num(keys.size, "OPT_FONT_SIZE"),
+        {
+            type = "select", label = "OPT_OUTLINE",
+            choices = function()
+                return {
+                    { label = L.OUTLINE_NONE, value = "" },
+                    { label = L.OUTLINE_NORMAL, value = "OUTLINE" },
+                    { label = L.OUTLINE_THICK, value = "THICKOUTLINE" },
+                }
+            end,
+            get = function() return S(keys.flag) end,
+            set = function(v) Settings.Set(keys.flag, v) end,
+        },
+        {
+            type = "select", label = "OPT_LEVEL_COLOR",
+            choices = function()
+                return {
+                    { label = L.COLOR_GOLD, value = "GOLD" },
+                    { label = L.COLOR_WHITE, value = "WHITE" },
+                    { label = L.COLOR_CLASS, value = "CLASS" },
+                }
+            end,
+            get = function() return S(keys.color) end,
+            set = function(v) Settings.Set(keys.color, v) end,
+        },
     }
+end
+
+-- A row whose label reads differently while the level is placed freely.
+local function freeLabelled(row, freeLabel)
+    local normal = row.label
+    row.label = function()
+        return S("levelPlace") == "FREE" and L[freeLabel] or L[normal]
+    end
+    return row
+end
+
+-- Choosing "Free" or back relabels the two sliders at once.
+Settings.OnChange(function(key)
+    if (key == "levelPlace" or key == nil) and ns.RelabelOptions then ns.RelabelOptions() end
+end)
+
+-- Stufe: where the row's badge sits, then how it looks.
+local function levelRows()
+    local rows = {
+        { type = "header", label = "OPT_LEVEL" },
+        check("levelShow", "OPT_LEVEL_SHOW"),
+        choice("levelPlace", "OPT_LEVEL_PLACE", { "TOP", "MIDDLE", "BOTTOM", "FREE" }, "LEVEL_PLACE_"),
+        -- With "Free" the two become its coordinates.
+        freeLabelled(num("levelOffsetX", "OPT_LEVEL_X"), "OPT_LEVEL_FREE_X"),
+        freeLabelled(num("levelOffsetY", "OPT_LEVEL_Y"), "OPT_LEVEL_FREE_Y"),
+        num("levelGap", "OPT_LEVEL_GAP"),
+        { type = "header", label = "OPT_LEVEL_BOX" },
+    }
+    for _, row in ipairs(badgeLookRows(ns.Bars.ROW_BADGE)) do rows[#rows + 1] = row end
+    rows[#rows + 1] = num("levelBoxPadX", "OPT_LEVEL_BOX_PAD_X")
+    rows[#rows + 1] = num("levelBoxPadY", "OPT_LEVEL_BOX_PAD_Y")
+    rows[#rows + 1] = num("levelBoxMinW", "OPT_LEVEL_BOX_MIN_W")
+    return rows
+end
+
+-- XP bar: the bar and its place; the title line (the level as text or as
+-- a badge, the numbers); the badge, used only with "as badge".
+local function xpRows()
+    local X = ns.XpBar
+    local rows = {
+        { type = "header", label = "OPT_XP" },
+        check("xpEnabled", "OPT_XP_ENABLED"),
+        { type = "text", label = "OPT_XP_HINT", height = 40 },
+        choice("xpRow", "OPT_XP_ROW", X.ROWS, "XP_ROW_"),
+        num("xpGap", "OPT_XP_GAP"),
+        colorRow("xpColor", "OPT_XP_COLOR", true),
+        colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true),
+
+        { type = "header", label = "OPT_XP_TITLE_HEADER" },
+        check("xpTitle", "OPT_XP_TITLE"),
+        choice("xpLevelMode", "OPT_XP_LEVEL_MODE", { "TEXT", "BADGE" }, "XP_LEVEL_"),
+        {
+            type = "select", label = "OPT_XP_LEVEL_FONT",
+            choices = function()
+                local list = { { label = L.XP_FONT_SAME, value = "" } }
+                for _, name in ipairs(ns.Media.FontNames()) do list[#list + 1] = { label = name, value = name } end
+                return list
+            end,
+            get = function() return S("xpLevelFont") end,
+            set = function(v) Settings.Set("xpLevelFont", v) end,
+        },
+        num("xpLevelFontSize", "OPT_XP_LEVEL_SIZE"),
+        choice("xpTextMode", "OPT_XP_TEXT_MODE", X.TEXT_MODES, "XP_MODE_"),
+        num("xpValueFontSize", "OPT_XP_VALUE_SIZE"),
+
+        { type = "header", label = "OPT_XP_BADGE" },
+        { type = "text", label = "OPT_XP_BADGE_HINT" },
+        choice("xpBadgePoint", "OPT_XP_BADGE_POINT",
+            { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }, "POINT_"),
+        num("xpBadgeX", "OPT_XP_BADGE_X"),
+        num("xpBadgeY", "OPT_XP_BADGE_Y"),
+    }
+    for _, row in ipairs(badgeLookRows(ns.Bars.XP_BADGE)) do rows[#rows + 1] = row end
+    return rows
 end
 
 local function backdropRows()
@@ -231,6 +319,10 @@ local function backdropRows()
     }
 end
 
+-- The export/import field; Window.shareField for the tests.
+local shareField = {}
+Window.shareField = shareField
+
 local function profileRows()
     return {
         { type = "header", label = "OPT_PROFILES" },
@@ -250,6 +342,22 @@ local function profileRows()
         { type = "buttons", buttons = {
             { label = "OPT_PROFILE_SAVE_AS", width = 150, onClick = function() ns.AskProfileName() end },
             { label = "OPT_PROFILE_DELETE", width = 110, onClick = function() ns.AskDeleteProfile() end },
+        } },
+        { type = "header", label = "OPT_SHARE" },
+        { type = "text", label = "OPT_SHARE_HINT", height = 40 },
+        { type = "edit", ref = shareField },
+        { type = "buttons", buttons = {
+            { label = "OPT_EXPORT", width = 130, onClick = function()
+                local box = shareField.box
+                box:SetText(ns.Share.Export())
+                box:SetFocus()
+                box:HighlightText()
+            end },
+            { label = "OPT_IMPORT", width = 130, onClick = function()
+                local ok = ns.Share.Import(shareField.box:GetText())
+                ns.Print(ok and L.MSG_IMPORTED or L.MSG_IMPORT_FAILED)
+                if ok then Window.Refresh() end
+            end },
         } },
         { type = "header", label = "OPT_RESET" },
         { type = "text", label = "OPT_RESET_HINT" },
@@ -316,6 +424,7 @@ Window.PAGES = {
     { id = "professions", label = "PAGE_PROFESSIONS", build = buildSkillPage },
     { id = "reputation", label = "PAGE_REPUTATION", rows = repRows },
     { id = "level", label = "PAGE_LEVEL", rows = levelRows },
+    { id = "xp", label = "PAGE_XP", rows = xpRows },
     { id = "backdrop", label = "PAGE_BACKDROP", rows = backdropRows },
     { id = "profiles", label = "PAGE_PROFILES", rows = profileRows },
 }

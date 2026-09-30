@@ -1,12 +1,12 @@
 **Summary**
 
-Your professions, secondary skills and reputations as clean bars, with your level on a gold crest in the middle. Drag it anywhere, click a bar to open the profession.
+Your professions, secondary skills, reputations and experience as clean bars, with your level on a gold crest. In a row or in columns, scaled as you like, shareable as a string. Click a bar to open the profession.
 
 ---
 
 # Forever Progress Bars
 
-Everything you level besides your character, in one strip: two primary professions, two secondary skills, four reputations of your choice and a large level number, for **WoW: Forever**. English, Deutsch, Español, Français.
+Everything you level, in one strip: two primary professions, two secondary skills, four reputations of your choice, an optional experience bar and a large level number, for **WoW: Forever**. English, Deutsch, Español, Français.
 
 ## Professions and skills
 - Two primary professions on the left, two secondary skills on the right (First Aid and Cooking by default), each with its icon, name and rank.
@@ -21,8 +21,14 @@ Everything you level besides your character, in one strip: two primary professio
 - Colours from the game's own reputation colours, and the standing ("Friendly", "Honored", ...) in the middle of the bar.
 - **Left-click a reputation bar to pick another faction** right there; right-click opens the reputation tab.
 
+## Experience bar (optional)
+- An experience bar in the same style as the reputation bars, as wide as the whole strip: above the professions, between professions and reputation, or at the bottom.
+- A title line like the reputation bars: "Level 20" on the left, "730 / 23200 (3%)" on the right, with its own fonts and sizes (a big level, small numbers). Or the level as a badge of its own on the bar, placed at any of its points with its own style and size.
+- Rested experience shows ahead of the fill; the tooltip gives experience, progress, what is left to the next level and rested experience.
+- Hidden at the maximum level. While it is on, Blizzard's experience bar is hidden.
+
 ## Level
-- Your level in a box between the bars, always centred.
+- Your level in a box between the bars, above, in the middle of or below the columns, or **anywhere on the screen** (X/Y from the screen's middle). It can also be switched off.
 - Box styles: Classic, **Gold** (shaded like a bevel), Class colour or the number alone, plus **hand-drawn gold badges** (crest, laurel wreath, wings) and two gold rings from Blizzard's own art. Every badge grows with the number. The number in gold, white or your class colour; font, size and outline adjustable.
 
 ## Background
@@ -30,13 +36,16 @@ Everything you level besides your character, in one strip: two primary professio
 - Any colour and opacity, padding, and a flat or **gold** border from 1 to 8 pixels.
 
 ## Layout
+- **In a row** (professions side by side, reputation below), **in two columns** (professions left, reputation right) or **in one column** (professions, then reputation), with a bar width of your choice for the columns.
+- **Scale everything together** from 50 to 200 %.
 - The strip starts at the top of the screen, 60 % of the screen wide (at most 1180), so it fits small screens and large UI scales too, and **locked** (click-through). Right-click the minimap button or type `/fpb unlock` to drag it somewhere else, or set position and width exactly in the options.
 - Bar height, text height, the space between text and bar, spacing, segment width, label font size and icon size are all adjustable, as are the colour and opacity of the bars' empty part.
 
 ## Options
-- Its own options window, opened from the **minimap button** or with `/fpb`: General, Bars, Professions, Reputation, Level, Background and Profiles.
+- Its own options window, opened from the **minimap button** or with `/fpb`: General, Bars, Professions, Reputation, Level, XP bar, Background and Profiles.
 - Also listed in Blizzard's **addon compartment** next to the minimap: left-click opens the options, right-click locks or unlocks the strip.
 - **Profiles**: save your layout under a name and share it between characters.
+- **Export and import**: your whole profile as a text string to pass on; paste one to take it over. Imports are only read as settings, never run as code.
 - Language: follows the game; a dropdown in the options window picks another one, and the change applies at once.
 
 ## Commands

@@ -14,6 +14,16 @@ Settings.DEFAULTS = {
     y = -25,
     width = 0,              -- 0: automatic, see Settings.AutoWidth
     locked = true,
+    scale = 100,            -- percent, everything together
+
+    -- Arrangement: ROW (professions in a row, reputation below), COLUMNS
+    -- (professions left, reputation right, each stacked) or COLUMN (all
+    -- stacked: professions, then reputation). In the stacked ones the
+    -- level sits on TOP, in the MIDDLE or at the BOTTOM; bars are
+    -- columnWidth wide. levelPlace FREE places it freely everywhere.
+    arrangement = "ROW",
+    levelPlace = "TOP",
+    columnWidth = 240,
 
     -- Bars
     barHeight = 22,
@@ -29,7 +39,14 @@ Settings.DEFAULTS = {
     iconGap = 2,
 
     -- Level number
-    levelY = -25,
+    levelShow = true,
+    levelY = -25,           -- the row's own place for it (kept for old profiles)
+    -- Moves the level (and the XP bar hanging from it) in every arrangement.
+    -- With levelPlace FREE (in every arrangement) these are its coordinates:
+    -- its centre from the middle of the screen (0 / 0: exactly in the
+    -- middle); it takes no room in the rows then.
+    levelOffsetX = 0,
+    levelOffsetY = 0,
     levelGap = 87,          -- the least room kept free for the level box
     levelFont = "Friz Quadrata",
     levelFontSize = 28,
@@ -48,6 +65,34 @@ Settings.DEFAULTS = {
     backdropBorder = "GOLD",        -- NONE, FLAT or GOLD
     backdropBorderSize = 1,         -- in screen pixels
     backdropBorderColor = { 0, 0, 0, 1 },
+
+    -- Own experience bar (XpBar.lua): off by default. A row of its own in
+    -- the reputation bars' style, on TOP, in the MIDDLE (between
+    -- professions and reputation) or at the BOTTOM; with its title line
+    -- ("Level 20" and the numbers) or without.
+    xpEnabled = false,
+    xpRow = "BOTTOM",
+    xpTitle = true,
+    xpColor = { 0.58, 0.0, 0.55 },          -- Blizzard's classic purple
+    xpRestedColor = { 0.0, 0.39, 0.88 },    -- and its rested blue
+    xpTextMode = "CURRENT_MAX_PERCENT",     -- see XpBar.TEXT_MODES
+    -- The title line: the level's font and size, the numbers' size ("" and
+    -- 0: as on the other bars), and extra space to the bars beside the row.
+    xpLevelMode = "TEXT",   -- TEXT ("Level 20") or BADGE (a badge of its own)
+    -- The badge on the XP bar: its centre at a point of the bar plus X/Y,
+    -- and a look of its own.
+    xpBadgePoint = "LEFT",
+    xpBadgeX = 0,
+    xpBadgeY = 0,
+    xpBadgeStyle = "CREST",
+    xpBadgeFont = "Friz Quadrata",
+    xpBadgeFontSize = 20,
+    xpBadgeFontFlag = "OUTLINE",
+    xpBadgeColor = "GOLD",
+    xpLevelFont = "",
+    xpLevelFontSize = 0,
+    xpValueFontSize = 0,
+    xpGap = 0,
 
     -- Minimap button
     minimapShow = true,
@@ -72,6 +117,16 @@ Settings.RANGES = {
     levelBoxPadY = { 0, 30 },
     levelBoxMinW = { 20, 160 },
     width = { 200, 4000 },
+    scale = { 50, 200 },
+    xpLevelFontSize = { 0, 60 },
+    xpValueFontSize = { 0, 40 },
+    xpGap = { -20, 80 },
+    xpBadgeX = { -600, 600 },
+    xpBadgeY = { -200, 200 },
+    xpBadgeFontSize = { 8, 80 },
+    levelOffsetX = { -2000, 2000 },
+    levelOffsetY = { -1200, 1200 },
+    columnWidth = { 80, 800 },
     backdropAlpha = { 0, 100 },
     backdropPadding = { 0, 40 },
     backdropBorderSize = { 1, 8 },
