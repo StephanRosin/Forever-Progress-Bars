@@ -186,7 +186,7 @@ function Xp.LayoutHeader()
         return
     end
     local p = plate(bar)
-    p.bg:SetColorTexture(unpack(FOREVER_BG))
+    p.bg:SetColorTexture(0, 0, 0, 1)   -- opaque: what lies behind would show through the title
     name:SetParent(p)
     name:SetJustifyH("CENTER")
     p:SetWidth(math.floor(name:GetStringWidth() + 2 * PLATE_PAD + 0.5))
