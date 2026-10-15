@@ -1131,7 +1131,7 @@ do
     local function rows()
         local byLabel = {}
         for _, page in ipairs(ns.Window.PAGES) do
-            if page.id == "xp" then for _, r in ipairs(page.rows()) do byLabel[r.label] = r end end
+            if page.id:sub(1, 2) == "xp" then for _, r in ipairs(page.rows()) do byLabel[r.label] = r end end
         end
         return byLabel
     end

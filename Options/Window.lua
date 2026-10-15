@@ -56,23 +56,32 @@ local function choice(key, label, values, prefix)
 end
 
 -- Allgemein: what shows, how it is arranged, where it sits.
+-- What concerns everything: the scale, the lock, the minimap button.
 local function generalRows()
+    return {
+        { type = "header", label = "OPT_GENERAL" },
+        { label = "OPT_SCALE", min = 50, max = 200, step = 5, unit = "%",
+          get = function() return S("scale") end, set = function(v) Settings.Set("scale", v) end },
+        check("locked", "OPT_LOCK"),
+        { type = "header", label = "OPT_MINIMAP" },
+        check("minimapShow", "OPT_MINIMAP_SHOW"),
+    }
+end
+
+-- The progress bars: what shows, when they hide, how they are arranged
+-- and where the strip sits.
+local function layoutRows()
     local w, h = screenSize()
     return {
         { type = "header", label = "OPT_SHOW" },
         check("showProfessions", "OPT_SHOW_PROFESSIONS"),
         check("showReputation", "OPT_SHOW_REPUTATION"),
         check("levelShow", "OPT_LEVEL_SHOW"),
-        check("xpEnabled", "OPT_XP_ENABLED"),
         { type = "header", label = "OPT_HIDE" },
         check("hideInCombat", "OPT_HIDE_COMBAT"),
         check("hideInGroup", "OPT_HIDE_GROUP"),
-        check("xpHideInCombat", "OPT_XP_HIDE_COMBAT"),
-        check("xpHideInGroup", "OPT_XP_HIDE_GROUP"),
         { type = "header", label = "OPT_ARRANGEMENT" },
         choice("arrangement", "OPT_ARRANGE", { "ROW", "COLUMNS", "COLUMN" }, "ARRANGE_"),
-        { label = "OPT_SCALE", min = 50, max = 200, step = 5, unit = "%",
-          get = function() return S("scale") end, set = function(v) Settings.Set("scale", v) end },
         { type = "header", label = "OPT_POSITION" },
         choice("xFrom", "OPT_X_FROM", { "CENTER", "LEFT" }, "FROM_"),
         choice("yFrom", "OPT_Y_FROM", { "TOP", "CENTER" }, "FROM_"),
@@ -81,9 +90,6 @@ local function generalRows()
           get = function() return S("x") end, set = function(v) Settings.Set("x", v) end },
         { label = "OPT_Y", min = -h, max = h, step = 1, unit = "px",
           get = function() return S("y") end, set = function(v) Settings.Set("y", v) end },
-        check("locked", "OPT_LOCK"),
-        { type = "header", label = "OPT_MINIMAP" },
-        check("minimapShow", "OPT_MINIMAP_SHOW"),
     }
 end
 
@@ -297,14 +303,15 @@ local function fontRow(key, label)
     }
 end
 
--- XP bar: the bar and its look; the title line (the level as text or as a
--- badge, the numbers), every text with font, size, colour and place in
--- every style; the badge, used only with "as badge".
+-- XP bar: whether it shows and hides, its place, size and look.
 local function xpRows()
     local X = ns.XpBar
-    local levelPlaces = { "AUTO" }
-    for _, p in ipairs(X.VALUE_PLACES) do levelPlaces[#levelPlaces + 1] = p end
-    local rows = {
+    return {
+        { type = "header", label = "OPT_SHOW" },
+        check("xpEnabled", "OPT_XP_ENABLED"),
+        { type = "header", label = "OPT_HIDE" },
+        check("xpHideInCombat", "OPT_XP_HIDE_COMBAT"),
+        check("xpHideInGroup", "OPT_XP_HIDE_GROUP"),
         { type = "header", label = "OPT_XP" },
         { type = "text", label = "OPT_XP_HINT", height = 40 },
         choice("xpRow", "OPT_XP_ROW", X.ROWS, "XP_ROW_"),
@@ -316,7 +323,16 @@ local function xpRows()
         choice("xpStyle", "OPT_XP_STYLE", X.STYLES, "XP_STYLE_"),
         ownColoursOnly(colorRow("xpColor", "OPT_XP_COLOR", true)),
         ownColoursOnly(colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
+    }
+end
 
+-- XP bar texts: the title line, the level as text or as a badge, the
+-- numbers; every text with font, size, colour and place in every style.
+local function xpTextRows()
+    local X = ns.XpBar
+    local levelPlaces = { "AUTO" }
+    for _, p in ipairs(X.VALUE_PLACES) do levelPlaces[#levelPlaces + 1] = p end
+    return {
         { type = "header", label = "OPT_XP_TITLE_HEADER" },
         check("xpTitle", "OPT_XP_TITLE"),
         levelChoice(levelModeRow()),
@@ -336,7 +352,12 @@ local function xpRows()
         num("xpValueFontSize", "OPT_XP_VALUE_SIZE"),
         check("xpValueColorOwn", "OPT_XP_VALUE_COLOR_OWN"),
         valueColourOnly(colorRow("xpValueColor", "OPT_XP_VALUE_COLOR", true)),
+    }
+end
 
+-- XP bar badge: used only with the level "as badge".
+local function xpBadgeRows()
+    local rows = {
         { type = "header", label = "OPT_XP_BADGE" },
         { type = "text", label = "OPT_XP_BADGE_HINT" },
         badgeOnly(check("xpBadgeFollow", "OPT_XP_BADGE_FOLLOW")),
@@ -437,7 +458,7 @@ end
 -- --------------------------------------------------------------------------
 local WIDTH, HEIGHT = 780, 560
 local TITLE_H, NAV_W, FOOTER_H = 32, 160, 40
-local NAV_ROW_H, NAV_TOP, NAV_BAR_W = 28, 8, 3
+local NAV_ROW_H, NAV_TOP, NAV_BAR_W, NAV_CAPTION_H = 26, 6, 3, 20
 local SCROLLBAR_W, WHEEL_STEP = 10, 40
 local CONTENT_W = WIDTH - NAV_W - SCROLLBAR_W
 local PAGE_TOP, PAGE_BOTTOM, SECTION_GAP, INSET = 4, 16, 8, 16
@@ -632,15 +653,20 @@ local function xpInfoRows()
     return rows
 end
 
+-- In two groups: the progress bars (professions, reputation, the level
+-- badge) and the XP bar, each with all its options.
 Window.PAGES = {
     { id = "general", label = "PAGE_GENERAL", rows = generalRows },
-    { id = "bars", label = "PAGE_BARS", rows = barRows },
-    { id = "professions", label = "PAGE_PROFESSIONS", build = buildSkillPage },
-    { id = "reputation", label = "PAGE_REPUTATION", rows = repRows },
-    { id = "level", label = "PAGE_LEVEL", rows = levelRows },
-    { id = "xp", label = "PAGE_XP", rows = xpRows },
-    { id = "xpinfo", label = "PAGE_XPINFO", rows = xpInfoRows },
-    { id = "backdrop", label = "PAGE_BACKDROP", rows = backdropRows },
+    { id = "layout", label = "PAGE_LAYOUT", rows = layoutRows, group = "NAV_GROUP_BARS" },
+    { id = "bars", label = "PAGE_BARS", rows = barRows, group = "NAV_GROUP_BARS" },
+    { id = "professions", label = "PAGE_PROFESSIONS", build = buildSkillPage, group = "NAV_GROUP_BARS" },
+    { id = "reputation", label = "PAGE_REPUTATION", rows = repRows, group = "NAV_GROUP_BARS" },
+    { id = "level", label = "PAGE_LEVEL", rows = levelRows, group = "NAV_GROUP_BARS" },
+    { id = "backdrop", label = "PAGE_BACKDROP", rows = backdropRows, group = "NAV_GROUP_BARS" },
+    { id = "xp", label = "PAGE_XP", rows = xpRows, group = "NAV_GROUP_XP" },
+    { id = "xptext", label = "PAGE_XPTEXT", rows = xpTextRows, group = "NAV_GROUP_XP" },
+    { id = "xpbadge", label = "PAGE_XPBADGE", rows = xpBadgeRows, group = "NAV_GROUP_XP" },
+    { id = "xpinfo", label = "PAGE_XPINFO", rows = xpInfoRows, group = "NAV_GROUP_XP" },
     { id = "profiles", label = "PAGE_PROFILES", rows = profileRows },
 }
 
@@ -781,7 +807,22 @@ local function createNav(parent)
     local edge = line(nav, "border")
     edge:SetPoint("TOPRIGHT"); edge:SetPoint("BOTTOMRIGHT"); edge:SetWidth(1)
     frame.navButtons = {}
-    for i, page in ipairs(Window.PAGES) do navButton(nav, page, NAV_TOP + (i - 1) * NAV_ROW_H) end
+    -- A caption above each group; the pages in it indented.
+    local y, group = NAV_TOP, nil
+    for _, page in ipairs(Window.PAGES) do
+        if page.group ~= group then
+            group = page.group
+            if group then
+                local caption = Style.Text(nav, 10, "muted")
+                caption:SetPoint("TOPLEFT", nav, "TOPLEFT", INSET, -(y + NAV_CAPTION_H - 14))
+                caption:SetText(L[group]:upper())
+                y = y + NAV_CAPTION_H
+            end
+        end
+        navButton(nav, page, y)
+        if page.group then frame.navButtons[page.id].text:SetPoint("LEFT", frame.navButtons[page.id], "LEFT", INSET + 8, 0) end
+        y = y + NAV_ROW_H
+    end
     languageRow(nav)
     return nav
 end

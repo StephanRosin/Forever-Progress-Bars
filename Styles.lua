@@ -345,8 +345,8 @@ DEF.RING = {
         x.disc = over(x, "BACKGROUND", MEDIA .. "RingDisc.tga")
         x.arc = {}
         for i = 1, ARC_PIECES do
-            x.arc[i] = over(x, "ARTWORK")
-            x.arc[i]:SetColorTexture(1, 1, 1, 1)
+            -- Soft-edged pieces: the game smooths them when turned (ArcPiece.svg).
+            x.arc[i] = over(x, "ARTWORK", MEDIA .. "ArcPiece.tga")
         end
         x.bezel = over(x, "OVERLAY", MEDIA .. "RingBezel.tga")
         x.diamond = x.over:CreateTexture(nil, "OVERLAY", nil, 1)
@@ -380,7 +380,7 @@ DEF.RING = {
             local at = (i - 0.5) / ARC_PIECES
             local a = at * 2 * math.pi
             local t = x.arc[i]
-            t:SetSize(len, thick)
+            t:SetSize(len * 64 / 58, thick * 16 / 10)   -- the piece is 58 x 10 of its 64 x 16
             t:ClearAllPoints()
             t:SetPoint("CENTER", bar.sb, "CENTER", ox + r * math.sin(a), r * math.cos(a))
             if t.SetRotation then t:SetRotation(-a) end
