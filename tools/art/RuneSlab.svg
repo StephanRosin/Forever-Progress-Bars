@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="64" viewBox="0 0 256 64">
+  <!-- Runenstein: the carved slab around the groove; pointed ends, sliced 32 px each side. -->
+  <defs>
+    <linearGradient id="stone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a4d54"/><stop offset="0.48" stop-color="#2d2f34"/><stop offset="1" stop-color="#1c1d21"/>
+    </linearGradient>
+  </defs>
+  <polygon points="24,1 232,1 255,32 232,63 24,63 1,32" fill="url(#stone)" stroke="#0e0f12" stroke-width="2"/>
+  <polyline points="25,2.5 231,2.5" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <polyline points="25,61.5 231,61.5" stroke="#000000" stroke-opacity="0.5" stroke-width="1.5"/>
+  <path d="M60 12 l14 3 M150 50 l18 -2 M200 14 l10 4 M96 52 l9 -3" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/>
+</svg>

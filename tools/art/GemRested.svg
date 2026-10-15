@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><!-- a sapphire waiting: the rested bonus -->
+  <defs><radialGradient id="s" cx="40%" cy="30%" r="75%"><stop offset="0" stop-color="#5d86d6"/><stop offset="0.7" stop-color="#1f3156"/><stop offset="1" stop-color="#14203a"/></radialGradient></defs>
+  <polygon points="32,4 60,32 32,60 4,32" fill="url(#s)" stroke="#6f97e6" stroke-width="5" stroke-linejoin="round"/>
+</svg>

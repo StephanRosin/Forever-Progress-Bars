@@ -1124,17 +1124,29 @@ do
     _G.StatusTrackingBarManager = M.newWidget("StatusTrackingBarManager")
     Settings.Set("xpEnabled", true)
     local xp = Bars.XpSlot()
+    local function parts(id) return xp.styleParts and xp.styleParts[id] end
+    local function rows()
+        local byLabel = {}
+        for _, page in ipairs(ns.Window.PAGES) do
+            if page.id == "xp" then for _, r in ipairs(page.rows()) do byLabel[r.label] = r end end
+        end
+        return byLabel
+    end
     check("own by default", S("xpStyle"), "OWN")
     check("own: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
     check("own: rim shown", xp.borders[1]:IsShown(), true)
+    check("eight styles", #X.STYLES, 8)
+    for _, id in ipairs(X.STYLES) do
+        check("style " .. id .. " named", ns.L["XP_STYLE_" .. id] ~= nil, true)
+    end
 
     Settings.Set("xpStyle", "BLIZZARD")
     check("blizzard: Blizzard's fill", xp.sb._barTex, "UI-HUD-ExperienceBar-Fill-Experience")
-    check("blizzard: fill not tinted", table.concat(xp.sb._color, ","), "1,1,1")
+    check("blizzard: fill not tinted", table.concat(xp.sb._color, ","), "1,1,1,1")
     check("blizzard: Blizzard's background", xp.bg._atlas, "UI-HUD-ExperienceBar-Background")
     check("blizzard: prediction for the rested part", xp.rested._barTex, "UI-HUD-ExperienceBar-Fill-Prediction")
     check("blizzard: rim hidden", xp.borders[1]:IsShown(), false)
-    check("blizzard: frame shown", xp.frameArt and xp.frameArt:IsShown(), true)
+    check("blizzard: frame shown", parts("BLIZZARD").over:IsShown(), true)
     local shown, art = 0, true
     for _, d in ipairs(xp.dividers) do
         if d:IsShown() then
@@ -1152,81 +1164,156 @@ do
     M.state.rested = 0
     M.Fire("UPDATE_EXHAUSTION")
 
-    -- The badge riding on the fill works in both styles.
+    -- The badge riding on the fill works in every style with a fill.
     Settings.Set("xpLevelMode", "BADGE")
     Settings.Set("xpBadgeFollow", true)
     local box = Bars.XpBadge()
     check("blizzard: badge rides on the fill", select(2, box:GetPoint("CENTER")), xp.sb:GetStatusBarTexture())
     Settings.Set("xpStyle", "OWN")
     check("own: badge rides on the fill", select(2, box:GetPoint("CENTER")), xp.sb:GetStatusBarTexture())
-
-    Settings.Set("xpStyle", "OWN")
     check("own again: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
     check("own again: our colour", xp.sb._color[1], S("xpColor")[1])
-    check("own again: frame hidden", xp.frameArt:IsShown(), false)
+    check("own again: Blizzard's frame gone", parts("BLIZZARD").over:IsShown(), false)
     check("own again: rim shown", xp.borders[1]:IsShown(), true)
     local thin = true
     for _, d in ipairs(xp.dividers) do if d:IsShown() and d._w ~= 1 then thin = false end end
     check("own again: our dividers", thin, true)
 
-    -- The colour pickers dim under Blizzard's art.
-    local rows
-    for _, page in ipairs(ns.Window.PAGES) do if page.id == "xp" then rows = page.rows() end end
-    local colour
-    for _, r in ipairs(rows or {}) do if r.label == "OPT_XP_COLOR" then colour = r end end
-    check("colour row: usable for own", colour and colour.enabled(), true)
+    -- The colour pickers only where a style takes our colours.
+    check("colour row: usable for own", rows().OPT_XP_COLOR.enabled(), true)
     Settings.Set("xpStyle", "BLIZZARD")
-    check("colour row: dimmed for blizzard", colour and colour.enabled(), false)
+    check("colour row: dimmed for blizzard", rows().OPT_XP_COLOR.enabled(), false)
 
     -- Forever: our fill in the other Forever addons' look.
     Settings.Set("xpStyle", "FOREVER")
-    check("colour row: usable for forever", colour and colour.enabled(), true)
+    check("colour row: usable for forever", rows().OPT_XP_COLOR.enabled(), true)
     check("forever: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
     check("forever: our colour", xp.sb._color[1], S("xpColor")[1])
     check("forever: gold rim", xp.borders[1]:IsShown() and xp.borders[1]._gradient ~= nil, true)
     check("forever: dark background", xp.bg._texColor[4], 0.82)
-    check("forever: no Blizzard frame", xp.frameArt:IsShown(), false)
+    check("forever: no Blizzard frame", parts("BLIZZARD").over:IsShown(), false)
     check("forever: fill inside a two-pixel rim", xp.sb._points.TOPLEFT[3], 2 * ns.Bars.OnePixel(xp))
-    Settings.Set("xpLevelMode", "BADGE")
     check("forever: level as text, not the badge", xp.nameText:GetText(), "Level 20")
     check("forever: no badge", Bars.BadgeOnXp(), false)
-    check("forever: level in the header gold", xp.nameText._textColor and xp.nameText._textColor[1], 1)
+    check("forever: level in the header gold", xp.nameText._textColor[1], 1)
     check("forever: level in the header size", select(2, xp.nameText:GetFont()), 18)
     check("forever: header plate shown", xp.plate and xp.plate:IsShown(), true)
     check("forever: level on the plate", xp.nameText._parent, xp.plate)
     check("forever: plate fits the text", xp.plate:GetWidth(), xp.nameText:GetStringWidth() + 28)
-    Settings.Set("xpHeaderColor", { 0.5, 0.6, 0.7 })
-    check("forever: level in the chosen colour", xp.nameText._textColor[1], 0.5)
-    Settings.Set("xpHeaderColor", nil)
+    check("forever: plate centred above", xp.plate._points.BOTTOM ~= nil, true)
+    Settings.Set("xpLevelPlace", "BELOW_RIGHT")
+    check("forever: plate goes where the level goes", xp.plate._points.TOPRIGHT ~= nil, true)
+    Settings.Set("xpLevelPlace", nil)
     Settings.Set("xpHeaderPlate", false)
-    check("forever: plate can go", xp.plate.bg:IsShown(), false)
+    check("forever: plate can go", xp.plate:IsShown(), false)
     check("forever: level stays without the plate", xp.nameText:GetText(), "Level 20")
     Settings.Set("xpHeaderPlate", nil)
     check("forever: plate back", xp.plate.bg:IsShown(), true)
-    local byLabel = {}
-    for _, page in ipairs(ns.Window.PAGES) do
-        if page.id == "xp" then for _, r in ipairs(page.rows()) do byLabel[r.label] = r end end
-    end
-    check("forever: badge rows dimmed", byLabel.OPT_XP_BADGE_FOLLOW.enabled(), false)
-    check("forever: badge look dimmed", byLabel.OPT_LEVEL_STYLE.enabled(), false)
-    check("forever: level font usable", byLabel.OPT_XP_LEVEL_FONT.enabled(), true)
-    check("forever: header colour usable", byLabel.OPT_XP_HEADER_COLOR.enabled(), true)
-    check("forever: a tick at the end of the fill", xp.marker and xp.marker:IsShown(), true)
-    check("forever: the tick hangs on the fill", xp.marker._points.CENTER[1], xp.sb:GetStatusBarTexture())
-    check("forever: our gold marker", xp.marker._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\BadgeMarker.tga")
+    local r = rows()
+    check("forever: badge rows dimmed", r.OPT_XP_BADGE_FOLLOW.enabled(), false)
+    check("forever: badge look dimmed", r.OPT_LEVEL_STYLE.enabled(), false)
+    check("forever: level font usable", r.OPT_XP_LEVEL_FONT.enabled(), true)
+    check("forever: level choice dimmed", r.OPT_XP_LEVEL_MODE.enabled(), false)
+    local marker = parts("FOREVER").marker
+    check("forever: a marker at the end of the fill", marker:IsShown(), true)
+    check("forever: the marker hangs on the fill", marker._points.CENTER[1], xp.sb:GetStatusBarTexture())
+    check("forever: our gold marker", marker._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\BadgeMarker.tga")
     Settings.Set("xpStyle", "OWN")
     check("own after forever: black rim", xp.borders[1]._vertex[1], 0)
     check("own after forever: fill inside one unit", xp.sb._points.TOPLEFT[3], 1)
     check("own after forever: plate hidden", xp.plate:IsShown(), false)
-    check("own after forever: no tick", xp.marker:IsShown(), false)
-    local own = {}
-    for _, page in ipairs(ns.Window.PAGES) do
-        if page.id == "xp" then for _, r in ipairs(page.rows()) do own[r.label] = r end end
-    end
-    check("own with badge: header colour dimmed", own.OPT_XP_HEADER_COLOR.enabled(), false)
-    check("own with badge: badge rows usable", own.OPT_XP_BADGE_FOLLOW.enabled(), S("xpLevelMode") == "BADGE")
-    check("own after forever: level back on the bar", xp.nameText._parent, xp)
+    check("own after forever: Forever's parts hidden", parts("FOREVER").over:IsShown(), false)
+    check("own with badge: badge rows usable", rows().OPT_XP_BADGE_FOLLOW.enabled(), true)
+    check("own after forever: level back on the text layer", xp.nameText._parent, X.TextLayer())
 
+    -- Every text's options work in every style.
+    Settings.Set("xpLevelMode", "TEXT")
+    for _, id in ipairs(X.STYLES) do
+        Settings.Set("xpStyle", id)
+        Settings.Set("xpLevelColorOwn", true)
+        Settings.Set("xpLevelColor", { 0.2, 0.3, 0.4 })
+        check(id .. ": own level colour", xp.nameText._textColor[1], 0.2)
+        Settings.Set("xpLevelFontSize", 23)
+        check(id .. ": own level size", select(2, xp.nameText:GetFont()), 23)
+        Settings.Set("xpLevelPlace", "BELOW_CENTER")
+        Settings.Set("xpLevelX", 7)
+        local where = id == "FOREVER" and xp.plate or xp.nameText
+        check(id .. ": level at its own place", where._points.TOP and where._points.TOP[3], 7)
+        Settings.Set("xpValueColorOwn", true)
+        Settings.Set("xpValueColor", { 0.6, 0.5, 0.4 })
+        check(id .. ": own number colour", xp.valueText._textColor[1], 0.6)
+        Settings.Set("xpValueFont", "Morpheus")
+        check(id .. ": own number font", select(1, xp.valueText:GetFont()), ns.Media.FontPath("Morpheus"))
+        Settings.Set("xpHeight", 30)
+        check(id .. ": own height", xp:GetHeight(), 30)
+        for _, k in ipairs({ "xpLevelColorOwn", "xpLevelColor", "xpLevelFontSize", "xpLevelPlace", "xpLevelX",
+            "xpValueColorOwn", "xpValueColor", "xpValueFont", "xpHeight" }) do Settings.Set(k, nil) end
+    end
+
+    -- The new looks.
+    local base = S("barHeight")
+    Settings.Set("xpStyle", "RUNE")
+    check("rune: taller than the bars", xp:GetHeight(), math.floor(base * 2.6 + 0.5))
+    check("rune: its fill", xp.sb._barTex, "Interface\\AddOns\\ForeverProgressBars\\Media\\FillRune.tga")
+    check("rune: the slab", parts("RUNE").slab._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\RuneSlab.tga")
+    check("rune: no dividers", (function() for _, d in ipairs(xp.dividers) do if d:IsShown() then return false end end return true end)(), true)
+    check("rune: four runes", #parts("RUNE").runes, 4)
+    check("rune: none lit at 3 %", parts("RUNE").runeGlow[1]:IsShown(), false)
+    M.state.xp = 12000
+    M.Fire("PLAYER_XP_UPDATE")
+    check("rune: first two lit at 51 %", parts("RUNE").runeGlow[2]:IsShown(), true)
+    check("rune: third dark at 51 %", parts("RUNE").runeGlow[3]:IsShown(), false)
+    check("rune: badge matches", Bars.LevelStyle(Bars.XP_BADGE), "RUNESTONE")
+    check("rune: colour rows dimmed", rows().OPT_XP_COLOR.enabled(), false)
+
+    Settings.Set("xpStyle", "GEMS")
+    local g = parts("GEMS")
+    check("gems: twenty", #g.base, 20)
+    check("gems: the fill unseen", xp.sb._color[4], 0)
+    check("gems: ten full at 51 %", g.gem[10]:IsShown() and g.gem[10]._texCoord[2], 1)
+    check("gems: the eleventh cut", g.gem[11]:IsShown() and g.gem[11]._texCoord[2] < 1, true)
+    check("gems: the twelfth empty", g.gem[12]:IsShown(), false)
+    M.state.rested = 3000
+    M.Fire("UPDATE_EXHAUSTION")
+    check("gems: rested ahead in sapphire", g.base[12]._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\GemRested.tga")
+    check("gems: far ahead empty", g.base[20]._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\GemEmpty.tga")
+    check("gems: badge matches", Bars.LevelStyle(Bars.XP_BADGE), "GEM")
+
+    Settings.Set("xpStyle", "RING")
+    local ring = parts("RING")
+    check("ring: round", X.Width(1000), X.Height())
+    check("ring: level as text", X.LevelMode(), "TEXT")
+    check("ring: level in the middle", xp.nameText._points.CENTER ~= nil, true)
+    check("ring: arc pieces", #ring.arc, 90)
+    check("ring: first piece filled", ring.arc[1]._vertex[4], 1)
+    check("ring: a piece after the fill rested", ring.arc[50]._vertex[3], 0.64)
+    check("ring: only the number in the middle", xp.nameText:GetText(), "20")
+    check("ring: the last piece empty", ring.arc[90]._vertex[1], 0.08)
+
+    Settings.Set("xpStyle", "RUNE")
+    check("rune after the ring: the fill seen again", xp.sb._color[4], 1)
+    Settings.Set("xpStyle", "THIN")
+    check("thin: three pixels", xp:GetHeight(), 3)
+    check("thin: rested dotted after the fill", parts("THIN").dots._points.TOPLEFT[1], xp.sb:GetStatusBarTexture())
+    check("thin: level below", xp.nameText._points.TOPLEFT ~= nil, true)
+
+    Settings.Set("xpStyle", "EMBER")
+    local e = parts("EMBER")
+    check("ember: molten fill", xp.sb._barTex, "Interface\\AddOns\\ForeverProgressBars\\Media\\FillEmber.tga")
+    check("ember: hot tip on the fill", e.tip._points.RIGHT[1], xp.sb:GetStatusBarTexture())
+    check("ember: six rivets", #e.rivets, 6)
+    check("ember: badge matches", Bars.LevelStyle(Bars.XP_BADGE), "SHIELD")
+    Settings.Set("xpBadgeStyle", "LAUREL")
+    check("ember: a chosen badge stays", Bars.LevelStyle(Bars.XP_BADGE), "LAUREL")
+    Settings.Set("xpBadgeStyle", nil)
+    check("badge menu offers matching", Bars.AvailableLevelStyles(Bars.XP_BADGE)[1], "MATCH")
+    check("row badge menu does not", Bars.AvailableLevelStyles(Bars.ROW_BADGE)[1] ~= "MATCH", true)
+
+    Settings.Set("xpStyle", "OWN")
+    check("own after all: parts of the others hidden", parts("EMBER").over:IsShown() or parts("RING").over:IsShown(), false)
+    check("own after all: bars' height", xp:GetHeight(), base)
+
+    M.state.xp, M.state.rested = 730, 0
     for _, k in ipairs({ "xpStyle", "xpLevelMode", "xpBadgeFollow" }) do Settings.Set(k, nil) end
     Settings.Set("xpEnabled", false)
     M.state.level = 43

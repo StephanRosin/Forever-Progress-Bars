@@ -24,6 +24,7 @@ Settings.lua
 Share.lua
 Media.lua
 Bars.lua
+Styles.lua
 XpBar.lua
 XpInfo.lua
 Options\Style.lua

@@ -32,7 +32,7 @@ local function newWidget(name, kind)
         if not self._fillTex then self._fillTex = newWidget() end
         return self._fillTex
     end
-    function w:SetStatusBarColor(r, g, b) self._color = { r, g, b } end
+    function w:SetStatusBarColor(r, g, b, a) self._color = { r, g, b, a } end
     function w:SetStatusBarTexture(t) self._barTex = t end
     function w:SetTextureSliceMargins(...) self._slice = { ... } end
     function w:SetTextColor(r, g, b) self._textColor = { r, g, b } end

@@ -87,7 +87,8 @@ Settings.DEFAULTS = {
     -- professions and reputation) or at the BOTTOM; with its title line
     -- ("Level 20" and the numbers) or without.
     xpEnabled = false,
-    xpStyle = "OWN",        -- OWN, FOREVER (gold rim) or BLIZZARD (Blizzard's art), see XpBar.STYLES
+    xpStyle = "OWN",        -- the look, see Styles.LIST
+    xpHeight = 0,           -- 0: the style's height (from the bars' height)
     xpRow = "BOTTOM",       -- TOP, MIDDLE, BOTTOM or FREE
     -- FREE: X from the middle of the screen, Y from its top edge (0: at the
     -- top, negative: down) for the top of its title line; no room in the
@@ -108,17 +109,26 @@ Settings.DEFAULTS = {
     xpBadgeFollow = false,  -- rides on the end of the fill instead
     xpBadgeX = 0,
     xpBadgeY = 0,
-    xpBadgeStyle = "CREST",
+    xpBadgeStyle = "MATCH", -- MATCH: the badge belonging to the bar's style
     xpBadgeFont = "Friz Quadrata",
     xpBadgeFontSize = 20,
     xpBadgeFontFlag = "OUTLINE",
     xpBadgeColor = "GOLD",
+    -- The level as text, in every style: font, size, colour ("", 0 and off:
+    -- the style's), place (AUTO: the style's, else as the numbers) plus X/Y.
     xpLevelFont = "",
     xpLevelFontSize = 0,
-    -- Forever style: the level's colour and the plate behind it.
-    xpHeaderColor = { 1, 0.82, 0.29 },
-    xpHeaderPlate = true,
+    xpLevelColorOwn = false,
+    xpLevelColor = { 1, 0.82, 0.29 },
+    xpLevelPlace = "AUTO",
+    xpLevelX = 0,
+    xpLevelY = 0,
+    xpHeaderPlate = true,   -- Forever style: the plate behind the level
+    -- The numbers: font, size, colour ("", 0 and off: the style's).
+    xpValueFont = "",
     xpValueFontSize = 0,
+    xpValueColorOwn = false,
+    xpValueColor = { 1, 1, 1 },
     -- Where the numbers sit: ABOVE, IN or BELOW the bar, _LEFT, _CENTER or
     -- _RIGHT, plus X/Y.
     xpValuePlace = "ABOVE_RIGHT",
@@ -163,6 +173,9 @@ Settings.RANGES = {
     xpGap = { -20, 80 },
     xpValueX = { -500, 500 },
     xpValueY = { -100, 100 },
+    xpLevelX = { -500, 500 },
+    xpLevelY = { -100, 100 },
+    xpHeight = { 0, 400 },
     xpInfoLevelTimeX = { -500, 500 }, xpInfoLevelTimeY = { -100, 100 },
     xpInfoSessionTimeX = { -500, 500 }, xpInfoSessionTimeY = { -100, 100 },
     xpInfoPerHourX = { -500, 500 }, xpInfoPerHourY = { -100, 100 },

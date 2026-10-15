@@ -164,12 +164,13 @@ local function badgeLookRows(keys)
             type = "select", label = "OPT_LEVEL_STYLE",
             choices = function()
                 local list = {}
-                for _, style in ipairs(ns.Bars.AvailableLevelStyles()) do
+                for _, style in ipairs(ns.Bars.AvailableLevelStyles(keys)) do
                     list[#list + 1] = { label = L["LEVEL_STYLE_" .. style], value = style }
                 end
                 return list
             end,
-            get = function() return ns.Bars.LevelStyle(keys) end,
+            -- "Matching the bar" stays shown as such, not as what it resolves to.
+            get = function() return S(keys.style) == "MATCH" and "MATCH" or ns.Bars.LevelStyle(keys) end,
             set = function(v) Settings.Set(keys.style, v) end,
         },
         {
@@ -240,37 +241,55 @@ local function levelRows()
     return rows
 end
 
--- The colour pickers mean nothing over Blizzard's art: dimmed there.
-local function ownStyleOnly(row)
-    row.enabled = function() return S("xpStyle") ~= "BLIZZARD" end
-    return row
-end
-
 -- Rows that mean something only in some looks are dimmed in the others:
--- Forever always shows the level as its header; the badge rows only count
--- for the badge, the level's font only for the level as text.
+-- the colour pickers only for the styles that take our colours; the level
+-- choice where a style always shows the level as text; the badge rows only
+-- for the badge, the level's text rows only for the level as text; a text's
+-- colour only while its own colour is on.
 local function enabledIf(test)
     return function(row)
         row.enabled = test
         return row
     end
 end
-local notForever = enabledIf(function() return S("xpStyle") ~= "FOREVER" end)
+local ownColoursOnly = enabledIf(function() return ns.XpBar.Def().ownColours == true end)
+local levelChoice = enabledIf(function() return not ns.XpBar.Def().levelText end)
 local foreverOnly = enabledIf(function() return S("xpStyle") == "FOREVER" end)
 local badgeOnly = enabledIf(function() return ns.XpBar.LevelMode() == "BADGE" end)
 local levelTextOnly = enabledIf(function() return ns.XpBar.LevelMode() ~= "BADGE" end)
+local levelColourOnly = enabledIf(function()
+    return ns.XpBar.LevelMode() ~= "BADGE" and S("xpLevelColorOwn") == true
+end)
+local valueColourOnly = enabledIf(function() return S("xpValueColorOwn") == true end)
 
--- The level's look; dimmed under Forever, it shows what Forever uses.
+-- The level's look; where a style always shows text, it shows what that is.
 local function levelModeRow()
     local row = choice("xpLevelMode", "OPT_XP_LEVEL_MODE", { "TEXT", "BADGE" }, "XP_LEVEL_")
     row.get = function() return ns.XpBar.LevelMode() end
     return row
 end
 
--- XP bar: the bar and its place; the title line (the level as text or as
--- a badge, the numbers); the badge, used only with "as badge".
+-- A font choice: "" is the style's (or the bars') font.
+local function fontRow(key, label)
+    return {
+        type = "select", label = label,
+        choices = function()
+            local list = { { label = L.XP_FONT_SAME, value = "" } }
+            for _, name in ipairs(ns.Media.FontNames()) do list[#list + 1] = { label = name, value = name } end
+            return list
+        end,
+        get = function() return S(key) end,
+        set = function(v) Settings.Set(key, v) end,
+    }
+end
+
+-- XP bar: the bar and its look; the title line (the level as text or as a
+-- badge, the numbers), every text with font, size, colour and place in
+-- every style; the badge, used only with "as badge".
 local function xpRows()
     local X = ns.XpBar
+    local levelPlaces = { "AUTO" }
+    for _, p in ipairs(X.VALUE_PLACES) do levelPlaces[#levelPlaces + 1] = p end
     local rows = {
         { type = "header", label = "OPT_XP" },
         { type = "text", label = "OPT_XP_HINT", height = 40 },
@@ -279,31 +298,30 @@ local function xpRows()
         num("xpFreeX", "OPT_XP_FREE_X"),
         num("xpFreeY", "OPT_XP_FREE_Y"),
         num("xpWidth", "OPT_XP_WIDTH"),
+        num("xpHeight", "OPT_XP_HEIGHT"),
         choice("xpStyle", "OPT_XP_STYLE", X.STYLES, "XP_STYLE_"),
-        ownStyleOnly(colorRow("xpColor", "OPT_XP_COLOR", true)),
-        ownStyleOnly(colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
+        ownColoursOnly(colorRow("xpColor", "OPT_XP_COLOR", true)),
+        ownColoursOnly(colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
 
         { type = "header", label = "OPT_XP_TITLE_HEADER" },
         check("xpTitle", "OPT_XP_TITLE"),
-        notForever(levelModeRow()),
-        levelTextOnly({
-            type = "select", label = "OPT_XP_LEVEL_FONT",
-            choices = function()
-                local list = { { label = L.XP_FONT_SAME, value = "" } }
-                for _, name in ipairs(ns.Media.FontNames()) do list[#list + 1] = { label = name, value = name } end
-                return list
-            end,
-            get = function() return S("xpLevelFont") end,
-            set = function(v) Settings.Set("xpLevelFont", v) end,
-        }),
+        levelChoice(levelModeRow()),
+        levelTextOnly(choice("xpLevelPlace", "OPT_XP_LEVEL_PLACE", levelPlaces, "XP_VALUE_")),
+        levelTextOnly(num("xpLevelX", "OPT_XP_LEVEL_X")),
+        levelTextOnly(num("xpLevelY", "OPT_XP_LEVEL_Y")),
+        levelTextOnly(fontRow("xpLevelFont", "OPT_XP_LEVEL_FONT")),
         levelTextOnly(num("xpLevelFontSize", "OPT_XP_LEVEL_SIZE")),
-        foreverOnly(colorRow("xpHeaderColor", "OPT_XP_HEADER_COLOR", true)),
+        levelTextOnly(check("xpLevelColorOwn", "OPT_XP_LEVEL_COLOR_OWN")),
+        levelColourOnly(colorRow("xpLevelColor", "OPT_XP_LEVEL_COLOR", true)),
         foreverOnly(check("xpHeaderPlate", "OPT_XP_HEADER_PLATE")),
         choice("xpTextMode", "OPT_XP_TEXT_MODE", X.TEXT_MODES, "XP_MODE_"),
-        num("xpValueFontSize", "OPT_XP_VALUE_SIZE"),
         choice("xpValuePlace", "OPT_XP_VALUE_PLACE", X.VALUE_PLACES, "XP_VALUE_"),
         num("xpValueX", "OPT_XP_VALUE_X"),
         num("xpValueY", "OPT_XP_VALUE_Y"),
+        fontRow("xpValueFont", "OPT_XP_VALUE_FONT"),
+        num("xpValueFontSize", "OPT_XP_VALUE_SIZE"),
+        check("xpValueColorOwn", "OPT_XP_VALUE_COLOR_OWN"),
+        valueColourOnly(colorRow("xpValueColor", "OPT_XP_VALUE_COLOR", true)),
 
         { type = "header", label = "OPT_XP_BADGE" },
         { type = "text", label = "OPT_XP_BADGE_HINT" },

@@ -30,12 +30,8 @@ local Xp = {}
 ns.XpBar = Xp
 
 Xp.TEXT_MODES = { "CURRENT_MAX", "CURRENT_MAX_PERCENT", "PERCENT", "NONE" }
--- OWN: our texture in the chosen colours. FOREVER: the same, in the look of
--- the other Forever addons (dark background, gold rim, as the quest log).
--- BLIZZARD: Blizzard's own XP bar art (Blizzard_StatusTrackingBar,
--- Mainline): background, fill, the rested bonus as a prediction, the frame,
--- 20 dividers (Bars.lua).
-Xp.STYLES = { "OWN", "FOREVER", "BLIZZARD" }
+-- The looks (Styles.lua).
+Xp.STYLES = ns.Styles.LIST
 Xp.ROWS = { "TOP", "MIDDLE", "BOTTOM", "FREE" }
 Xp.VALUE_PLACES = { "ABOVE_LEFT", "ABOVE_CENTER", "ABOVE_RIGHT", "IN_LEFT", "IN_CENTER", "IN_RIGHT",
     "BELOW_LEFT", "BELOW_CENTER", "BELOW_RIGHT" }
@@ -112,31 +108,43 @@ end
 
 local function slot() return ns.Bars.XpSlot and ns.Bars.XpSlot() end
 
-local OWN_TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar"   -- Bars.lua CFG.BAR_TEXTURE
-local ATLAS = {
-    background = "UI-HUD-ExperienceBar-Background",
-    fill = "UI-HUD-ExperienceBar-Fill-Experience",
-    prediction = "UI-HUD-ExperienceBar-Fill-Prediction",
-    frame = "UI-HUD-ExperienceBar-Frame",
-}
--- Blizzard's bar inside that frame (Camelot StatusTrackingBarConstants:
--- container 1192 x 17, bar 3 smaller); the frame art reaches past it by
--- the rest of its atlas size.
-local BLIZZARD_BAR_W, BLIZZARD_BAR_H = 1189, 14
+-- The chosen style (Styles.lua).
+function Xp.Def() return ns.Styles.Get(S("xpStyle")) end
 
--- The Forever look's background: the quest log's (its FOREVER preset).
-local FOREVER_BG = { 0.047, 0.047, 0.055, 0.82 }
+-- The bar's height: its own, or (0) the style's from the bars' height.
+function Xp.Height()
+    local own = S("xpHeight")
+    if own and own > 0 then return own end
+    return Xp.Def().height(S("barHeight"))
+end
 
-local function blizzard() return S("xpStyle") == "BLIZZARD" end
+-- Its width: its own, or (0) the strip's; a round style as wide as high.
+function Xp.Width(stripWidth)
+    local own = S("xpWidth")
+    if own and own > 0 then return own end
+    if Xp.Def().square then return Xp.Height() end
+    return stripWidth
+end
 
--- Forever shows the level as a header above the bar (the quest log's title:
--- Friz Quadrata, gold, shadow), never as the badge.
-local HEADER_FONT, HEADER_SIZE = "Friz Quadrata", 18
-function Xp.LevelMode() return S("xpStyle") == "FOREVER" and "TEXT" or S("xpLevelMode") end
+function Xp.Dividers() return Xp.Def().dividers or "OWN" end
 
--- The plate the header sits on, centred on the bar's top edge: the quest
--- log's title bar (Tracker.lua): dark, rounded top corners, a gold shine
--- rising to the top, a faint gold line along the bottom.
+-- Some styles always show the level as text (Forever's header, the ring's
+-- middle), never as the badge.
+function Xp.LevelMode() return Xp.Def().levelText and "TEXT" or S("xpLevelMode") end
+
+-- The badge style "matching the bar" (Bars.lua, MATCH).
+function Xp.MatchBadge() return Xp.Def().badge or "CREST" end
+
+-- Where the level sits: its own place, or (AUTO) the style's.
+function Xp.LevelPlace()
+    local own = S("xpLevelPlace")
+    if own and own ~= "AUTO" then return own end
+    return Xp.Def().level.place or "ABOVE_LEFT"
+end
+
+-- Forever's plate under the level: the quest log's title bar (Tracker.lua):
+-- dark, rounded top corners, a gold shine rising to the top, a faint gold
+-- line along the bottom.
 local PLATE_H, PLATE_PAD, PLATE_RADIUS = 32, 14, 10
 local PLATE_MASK = "Interface\\AddOns\\ForeverProgressBars\\Media\\Rounded10.tga"
 
@@ -144,9 +152,10 @@ local function plate(bar)
     if bar.plate then return bar.plate end
     local p = CreateFrame("Frame", nil, bar)
     p:SetHeight(PLATE_H)
-    p:SetPoint("BOTTOM", bar, "TOP", 0, 0)
+    p:SetFrameLevel((bar.sb:GetFrameLevel() or 1) + 3)
     p.bg = p:CreateTexture(nil, "BACKGROUND")
     p.bg:SetAllPoints(p)
+    p.bg:SetColorTexture(0, 0, 0, 1)   -- opaque: what lies behind would show through the title
     p.shine = p:CreateTexture(nil, "BACKGROUND", nil, 1)
     p.shine:SetAllPoints(p)
     p.shine:SetColorTexture(1, 1, 1, 1)
@@ -171,96 +180,8 @@ local function plate(bar)
     return p
 end
 
--- Forever: a gold marker (tools/badges/marker.svg) where the XP end and the
--- rested part begins, in place of the badge that marks it in the other
--- styles. Blizzard's own tick (Frame-Pip) is 10 x 14 only and blurs when
--- grown. The bar fills 100 of the marker's 160 height; it is half as wide.
-local MARKER = "Interface\\AddOns\\ForeverProgressBars\\Media\\BadgeMarker.tga"
-local MARKER_REACH = 160 / 100
-function Xp.LayoutMarker()
-    local bar = slot()
-    if not bar then return end
-    local cur = UnitXP("player") or 0
-    local on = S("xpStyle") == "FOREVER" and cur > 0 and cur < (UnitXPMax("player") or 0)
-    if not on then
-        if bar.marker then bar.marker:Hide() end
-        return
-    end
-    if not bar.marker then
-        -- On a layer above the bar, so it may stand out over the rim.
-        local holder = CreateFrame("Frame", nil, bar)
-        holder:SetAllPoints(bar)
-        holder:SetFrameLevel((bar.sb:GetFrameLevel() or 1) + 2)
-        bar.marker = holder:CreateTexture(nil, "OVERLAY")
-        bar.marker:SetTexture(MARKER)
-    end
-    local h = math.floor((bar:GetHeight() or 20) * MARKER_REACH + 0.5)
-    bar.marker:SetSize(h / 2, h)
-    bar.marker:ClearAllPoints()
-    bar.marker:SetPoint("CENTER", bar.sb:GetStatusBarTexture(), "RIGHT", 0, 0)
-    bar.marker:Show()
-end
-
--- Forever: the level text moves onto the plate, as wide as the text; other
--- styles: the plate hides and the text goes back to the bar.
-function Xp.LayoutHeader()
-    local bar = slot()
-    if not bar then return end
-    local name, on = bar.nameText, S("xpStyle") == "FOREVER" and S("xpTitle")
-    if not on then
-        if bar.plate then bar.plate:Hide() end
-        if name:GetParent() ~= bar then
-            name:SetParent(bar)
-            name:SetJustifyH("LEFT")
-        end
-        return
-    end
-    local p = plate(bar)
-    for _, t in ipairs({ p.bg, p.shine, p.line }) do t:SetShown(S("xpHeaderPlate")) end
-    p.bg:SetColorTexture(0, 0, 0, 1)   -- opaque: what lies behind would show through the title
-    name:SetParent(p)
-    name:SetJustifyH("CENTER")
-    p:SetWidth(math.floor(name:GetStringWidth() + 2 * PLATE_PAD + 0.5))
-    -- Pinned on both sides: Bars.lua gives the label a width of its own.
-    name:ClearAllPoints()
-    name:SetPoint("LEFT", p, "LEFT", PLATE_PAD, 0)
-    name:SetPoint("RIGHT", p, "RIGHT", -PLATE_PAD, 0)
-    p:Show()
-end
-
--- The frame around the bar: one texture over the fill, below the numbers,
--- the ends kept by slice margins while the middle stretches to any width.
-local function frameArt(bar)
-    if bar.frameArt then return bar.frameArt end
-    local holder = CreateFrame("Frame", nil, bar)
-    holder:SetAllPoints(bar.sb)
-    holder:SetFrameLevel((bar.sb:GetFrameLevel() or 1) + 2)
-    local tex = holder:CreateTexture(nil, "OVERLAY")
-    local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(ATLAS.frame)
-    if not info or not tex.SetAtlas then return nil end
-    tex:SetAtlas(ATLAS.frame, false)
-    local ox = math.max(0, ((info.width or 0) - BLIZZARD_BAR_W) / 2)
-    local oy = math.max(0, ((info.height or 0) - BLIZZARD_BAR_H) / 2)
-    tex:SetPoint("TOPLEFT", holder, "TOPLEFT", -ox, oy)
-    tex:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", ox, -oy)
-    if tex.SetTextureSliceMargins then
-        local cap = info.height or 0
-        pcall(tex.SetTextureSliceMargins, tex, cap, 0, cap, 0)
-        local mode = Enum and Enum.UITextureSliceMode
-        if mode and tex.SetTextureSliceMode then pcall(tex.SetTextureSliceMode, tex, mode.Stretched) end
-    end
-    bar.frameArt = holder
-    return holder
-end
-
--- The fill stays purple while rested (unlike Blizzard's), so only the rested
--- part is blue. Set only once: the badge riding on the fill hangs from its texture.
-local function foreverFill(bar)
-    if bar.fillAtlas ~= ATLAS.fill then
-        bar.fillAtlas = ATLAS.fill
-        bar.sb:SetStatusBarTexture(ATLAS.fill)
-    end
-    bar.sb:SetStatusBarColor(1, 1, 1)
+local function plateShown()
+    return S("xpStyle") == "FOREVER" and S("xpTitle") and S("xpHeaderPlate")
 end
 
 -- Look of the bar for the chosen style; Bars.lua calls it after it painted
@@ -268,42 +189,10 @@ end
 function Xp.ApplyStyle()
     local bar = slot()
     if not bar then return end
-    local on = blizzard()
-    for _, b in ipairs(bar.borders or {}) do b:SetShown(not on) end
-    local art = on and frameArt(bar) or bar.frameArt
-    if art then art:SetShown(on) end
-    -- Forever: a gold rim two screen pixels wide, as the minimap's; else one unit.
-    local B, gold = ns.Bars, S("xpStyle") == "FOREVER"
-    local rim = gold and 2 * B.OnePixel(bar) or 1
-    B.PlaceRing(bar.borders, bar, rim, 0)
-    bar.sb:ClearAllPoints()
-    bar.sb:SetPoint("TOPLEFT", bar, "TOPLEFT", rim, -rim)
-    bar.sb:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -rim, rim)
-    if on then
-        bar.bg:SetAtlas(ATLAS.background)
-        bar.bg:SetVertexColor(1, 1, 1, 1)
-        foreverFill(bar)
-        bar.rested:SetStatusBarTexture(ATLAS.prediction)
-        bar.rested:SetStatusBarColor(1, 1, 1, 1)
-    else
-        bar.bg:SetVertexColor(1, 1, 1, 1)
-        if gold then
-            bar.bg:SetColorTexture(unpack(FOREVER_BG))
-            B.PaintGold(bar.borders)
-        else
-            local c = S("barBgColor")
-            bar.bg:SetColorTexture(c[1], c[2], c[3], S("barBgAlpha") / 100)
-            B.PaintRing(bar.borders, B.BORDER_COLOR)
-        end
-        bar.fillAtlas = nil
-        bar.sb:SetStatusBarTexture(OWN_TEXTURE)
-        bar.sb:SetStatusBarColor(unpack(S("xpColor")))
-        local r = S("xpRestedColor")
-        bar.rested:SetStatusBarTexture(OWN_TEXTURE)
-        bar.rested:SetStatusBarColor(r[1], r[2], r[3], 0.6)
-    end
-    Xp.LayoutHeader()
-    Xp.LayoutMarker()
+    local def = Xp.Def()
+    local colours = def.ownColours and { fill = S("xpColor"), rested = S("xpRestedColor") } or nil
+    ns.Styles.Apply(bar, S("xpStyle"), Xp.Height(), colours)
+    Xp.PlaceLevel()
 end
 
 -- The title line's fonts. The bars' label size where ours is 0; the level
@@ -315,41 +204,58 @@ local function labelSize(fs)
     return size or 12
 end
 
+-- The level's size: its own, the style's, or the bars' label size.
+local function levelSize(bar)
+    if S("xpLevelFontSize") > 0 then return S("xpLevelFontSize") end
+    local style = Xp.Def().level.size
+    if style then return style(S("barHeight"), Xp.Height()) end
+    local own = S("labelFontSize")
+    if own and own > 0 then return own end
+    return (bar.nameBase and bar.nameBase[2]) or 12
+end
+
 function Xp.TitleSize()
     local bar = slot()
     if not bar then return 0 end
     local val = S("xpValueFontSize") > 0 and S("xpValueFontSize") or labelSize(bar.valueText)
-    -- Numbers in or below the bar take no room in the title line.
+    -- Only texts above the bar take room in the title line.
     if S("xpValuePlace"):sub(1, 5) ~= "ABOVE" then val = 0 end
-    -- As a badge the level is no text in the line: only the numbers count.
-    if Xp.LevelMode() == "BADGE" then return val end
-    if S("xpStyle") == "FOREVER" then return math.max(PLATE_H, val) end
-    local lvl = S("xpLevelFontSize") > 0 and S("xpLevelFontSize") or labelSize(bar.nameText)
+    if Xp.LevelMode() == "BADGE" or Xp.LevelPlace():sub(1, 5) ~= "ABOVE" then return val end
+    local lvl = plateShown() and PLATE_H or levelSize(bar)
     return math.max(lvl, val)
+end
+
+-- A text's colour: its own when switched on, else the style's, else the bars'.
+local function textColour(ownKey, colourKey, style, fallback)
+    if S(ownKey) then return S(colourKey) end
+    return style or fallback
 end
 
 function Xp.StyleTitle()
     local bar = slot()
     if not bar then return end
-    local name, value = bar.nameText, bar.valueText
-    local header = S("xpStyle") == "FOREVER"
-    -- The font before any of ours, so leaving the header style restores it.
+    local name, value, def = bar.nameText, bar.valueText, Xp.Def()
+    -- The fonts before any of ours, so leaving a style restores them.
     bar.nameBase = bar.nameBase or { name:GetFont() }
-    local path, base, flags = unpack(bar.nameBase)
+    bar.valueBase = bar.valueBase or { value:GetFont() }
+    local path, _, flags = unpack(bar.nameBase)
     if S("xpLevelFont") ~= "" then path = ns.Media.FontPath(S("xpLevelFont"))
-    elseif header then path = ns.Media.FontPath(HEADER_FONT) end
-    local own = S("labelFontSize")
-    local size = S("xpLevelFontSize") > 0 and S("xpLevelFontSize") or header and HEADER_SIZE
-        or own and own > 0 and own or base or 12
+    elseif def.level.font then path = ns.Media.FontPath(def.level.font) end
+    local size = levelSize(bar)
     if path then pcall(name.SetFont, name, path, size, flags) end
-    local c = header and S("xpHeaderColor") or ns.Bars.NAME_COLOR
+    local c = textColour("xpLevelColorOwn", "xpLevelColor", def.level.color, ns.Bars.NAME_COLOR)
     name:SetTextColor(c[1], c[2], c[3])
     name:SetHeight(size)
-    local vpath, _, vflags = value:GetFont()
+    local vpath, _, vflags = unpack(bar.valueBase)
+    if S("xpValueFont") ~= "" then vpath = ns.Media.FontPath(S("xpValueFont"))
+    elseif def.value.font then vpath = ns.Media.FontPath(def.value.font) end
     local vsize = S("xpValueFontSize") > 0 and S("xpValueFontSize") or labelSize(value)
     if vpath then pcall(value.SetFont, value, vpath, vsize, vflags) end
+    local vc = textColour("xpValueColorOwn", "xpValueColor", def.value.color, ns.Bars.VALUE_COLOR)
+    value:SetTextColor(vc[1], vc[2], vc[3])
     value:SetHeight(vsize)
     Xp.PlaceValue()
+    Xp.PlaceLevel()
 end
 
 -- The numbers' place. In the bar they need a layer above the fill, so the
@@ -385,7 +291,9 @@ function Xp.PlaceText(value, place, x, y)
     else
         value:SetPoint("BOTTOM" .. s[1], bar, "TOP" .. s[1], x, gap + y)
     end
-    value:SetJustifyH(side == "LEFT" and "LEFT" or side == "CENTER" and "CENTER" or "RIGHT")
+    if value.SetJustifyH then
+        value:SetJustifyH(side == "LEFT" and "LEFT" or side == "CENTER" and "CENTER" or "RIGHT")
+    end
 end
 
 function Xp.PlaceValue()
@@ -394,6 +302,32 @@ function Xp.PlaceValue()
     Xp.TextLayer()
     Xp.PlaceText(bar.valueText, S("xpValuePlace"), S("xpValueX"), S("xpValueY"))
     if ns.XpInfo then ns.XpInfo.Apply() end
+end
+
+-- The level at its place, above the fill. In Forever it sits on its plate,
+-- the plate where the level would be (above the bar: right on its edge).
+function Xp.PlaceLevel()
+    local bar = slot()
+    if not bar then return end
+    local name, layer = bar.nameText, Xp.TextLayer()
+    local place, x, y = Xp.LevelPlace(), S("xpLevelX"), S("xpLevelY")
+    if not plateShown() then
+        if bar.plate then bar.plate:Hide() end
+        if name:GetParent() ~= layer then name:SetParent(layer) end
+        name:SetWidth(0)
+        Xp.PlaceText(name, place, x, y)
+        return
+    end
+    local p = plate(bar)
+    if place:sub(1, 5) == "ABOVE" then y = y - S("textGap") end
+    Xp.PlaceText(p, place, x, y)
+    p:SetWidth(math.floor(name:GetStringWidth() + 2 * PLATE_PAD + 0.5))
+    name:SetParent(p)
+    name:SetJustifyH("CENTER")
+    name:ClearAllPoints()
+    name:SetPoint("LEFT", p, "LEFT", PLATE_PAD, 0)
+    name:SetPoint("RIGHT", p, "RIGHT", -PLATE_PAD, 0)
+    p:Show()
 end
 
 -- Values and visibility. A change in visibility lays the strip out again
@@ -413,11 +347,12 @@ function Xp.Update()
         local title = S("xpTitle")
         -- The level as text, or none when the badge sits on the bar.
         local asText = title and Xp.LevelMode() ~= "BADGE"
-        bar.nameText:SetText(asText and L.XP_LEVEL:format(UnitLevel("player") or 0) or "")
+        local format = Xp.Def().level.format or L.XP_LEVEL
+        bar.nameText:SetText(asText and format:format(UnitLevel("player") or 0) or "")
         bar.valueText:SetText(title and Xp.Text(S("xpTextMode"), cur, max) or "")
+        ns.Styles.Update(bar, cur, max, rested)
     end
-    Xp.LayoutHeader()
-    Xp.LayoutMarker()
+    Xp.PlaceLevel()
     if (bar:IsShown() and true or false) ~= shown then
         bar:SetShown(shown)
         if ns.Bars.Relayout then ns.Bars.Relayout() end

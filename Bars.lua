@@ -821,7 +821,7 @@ local function ApplyBarGeometry(bar)
         geometryPending = true
         return
     end
-    bar:SetHeight(S("barHeight"))
+    bar:SetHeight(bar == xpSlot and ns.XpBar.Height() or S("barHeight"))
     for _, b in ipairs({ bar.click, bar.open }) do
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, textHeight + S("textGap"))
@@ -932,13 +932,19 @@ Bars.ART_STYLES = {
     -- (not the whole texture) is centred on the chosen point.
     RANK        = { tiers = {}, inner = 0.48, lift = 56 / 512, aspect = 432 / 512,
                     crop = { 40 / 512, 472 / 512 }, margin = 2, hangs = true },
+    -- The bar styles' own (Styles.lua): Runenstein, Edelsteine, Schmiedeglut.
+    -- The shield spans x 40 to 216 of 256; its middle sits high.
+    RUNESTONE   = { file = MEDIA .. "BadgeRunestone.tga", inner = 0.52 },
+    GEM         = { file = MEDIA .. "BadgeGem.tga", inner = 0.55 },
+    SHIELD      = { file = MEDIA .. "BadgeShield.tga", inner = 0.5, lift = 0.07, aspect = 176 / 256,
+                    crop = { 40 / 256, 216 / 256 } },
     RING_GOLD   = { atlas = "communities-ring-gold", round = true, scale = 1.0, disc = true },
     RING_ORNATE = { atlas = "Artifacts-PerkRing-Final", round = true, scale = 1.2, disc = true },
 }
 for i = 1, 7 do Bars.ART_STYLES.RANK.tiers[i] = MEDIA .. "BadgeRank" .. i .. ".tga" end
 Bars.LEVEL_STYLES = {
     "NONE", "CLASSIC", "GOLD", "CLASS",
-    "CREST", "LAUREL", "WINGS", "RANK", "RING_GOLD", "RING_ORNATE",
+    "CREST", "LAUREL", "WINGS", "RANK", "RUNESTONE", "GEM", "SHIELD", "RING_GOLD", "RING_ORNATE",
 }
 
 -- The rank medal's step for a level: 1-9, 10-19, ... 50-59, 60 and up.
@@ -960,9 +966,11 @@ local function AtlasExists(atlas)
     return ok and info ~= nil
 end
 
--- The styles this client can draw, in menu order.
-function Bars.AvailableLevelStyles()
+-- The styles this client can draw, in menu order. The XP badge also
+-- offers MATCH: the one belonging to the bar's style (XpBar.MatchBadge).
+function Bars.AvailableLevelStyles(keys)
     local list = {}
+    if keys == XP_BADGE then list[1] = "MATCH" end
     for _, style in ipairs(Bars.LEVEL_STYLES) do
         local art = Bars.ART_STYLES[style]
         if not art or not art.atlas or AtlasExists(art.atlas) then list[#list + 1] = style end
@@ -974,6 +982,9 @@ end
 -- is no longer offered (an older version had more).
 local function LevelStyle(keys)
     local style = S((keys or ROW_BADGE).style)
+    if style == "MATCH" then
+        style = keys == XP_BADGE and ns.XpBar and ns.XpBar.MatchBadge and ns.XpBar.MatchBadge() or "CREST"
+    end
     local known = false
     for _, s in ipairs(Bars.LEVEL_STYLES) do
         if s == style then known = true break end
@@ -986,6 +997,7 @@ end
 Bars.LevelStyle = LevelStyle
 Bars.PaintGold, Bars.PaintRing, Bars.PlaceRing, Bars.OnePixel = PaintGold, PaintRing, PlaceRing, OnePixel
 Bars.BORDER_COLOR, Bars.NAME_COLOR, Bars.Gradient = CFG.BORDER_COLOR, CFG.NAME_COLOR, Gradient
+Bars.VALUE_COLOR = CFG.VALUE_COLOR
 
 local function ApplyBadgeLook(box, keys, level)
     if not box then return end
@@ -1140,17 +1152,19 @@ end
 -- Layout
 -- =============================================================================
 
--- The XP bar in the Forever style divides like Blizzard's: always 20
--- segments, its own divider art (StatusTrackingManagerOverrides.lua).
+-- The XP bar's style decides its dividers (Styles.lua): ours, none, or
+-- Blizzard's: always 20 segments, its own divider art
+-- (StatusTrackingManagerOverrides.lua).
 local FOREVER_SEGMENTS, FOREVER_DIVIDER = 20, "ui-hud-experiencebar-divider"
 
 local function LayoutDividers(bar, width)
     local usable = width - 2
-    if usable <= 0 then
+    local kind = bar == xpSlot and ns.XpBar and ns.XpBar.Dividers() or "OWN"
+    if usable <= 0 or kind == "NONE" then
         for _, d in ipairs(bar.dividers) do d:Hide() end
         return
     end
-    local forever = bar == xpSlot and S("xpStyle") == "BLIZZARD"
+    local forever = kind == "BLIZZARD"
     local segments = forever and FOREVER_SEGMENTS or math.max(1, math.floor(usable / S("segmentWidth") + 0.5))
     local step = usable / segments
     for i = 1, segments - 1 do
@@ -1244,6 +1258,8 @@ local function PutBar(bar, anchorPoint, x, y, barWidth, isRep)
     bar:SetPoint("BOTTOMLEFT", container, anchorPoint, x, y)
     bar:SetWidth(barWidth)
     LayoutDividers(bar, barWidth)
+    -- The XP bar's level places itself (XpBar.PlaceLevel).
+    if bar == xpSlot then return end
     -- A narrow bar clips the name, never the numbers.
     local valueWidth = bar.valueText:GetStringWidth() or 0
     bar.nameText:SetWidth(math.max(1, barWidth - valueWidth - 4 - (isRep and 0 or (bar.nameOffset or 0))))
@@ -1258,17 +1274,23 @@ local function XpFree() return XpShown() and S("xpRow") == "FREE" end
 local function XpInRow() return XpShown() and S("xpRow") ~= "FREE" end
 
 -- The XP bar's width: its own, or (0) the strip's.
+-- Its style may make it round (as wide as high), see XpBar.Width.
 local function XpWidth(stripWidth)
+    if ns.XpBar and ns.XpBar.Width then return ns.XpBar.Width(stripWidth) end
     local own = S("xpWidth")
     if own and own > 0 then return own end
     return stripWidth
 end
+-- The bar's own height (its style's, or its own setting).
+local function XpBarHeight()
+    return ns.XpBar and ns.XpBar.Height and ns.XpBar.Height() or S("barHeight")
+end
 local function XpHeight()
-    if not S("xpTitle") then return S("barHeight") end
+    if not S("xpTitle") then return XpBarHeight() end
     -- The title line is as tall as its largest font (a big level number).
     local line = S("textHeight")
     if ns.XpBar and ns.XpBar.TitleSize then line = math.max(line, ns.XpBar.TitleSize()) end
-    return line + S("textGap") + S("barHeight")
+    return line + S("textGap") + XpBarHeight()
 end
 Bars.XpHeight = XpHeight
 
@@ -1382,13 +1404,11 @@ local function PlaceFreeXp()
     local scale = (container.GetScale and container:GetScale()) or 1
     if scale <= 0 then scale = 1 end
     local width = XpWidth(container:GetWidth() or 0)
-    local title = XpHeight() - S("barHeight")
+    local title = XpHeight() - XpBarHeight()
     xpSlot:ClearAllPoints()
     xpSlot:SetPoint("TOP", UIParent, "TOP", S("xpFreeX") / scale, S("xpFreeY") / scale - title)
     xpSlot:SetWidth(width)
     LayoutDividers(xpSlot, width)
-    local valueWidth = xpSlot.valueText:GetStringWidth() or 0
-    xpSlot.nameText:SetWidth(math.max(1, width - valueWidth - 4))
 end
 
 -- The row's level badge placed freely, as the strip is placed: X from the
@@ -2116,6 +2136,11 @@ Settings.OnChange(function(key)
         -- is drawn here.
         if key == "xpHideInCombat" or key == "xpHideInGroup" then Bars.UpdateXpVisibility() end
         if key:sub(1, 7) == "xpBadge" then
+            ApplyLevelLook()
+            Layout()
+        elseif key == "xpStyle" or key == "xpHeight" then
+            -- Another height, and the badge "matching the bar" changes.
+            if xpSlot then ApplyBarGeometry(xpSlot) end
             ApplyLevelLook()
             Layout()
         end

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="64" viewBox="0 0 256 64">
+  <!-- Schmiedeglut: forged iron frame, a rivet at each end; sliced 24 px each side. -->
+  <defs>
+    <linearGradient id="iron" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#54585f"/><stop offset="0.45" stop-color="#2c2f34"/><stop offset="1" stop-color="#191b1f"/>
+    </linearGradient>
+    <radialGradient id="rivet" cx="38%" cy="35%" r="65%">
+      <stop offset="0" stop-color="#b3b8c0"/><stop offset="1" stop-color="#34373c"/>
+    </radialGradient>
+  </defs>
+  <rect x="1" y="1" width="254" height="62" rx="3" fill="url(#iron)" stroke="#0b0c0e" stroke-width="2"/>
+  <line x1="4" y1="2.5" x2="252" y2="2.5" stroke="#ffffff" stroke-opacity="0.16" stroke-width="1.5"/>
+  <circle cx="12" cy="32" r="5" fill="url(#rivet)" stroke="#0b0c0e" stroke-width="1"/>
+  <circle cx="244" cy="32" r="5" fill="url(#rivet)" stroke="#0b0c0e" stroke-width="1"/>
+</svg>

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Renders the level badges (tools/badges/*.svg) to Media/Badge<Name>.tga.
+# Renders the level badges (tools/badges/*.svg) to Media/Badge<Name>.tga and
+# the bar styles' art (tools/art/*.svg) to Media/<Name>.tga.
 # Needs rsvg-convert and Python with Pillow.
 set -eu
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
@@ -9,6 +10,14 @@ for svg in "$HERE"/tools/badges/*.svg; do
     name="$(basename "$svg" .svg)"
     rsvg-convert "$svg" -o "$TMP/$name.png"
     out="$HERE/Media/Badge${name^}.tga"
+    python3 -c 'import sys; from PIL import Image; Image.open(sys.argv[1]).convert("RGBA").save(sys.argv[2])' \
+        "$TMP/$name.png" "$out"
+    echo "$out"
+done
+for svg in "$HERE"/tools/art/*.svg; do
+    name="$(basename "$svg" .svg)"
+    rsvg-convert "$svg" -o "$TMP/$name.png"
+    out="$HERE/Media/$name.tga"
     python3 -c 'import sys; from PIL import Image; Image.open(sys.argv[1]).convert("RGBA").save(sys.argv[2])' \
         "$TMP/$name.png" "$out"
     echo "$out"
