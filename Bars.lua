@@ -15,9 +15,14 @@ local ADDON, ns = ...
 local L, Settings = ns.L, ns.Settings
 local S = Settings.Get
 
+-- The profession and reputation bars' style (Styles.lua) and the height it
+-- gives them.
+local function StripStyle() return ns.Styles.Get(S("barStyle")) end
+local function StripBarHeight() return StripStyle().height(S("barHeight")) end
+
 -- One row: the text line, the gap under it and the bar.
 local function RowHeight()
-    return S("textHeight") + S("textGap") + S("barHeight")
+    return S("textHeight") + S("textGap") + StripBarHeight()
 end
 
 -- Fixed values: not settings.
@@ -815,13 +820,18 @@ local function ApplyBarGeometry(bar)
     LabelFont(bar.nameText)
     LabelFont(bar.valueText)
     LabelFont(bar.standing)
-    -- The XP bar's style may put Blizzard's art over the empty part again.
-    if bar == xpSlot and ns.XpBar and ns.XpBar.ApplyStyle then ns.XpBar.ApplyStyle() end
+    -- The style may put its own art over the empty part again. The other
+    -- bars take it in their own colour (a profession's, a standing's).
+    if bar == xpSlot then
+        if ns.XpBar and ns.XpBar.ApplyStyle then ns.XpBar.ApplyStyle() end
+    else
+        ns.Styles.Apply(bar, S("barStyle"), StripBarHeight(), { tinted = true })
+    end
     if Locked() then
         geometryPending = true
         return
     end
-    bar:SetHeight(bar == xpSlot and ns.XpBar.Height() or S("barHeight"))
+    bar:SetHeight(bar == xpSlot and ns.XpBar.Height() or StripBarHeight())
     for _, b in ipairs({ bar.click, bar.open }) do
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, textHeight + S("textGap"))
@@ -966,11 +976,10 @@ local function AtlasExists(atlas)
     return ok and info ~= nil
 end
 
--- The styles this client can draw, in menu order. The XP badge also
--- offers MATCH: the one belonging to the bar's style (XpBar.MatchBadge).
-function Bars.AvailableLevelStyles(keys)
-    local list = {}
-    if keys == XP_BADGE then list[1] = "MATCH" end
+-- The styles this client can draw, in menu order, after MATCH: the one
+-- belonging to the bars' style (XpBar.MatchBadge, Styles.lua).
+function Bars.AvailableLevelStyles()
+    local list = { "MATCH" }
     for _, style in ipairs(Bars.LEVEL_STYLES) do
         local art = Bars.ART_STYLES[style]
         if not art or not art.atlas or AtlasExists(art.atlas) then list[#list + 1] = style end
@@ -983,7 +992,8 @@ end
 local function LevelStyle(keys)
     local style = S((keys or ROW_BADGE).style)
     if style == "MATCH" then
-        style = keys == XP_BADGE and ns.XpBar and ns.XpBar.MatchBadge and ns.XpBar.MatchBadge() or "CREST"
+        if keys == XP_BADGE then style = ns.XpBar and ns.XpBar.MatchBadge and ns.XpBar.MatchBadge() or "CREST"
+        else style = StripStyle().badge or "CREST" end
     end
     local known = false
     for _, s in ipairs(Bars.LEVEL_STYLES) do
@@ -1159,7 +1169,9 @@ local FOREVER_SEGMENTS, FOREVER_DIVIDER = 20, "ui-hud-experiencebar-divider"
 
 local function LayoutDividers(bar, width)
     local usable = width - 2
-    local kind = bar == xpSlot and ns.XpBar and ns.XpBar.Dividers() or "OWN"
+    local kind
+    if bar == xpSlot then kind = ns.XpBar and ns.XpBar.Dividers() or "OWN"
+    else kind = StripStyle().dividers or "OWN" end
     if usable <= 0 or kind == "NONE" then
         for _, d in ipairs(bar.dividers) do d:Hide() end
         return
@@ -1770,7 +1782,8 @@ local function FillSlot(index, line)
     bar.valueText:SetText(string.format("%d/%d", line.rank, line.maxRank))
     bar.sb:SetMinMaxValues(0, math.max(1, line.maxRank))
     bar.sb:SetValue(math.min(line.rank, line.maxRank))
-    bar.sb:SetStatusBarColor(ColorForKey(line.key))
+    ns.Styles.Colour(bar, ColorForKey(line.key))
+    ns.Styles.Update(bar, math.min(line.rank, line.maxRank), math.max(1, line.maxRank))
     SetBarShown(bar, true)
 end
 
@@ -1938,7 +1951,8 @@ local function FillRepSlot(index)
     bar.valueText:SetText(string.format("%d/%d", bar.data.rank, bar.data.maxRank))
     bar.sb:SetMinMaxValues(0, bar.data.maxRank)
     bar.sb:SetValue(math.min(bar.data.rank, bar.data.maxRank))
-    bar.sb:SetStatusBarColor(FactionColour(found.standing))
+    ns.Styles.Colour(bar, FactionColour(found.standing))
+    ns.Styles.Update(bar, math.min(bar.data.rank, bar.data.maxRank), bar.data.maxRank)
     bar.standing:SetText(bar.data.standingText)
     bar.standing:Show()
     SetBarShown(bar, true)

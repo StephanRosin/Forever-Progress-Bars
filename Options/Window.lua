@@ -116,6 +116,8 @@ local function barRows()
         num("textGap", "OPT_TEXT_GAP"),
         num("labelFontSize", "OPT_LABEL_FONT_SIZE"),
         { type = "header", label = "OPT_BAR_LOOK" },
+        choice("barStyle", "OPT_BAR_STYLE", ns.Styles.LIST, "BAR_STYLE_"),
+        { type = "text", label = "OPT_BAR_STYLE_HINT", height = 40 },
         colorRow("barBgColor", "OPT_BAR_BG_COLOR", true),
         { label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
           get = function() return S("barBgAlpha") end,

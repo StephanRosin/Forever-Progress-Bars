@@ -1,8 +1,10 @@
 --[[---------------------------------------------------------------------------
-Styles.lua -- the looks a bar can take. Today the XP bar uses them
-(XpBar.lua); they work on any bar Bars.lua builds (bg, borders, sb, an
-optional rested bar), so the profession and reputation bars could take
-them too.
+Styles.lua -- the looks a bar can take: the XP bar (XpBar.lua, its own
+setting) and the profession and reputation bars (Bars.lua, barStyle). They
+work on any bar Bars.lua builds (bg, borders, sb, an optional rested bar).
+The profession and reputation bars are tinted: their colour carries meaning
+(a profession's, a standing's), so a style with a material of its own draws
+it neutral and takes their colour (Styles.Colour).
 
 Each style says:
   height(base)   its default height from the bars' height (the XP bar's
@@ -15,6 +17,7 @@ Each style says:
   level, value   the texts' defaults: place, size(base, h), font, colour,
                  format (the level's text, else "Level %d")
   badge          the badge style "matching the bar" (Bars.lua, MATCH)
+  hiddenFill     the bar's fill stays unseen (the style draws its own)
   build(bar, x)  makes its own textures once: x.under on the bar (below the
                  fill), x.over on a frame above the fill
   apply(bar, x, h)                   the static look
@@ -34,6 +37,9 @@ ns.Styles = Styles
 local MEDIA = "Interface\\AddOns\\ForeverProgressBars\\Media\\"
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local OWN_TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar"   -- Bars.lua CFG.BAR_TEXTURE
+-- A neutral fill for a tinted bar (professions, reputation): their colour
+-- carries meaning, so a style with a material of its own takes their colour.
+local SHADE = MEDIA .. "FillShade.tga"
 
 Styles.LIST = { "OWN", "FOREVER", "BLIZZARD", "RUNE", "GEMS", "RING", "THIN", "EMBER" }
 
@@ -72,6 +78,18 @@ local function fill(sb, file)
         sb.fpbFill = file
         sb:SetStatusBarTexture(file)
     end
+end
+
+-- A tinted bar's own colour (Styles.Colour), else the style's.
+local function tint(bar, r, g, b)
+    local t = bar.styleTinted and bar.styleTint
+    if t then return t[1], t[2], t[3] end
+    return r, g, b
+end
+
+local function paintFill(bar, r, g, b, a)
+    local tr, tg, tb = tint(bar, r, g, b)
+    bar.sb:SetStatusBarColor(tr, tg, tb, a or 1)
 end
 
 local function ends(bar)
@@ -164,8 +182,8 @@ DEF.BLIZZARD = {
     apply = function(bar)
         for _, b in ipairs(bar.borders) do b:Hide() end
         bar.bg:SetAtlas(ATLAS.background)
-        fill(bar.sb, ATLAS.fill)
-        bar.sb:SetStatusBarColor(1, 1, 1, 1)
+        fill(bar.sb, bar.styleTinted and SHADE or ATLAS.fill)
+        paintFill(bar, 1, 1, 1)
         if bar.rested then
             bar.rested:SetStatusBarTexture(ATLAS.prediction)
             bar.rested:SetStatusBarColor(1, 1, 1, 1)
@@ -208,8 +226,8 @@ DEF.RUNE = {
     apply = function(bar, x, h)
         for _, b in ipairs(bar.borders) do b:Hide() end
         bar.bg:SetColorTexture(0, 0, 0, 0)
-        fill(bar.sb, MEDIA .. "FillRune.tga")
-        bar.sb:SetStatusBarColor(1, 1, 1, 1)
+        fill(bar.sb, bar.styleTinted and SHADE or MEDIA .. "FillRune.tga")
+        paintFill(bar, 1, 1, 1)
         if bar.rested then
             bar.rested:SetStatusBarTexture(WHITE)
             bar.rested:SetStatusBarColor(0.58, 0.40, 1, 0.30)
@@ -227,6 +245,7 @@ DEF.RUNE = {
         x.spark:SetPoint("BOTTOM", ends(bar), "BOTTOMRIGHT", 0, 0)
         x.spark:SetWidth(2)
         x.spark:SetShown(on)
+        x.glow:SetVertexColor(tint(bar, 0.63, 0.47, 1))
         x.glow:SetSize(groove * 2.4, groove * 2.4)
         x.glow:ClearAllPoints()
         x.glow:SetPoint("CENTER", ends(bar), "RIGHT", 0, 0)
@@ -256,7 +275,7 @@ DEF.RUNE = {
 local GEMS = 20
 DEF.GEMS = {
     height = function(base) return math.floor(base * 1.5 + 0.5) end,
-    dividers = "NONE", badge = "GEM",
+    dividers = "NONE", badge = "GEM", hiddenFill = true,
     level = { place = "ABOVE_LEFT", color = { 1, 0.95, 0.84 } },
     value = { color = { 0.85, 0.80, 0.90 } },
     build = function(bar, x)
@@ -276,12 +295,15 @@ DEF.GEMS = {
         bar.bg:SetColorTexture(0, 0, 0, 0)
         -- The bar stays (texts and the badge hang from it), unseen.
         fill(bar.sb, WHITE)
-        bar.sb:SetStatusBarColor(1, 1, 1, 0)
+        paintFill(bar, 1, 1, 1, 0)
         if bar.rested then bar.rested:SetStatusBarColor(1, 1, 1, 0) end
     end,
     update = function(bar, x, cur, max, rested)
         local w = width(bar)
         local h = (bar.GetHeight and bar:GetHeight()) or 0
+        -- A tinted bar's gems are colourless glass in its colour.
+        local file = bar.styleTinted and "GemShade.tga" or "GemFill.tga"
+        local r, g, b = tint(bar, 1, 1, 1)
         local size = math.min(h, w / GEMS * 1.1)
         local pct = max > 0 and cur / max * GEMS or 0
         local restTo = max > 0 and (cur + (rested or 0)) / max * GEMS or 0
@@ -294,6 +316,8 @@ DEF.GEMS = {
             base:ClearAllPoints()
             base:SetPoint("CENTER", bar.sb, "LEFT", cx, 0)
             gem:SetShown(f > 0)
+            gem:SetTexture(MEDIA .. file)
+            gem:SetVertexColor(r, g, b, 1)
             if f > 0 then
                 gem:SetTexCoord(0, f, 0, 1)
                 gem:SetSize(size * f, size)
@@ -311,7 +335,7 @@ DEF.GEMS = {
 local ARC_PIECES = 90
 DEF.RING = {
     height = function(base) return base * 5 end,
-    square = true,
+    square = true, hiddenFill = true,
     dividers = "NONE", levelText = true,
     -- Only the number in the middle: "Level 18" is too wide for it.
     level = { place = "IN_CENTER", format = "%d", size = function(_, h) return math.floor(h * 0.3 + 0.5) end,
@@ -332,12 +356,13 @@ DEF.RING = {
         for _, b in ipairs(bar.borders) do b:Hide() end
         bar.bg:SetColorTexture(0, 0, 0, 0)
         fill(bar.sb, WHITE)
-        bar.sb:SetStatusBarColor(1, 1, 1, 0)
+        paintFill(bar, 1, 1, 1, 0)
         if bar.rested then bar.rested:SetStatusBarColor(1, 1, 1, 0) end
     end,
     update = function(bar, x, cur, max, rested)
         local w = width(bar)
         local h = (bar.sb.GetHeight and bar.sb:GetHeight()) or 0
+        local tinted = bar.styleTinted and bar.styleTint
         local d = math.min(w, h)
         x.disc:SetSize(d * 0.66, d * 0.66)
         x.disc:ClearAllPoints()
@@ -357,7 +382,9 @@ DEF.RING = {
             t:ClearAllPoints()
             t:SetPoint("CENTER", bar.sb, "CENTER", r * math.sin(a), r * math.cos(a))
             if t.SetRotation then t:SetRotation(-a) end
-            if at <= pct then
+            if at <= pct and tinted then
+                t:SetVertexColor(tinted[1], tinted[2], tinted[3], 1)
+            elseif at <= pct then
                 -- Lighter at the start, deeper towards the end.
                 local k = at
                 t:SetVertexColor(0.78 - 0.30 * k, 0.48 - 0.26 * k, 1 - 0.18 * k, 1)
@@ -395,7 +422,7 @@ DEF.THIN = {
         for _, b in ipairs(bar.borders) do b:Hide() end
         bar.bg:SetColorTexture(1, 1, 1, 0.07)
         fill(bar.sb, WHITE)
-        bar.sb:SetStatusBarColor(0.71, 0.58, 0.88, 1)
+        paintFill(bar, 0.71, 0.58, 0.88)
         if bar.rested then bar.rested:SetStatusBarColor(1, 1, 1, 0) end
         x.tick:SetSize(1, h * 3)
     end,
@@ -449,8 +476,8 @@ DEF.EMBER = {
     apply = function(bar, x, h)
         for _, b in ipairs(bar.borders) do b:Hide() end
         bar.bg:SetColorTexture(0, 0, 0, 0)
-        fill(bar.sb, MEDIA .. "FillEmber.tga")
-        bar.sb:SetStatusBarColor(1, 1, 1, 1)
+        fill(bar.sb, bar.styleTinted and SHADE or MEDIA .. "FillEmber.tga")
+        paintFill(bar, 1, 1, 1)
         if bar.rested then
             bar.rested:SetStatusBarTexture(WHITE)
             bar.rested:SetStatusBarColor(0.50, 0.13, 0.05, 0.55)
@@ -472,6 +499,8 @@ DEF.EMBER = {
         local on = (cur or 0) > 0
         local channel = (bar.sb.GetHeight and bar.sb:GetHeight()) or 0
         local filled = max > 0 and w * cur / max or 0
+        x.tip:SetVertexColor(tint(bar, 1, 1, 1))
+        x.glow:SetVertexColor(tint(bar, 1, 0.55, 0.15))
         x.tip:SetSize(math.max(1, math.min(h * 2.2, filled)), channel)
         x.tip:ClearAllPoints()
         x.tip:SetPoint("RIGHT", ends(bar), "RIGHT", 0, 0)
@@ -518,9 +547,13 @@ end
 
 -- The look: first the plain bar (our texture, the black rim, the empty
 -- part in the bars' colours), then the style on top.
-function Styles.Apply(bar, id, h, colours)
+-- opts: fill, rested (our colours, for the styles that take them); tinted
+-- (a bar whose colour comes from Styles.Colour: professions, reputation).
+function Styles.Apply(bar, id, h, opts)
+    opts = opts or {}
     local def = Styles.Get(id)
     bar.styleId = id
+    bar.styleTinted = opts.tinted
     for other, x in pairs(bar.styleParts or {}) do
         if other ~= id then showParts(x, false) end
     end
@@ -537,8 +570,9 @@ function Styles.Apply(bar, id, h, colours)
     bar.sb:SetPoint("TOPLEFT", bar, "TOPLEFT", l, -t)
     bar.sb:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -r, b)
     fill(bar.sb, OWN_TEXTURE)
-    local fc, rc = colours and colours.fill, colours and colours.rested
-    bar.sb:SetStatusBarColor(1, 1, 1, 1)   -- an alpha left at 0 by a style without a fill would stay
+    local fc, rc = opts.fill, opts.rested
+    -- An alpha left at 0 by a style without a fill would stay.
+    paintFill(bar, 1, 1, 1)
     if fc then bar.sb:SetStatusBarColor(fc[1], fc[2], fc[3], 1) end
     if bar.rested then
         bar.rested:SetStatusBarTexture(OWN_TEXTURE)
@@ -549,6 +583,17 @@ function Styles.Apply(bar, id, h, colours)
         showParts(x, true)
         if def.apply then def.apply(bar, x, h) end
     end
+    -- A tinted bar keeps its colour through a change of look.
+    if bar.styleTinted and bar.styleTint then Styles.Colour(bar, unpack(bar.styleTint)) end
+    Styles.Refresh(bar)
+end
+
+-- A tinted bar's colour: the fill takes it (unseen where the style draws
+-- its own), the style's parts follow.
+function Styles.Colour(bar, r, g, b)
+    bar.styleTint = { r, g, b }
+    local def = bar.styleId and DEF[bar.styleId]
+    bar.sb:SetStatusBarColor(r, g, b, def and def.hiddenFill and 0 or 1)
     Styles.Refresh(bar)
 end
 

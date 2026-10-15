@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><!-- a colourless gem without its setting (GemEmpty draws that), tinted with a bar's own colour -->
+  <defs>
+    <radialGradient id="a" cx="40%" cy="30%" r="75%"><stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#e0e0e0"/><stop offset="0.68" stop-color="#9a9a9a"/><stop offset="1" stop-color="#5a5a5a"/></radialGradient>
+  </defs>
+  <polygon points="32,8 56,32 32,56 8,32" fill="url(#a)"/>
+  <path d="M32 9 L32 55 M9 32 L55 32" stroke="#ffffff" stroke-opacity="0.15" stroke-width="1"/>
+  <polygon points="32,12 42,22 32,26 22,22" fill="#ffffff" fill-opacity="0.35"/>
+</svg>

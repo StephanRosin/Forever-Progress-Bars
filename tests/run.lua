@@ -1311,7 +1311,7 @@ do
     check("ember: a chosen badge stays", Bars.LevelStyle(Bars.XP_BADGE), "LAUREL")
     Settings.Set("xpBadgeStyle", nil)
     check("badge menu offers matching", Bars.AvailableLevelStyles(Bars.XP_BADGE)[1], "MATCH")
-    check("row badge menu does not", Bars.AvailableLevelStyles(Bars.ROW_BADGE)[1] ~= "MATCH", true)
+    check("row badge menu offers it too", Bars.AvailableLevelStyles(Bars.ROW_BADGE)[1], "MATCH")
 
     Settings.Set("xpStyle", "OWN")
     check("own after all: parts of the others hidden", parts("EMBER").over:IsShown() or parts("RING").over:IsShown(), false)
@@ -1321,6 +1321,60 @@ do
     for _, k in ipairs({ "xpStyle", "xpLevelMode", "xpBadgeFollow" }) do Settings.Set(k, nil) end
     Settings.Set("xpEnabled", false)
     M.state.level = 43
+end
+
+section("Bar style (professions, reputation)")
+do
+    local bar
+    for i = 1, 10 do
+        local b = Bars.Slot(i)
+        if b and b:IsShown() and b.styleTint then bar = b break end
+    end
+    check("a shown profession bar", bar ~= nil, true)
+    if bar then
+        local c = bar.styleTint
+        check("own by default", S("barStyle"), "OWN")
+        check("own: our texture", bar.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
+        check("own: its own colour", bar.sb._color[1], c[1])
+        local base = S("barHeight")
+        Settings.Set("barStyle", "RUNE")
+        check("rune: taller", bar:GetHeight(), math.floor(base * 2.6 + 0.5))
+        check("rune: a neutral fill", bar.sb._barTex, "Interface\\AddOns\\ForeverProgressBars\\Media\\FillShade.tga")
+        check("rune: in the bar's colour", bar.sb._color[1], c[1])
+        check("rune: no dividers", (function() for _, d in ipairs(bar.dividers) do if d:IsShown() then return false end end return true end)(), true)
+        Settings.Set("barStyle", "GEMS")
+        local g = bar.styleParts.GEMS
+        check("gems: the fill unseen", bar.sb._color[4], 0)
+        check("gems: colourless glass", g.gem[1]._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\GemShade.tga")
+        check("gems: in the bar's colour", g.gem[1]._vertex[1], c[1])
+        Settings.Set("barStyle", "RING")
+        check("ring: arc in the bar's colour", bar.styleParts.RING.arc[1]._vertex[1], c[1])
+        Settings.Set("barStyle", "FOREVER")
+        check("forever: the fill seen again", bar.sb._color[4], 1)
+        check("forever: gold rim", bar.borders[1]._gradient ~= nil, true)
+        check("forever: still its colour", bar.sb._color[1], c[1])
+        check("row badge matches the bars", Bars.LevelStyle(Bars.ROW_BADGE) ~= nil, true)
+        Settings.Set("levelStyle", "MATCH")
+        Settings.Set("barStyle", "EMBER")
+        check("row badge matching: the shield", Bars.LevelStyle(Bars.ROW_BADGE), "SHIELD")
+        check("xp badge follows its own style", Bars.LevelStyle(Bars.XP_BADGE) ~= "SHIELD" or S("xpStyle") == "EMBER", true)
+        Settings.Set("levelStyle", nil)
+        Settings.Set("barStyle", nil)
+        check("own again: bars' height", bar:GetHeight(), base)
+        check("own again: our texture", bar.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
+    end
+    local rep
+    for i = 1, 10 do
+        local b = Bars.RepSlot(i)
+        if b and b:IsShown() and b.styleTint then rep = b break end
+    end
+    if rep then
+        local c = rep.styleTint
+        Settings.Set("barStyle", "THIN")
+        check("reputation: hairline in the standing's colour", rep.sb._color[1], c[1])
+        check("reputation: three pixels", rep:GetHeight(), 3)
+        Settings.Set("barStyle", nil)
+    end
 end
 
 section("Only SavedVariables, nothing private")

@@ -41,6 +41,7 @@ Settings.DEFAULTS = {
 
     -- Bars
     barHeight = 22,
+    barStyle = "OWN",       -- the profession and reputation bars' look, see Styles.LIST
     textHeight = 11,
     textGap = 4,            -- between the text line and its bar
     spacing = 15,
