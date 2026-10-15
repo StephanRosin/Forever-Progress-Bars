@@ -364,12 +364,14 @@ DEF.RING = {
         local h = (bar.sb.GetHeight and bar.sb:GetHeight()) or 0
         local tinted = bar.styleTinted and bar.styleTint
         local d = math.min(w, h)
+        -- Centred, or at the left end with the texts beside it.
+        local ox = bar.styleRingLeft and (d - w) / 2 or 0
         x.disc:SetSize(d * 0.66, d * 0.66)
         x.disc:ClearAllPoints()
-        x.disc:SetPoint("CENTER", bar.sb, "CENTER")
+        x.disc:SetPoint("CENTER", bar.sb, "CENTER", ox, 0)
         x.bezel:SetSize(d, d)
         x.bezel:ClearAllPoints()
-        x.bezel:SetPoint("CENTER", bar.sb, "CENTER")
+        x.bezel:SetPoint("CENTER", bar.sb, "CENTER", ox, 0)
         local r, thick = d * 0.36, d * 0.07
         local len = 2 * math.pi * r / ARC_PIECES * 1.3
         local pct = max > 0 and cur / max or 0
@@ -380,7 +382,7 @@ DEF.RING = {
             local t = x.arc[i]
             t:SetSize(len, thick)
             t:ClearAllPoints()
-            t:SetPoint("CENTER", bar.sb, "CENTER", r * math.sin(a), r * math.cos(a))
+            t:SetPoint("CENTER", bar.sb, "CENTER", ox + r * math.sin(a), r * math.cos(a))
             if t.SetRotation then t:SetRotation(-a) end
             if at <= pct and tinted then
                 t:SetVertexColor(tinted[1], tinted[2], tinted[3], 1)
@@ -398,7 +400,7 @@ DEF.RING = {
         local a = pct * 2 * math.pi
         x.diamond:SetSize(d * 0.1, d * 0.1)
         x.diamond:ClearAllPoints()
-        x.diamond:SetPoint("CENTER", bar.sb, "CENTER", r * math.sin(a), r * math.cos(a))
+        x.diamond:SetPoint("CENTER", bar.sb, "CENTER", ox + r * math.sin(a), r * math.cos(a))
         x.diamond:SetShown(midway(cur, max))
     end,
 }
@@ -548,12 +550,14 @@ end
 -- The look: first the plain bar (our texture, the black rim, the empty
 -- part in the bars' colours), then the style on top.
 -- opts: fill, rested (our colours, for the styles that take them); tinted
--- (a bar whose colour comes from Styles.Colour: professions, reputation).
+-- (a bar whose colour comes from Styles.Colour: professions, reputation);
+-- ringLeft (the ring at the bar's left end, its texts beside it).
 function Styles.Apply(bar, id, h, opts)
     opts = opts or {}
     local def = Styles.Get(id)
     bar.styleId = id
     bar.styleTinted = opts.tinted
+    bar.styleRingLeft = opts.ringLeft
     for other, x in pairs(bar.styleParts or {}) do
         if other ~= id then showParts(x, false) end
     end

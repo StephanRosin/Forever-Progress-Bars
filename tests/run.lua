@@ -656,8 +656,10 @@ do
     Settings.Set("xpRow", "TOP")
     check("top: above the professions", xp._points.BOTTOMLEFT[4], rowH + gap)
     Settings.Set("xpRow", "MIDDLE")
-    check("middle: right below the professions", xp._points.BOTTOMLEFT[4], -(gap + rowH))
-    check("middle: the reputation row moves down", Bars.RepSlot(1)._points.BOTTOMLEFT[4], repY - (rowH + gap))
+    -- The XP row is as tall as its own bar and title, not the bars' row.
+    local xpH = Bars.XpHeight()
+    check("middle: right below the professions", xp._points.BOTTOMLEFT[4], -(gap + xpH))
+    check("middle: the reputation row moves down", Bars.RepSlot(1)._points.BOTTOMLEFT[4], repY - (xpH + gap))
     -- Title fonts: a big level, the numbers as they were.
     local valueSize = select(2, xp.valueText:GetFont())
     local h0 = Bars.XpHeight()
@@ -685,12 +687,13 @@ do
     local yMid = xp._points.BOTTOMLEFT[4]
     Settings.Set("xpGap", 10)
     check("more space above it", xp._points.BOTTOMLEFT[4], yMid - 10)
-    check("and below it", Bars.RepSlot(1)._points.BOTTOMLEFT[4], repY - (rowH + gap) - 20)
+    check("and below it", Bars.RepSlot(1)._points.BOTTOMLEFT[4], repY - (xpH + gap) - 20)
     Settings.Set("xpGap", nil)
     -- Without a title line: only the bar, the numbers gone.
     Settings.Set("xpTitle", false)
     check("no title: no level text", xp.nameText:GetText(), "")
-    check("no title: only the bar's height", Bars.XpHeight(), S("barHeight"))
+    check("no title: only the bar's height", Bars.XpHeight(), ns.XpBar.Height())
+    check("its height is not the bars' height", ns.XpBar.Height(), Settings.DEFAULTS.barHeight)
     Settings.Set("xpTitle", nil)
     -- Stacked: one column, between professions and reputation.
     Settings.Set("arrangement", "COLUMN")
@@ -712,7 +715,7 @@ do
     local _, rel, rp, fx, fy = xp:GetPoint("TOP")
     check("free: from the screen's top", rel == UIParent and rp == "TOP", true)
     check("free: X", fx, 30)
-    check("free: Y for the title line's top", fy, -150 - (Bars.XpHeight() - S("barHeight")))
+    check("free: Y for the title line's top", fy, -150 - (Bars.XpHeight() - ns.XpBar.Height()))
     check("free: the reputation row back in its place", Bars.RepSlot(1)._points.BOTTOMLEFT[4], -(rowH + gap))
     check("free: as wide as the strip", xp:GetWidth(), c:GetWidth())
     Settings.Set("xpWidth", 300)
@@ -1349,6 +1352,28 @@ do
         check("gems: in the bar's colour", g.gem[1]._vertex[1], c[1])
         Settings.Set("barStyle", "RING")
         check("ring: arc in the bar's colour", bar.styleParts.RING.arc[1]._vertex[1], c[1])
+        check("ring: texts above it by default", bar.nameText._points.BOTTOMLEFT ~= nil, true)
+        Settings.Set("ringBeside", true)
+        check("ring beside: no text line in the row", Bars.RowHeightNow(), bar:GetHeight())
+        check("ring beside: name to its right", bar.nameText._points.TOPLEFT[4] > bar:GetHeight() - 1 or bar.nameText._points.TOPLEFT[3] > bar:GetHeight(), true)
+        check("ring beside: value below the name", bar.valueText._points.TOPLEFT ~= nil, true)
+        check("ring beside: rank below them", bar.standing._points.TOPLEFT ~= nil, true)
+        check("ring beside: ring at the left end", bar.styleRingLeft, true)
+        Settings.Set("ringBeside", nil)
+        check("ring above again: rank in the middle", bar.standing._points.CENTER ~= nil, true)
+        Settings.Set("barStyle", "GEMS")
+        check("gems: texts above the gems", bar.standing:GetParent():GetFrameLevel() > bar.styleParts.GEMS.over:GetFrameLevel(), true)
+        Settings.Set("standingY", 6)
+        check("rank moved up", bar.standing._points.CENTER[4], 6)
+        Settings.Set("standingY", nil)
+        Settings.Set("barStyle", "BLIZZARD")
+        local n = 0
+        for _, d in ipairs(bar.dividers) do if d:IsShown() then n = n + 1 end end
+        Settings.Set("segmentWidth", S("segmentWidth") * 2)
+        local m = 0
+        for _, d in ipairs(bar.dividers) do if d:IsShown() then m = m + 1 end end
+        check("blizzard: segment width counts on these bars", m < n, true)
+        Settings.Set("segmentWidth", nil)
         Settings.Set("barStyle", "FOREVER")
         check("forever: the fill seen again", bar.sb._color[4], 1)
         check("forever: gold rim", bar.borders[1]._gradient ~= nil, true)

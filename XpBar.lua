@@ -111,11 +111,14 @@ local function slot() return ns.Bars.XpSlot and ns.Bars.XpSlot() end
 -- The chosen style (Styles.lua).
 function Xp.Def() return ns.Styles.Get(S("xpStyle")) end
 
--- The bar's height: its own, or (0) the style's from the bars' height.
+-- The bar's height: its own, or (0) the style's from the default bar
+-- height. Not from the bars' height setting: that is for the profession
+-- and reputation bars only.
+local XP_BASE = Settings.DEFAULTS.barHeight
 function Xp.Height()
     local own = S("xpHeight")
     if own and own > 0 then return own end
-    return Xp.Def().height(S("barHeight"))
+    return Xp.Def().height(XP_BASE)
 end
 
 -- Its width: its own, or (0) the strip's; a round style as wide as high.
@@ -208,7 +211,7 @@ end
 local function levelSize(bar)
     if S("xpLevelFontSize") > 0 then return S("xpLevelFontSize") end
     local style = Xp.Def().level.size
-    if style then return style(S("barHeight"), Xp.Height()) end
+    if style then return style(XP_BASE, Xp.Height()) end
     local own = S("labelFontSize")
     if own and own > 0 then return own end
     return (bar.nameBase and bar.nameBase[2]) or 12

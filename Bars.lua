@@ -20,9 +20,48 @@ local S = Settings.Get
 local function StripStyle() return ns.Styles.Get(S("barStyle")) end
 local function StripBarHeight() return StripStyle().height(S("barHeight")) end
 
+-- The signet ring with its texts beside it instead of above: no text line.
+local function Beside() return S("barStyle") == "RING" and S("ringBeside") == true end
+
 -- One row: the text line, the gap under it and the bar.
 local function RowHeight()
+    if Beside() then return StripBarHeight() end
     return S("textHeight") + S("textGap") + StripBarHeight()
+end
+
+-- The texts of a profession or reputation bar: on a layer above the
+-- style's parts (gems, ring). The rank or standing in the middle of the
+-- bar, moved by its own Y; beside the ring all three stacked to its right.
+local function StripTexts(bar)
+    if not bar.textLayer then
+        bar.textLayer = CreateFrame("Frame", nil, bar)
+        bar.textLayer:SetAllPoints(bar)
+        bar.textLayer:SetFrameLevel((bar.sb:GetFrameLevel() or 1) + 3)
+        for _, r in ipairs({ bar.nameText, bar.valueText, bar.standing, bar.icon }) do r:SetParent(bar.textLayer) end
+    end
+    bar.standing:ClearAllPoints()
+    if not Beside() then
+        bar.standing:SetPoint("CENTER", bar.sb, "CENTER", 0, S("standingY"))
+        bar.standing:SetJustifyH("CENTER")
+        bar.valueText:SetJustifyH("RIGHT")
+        return
+    end
+    local d, line = StripBarHeight(), S("textHeight")
+    local left = d + 8
+    local top = -math.max(0, (d - 3 * line - 4) / 2)
+    local x = left
+    if bar.icon:IsShown() then
+        bar.icon:ClearAllPoints()
+        bar.icon:SetPoint("TOPLEFT", bar, "TOPLEFT", left, top)
+        x = left + S("iconSize") + S("iconGap")
+    end
+    bar.nameText:ClearAllPoints()
+    bar.nameText:SetPoint("TOPLEFT", bar, "TOPLEFT", x, top)
+    bar.valueText:ClearAllPoints()
+    bar.valueText:SetPoint("TOPLEFT", bar, "TOPLEFT", left, top - line - 2)
+    bar.valueText:SetJustifyH("LEFT")
+    bar.standing:SetPoint("TOPLEFT", bar, "TOPLEFT", left, top - 2 * (line + 2) + S("standingY"))
+    bar.standing:SetJustifyH("LEFT")
 end
 
 -- Fixed values: not settings.
@@ -825,16 +864,20 @@ local function ApplyBarGeometry(bar)
     if bar == xpSlot then
         if ns.XpBar and ns.XpBar.ApplyStyle then ns.XpBar.ApplyStyle() end
     else
-        ns.Styles.Apply(bar, S("barStyle"), StripBarHeight(), { tinted = true })
+        ns.Styles.Apply(bar, S("barStyle"), StripBarHeight(), { tinted = true, ringLeft = Beside() })
+        StripTexts(bar)
     end
     if Locked() then
         geometryPending = true
         return
     end
     bar:SetHeight(bar == xpSlot and ns.XpBar.Height() or StripBarHeight())
+    -- The click area: the text line and the bar, or only the bar with the
+    -- texts beside the ring.
+    local above = (bar ~= xpSlot and Beside()) and 0 or textHeight + S("textGap")
     for _, b in ipairs({ bar.click, bar.open }) do
         b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, textHeight + S("textGap"))
+        b:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, above)
         b:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
     end
 end
@@ -1177,7 +1220,9 @@ local function LayoutDividers(bar, width)
         return
     end
     local forever = kind == "BLIZZARD"
-    local segments = forever and FOREVER_SEGMENTS or math.max(1, math.floor(usable / S("segmentWidth") + 0.5))
+    -- The XP bar keeps Blizzard's 20; the other bars follow the segment width.
+    local segments = (forever and bar == xpSlot) and FOREVER_SEGMENTS
+        or math.max(1, math.floor(usable / S("segmentWidth") + 0.5))
     local step = usable / segments
     for i = 1, segments - 1 do
         local d = bar.dividers[i]
@@ -1272,8 +1317,10 @@ local function PutBar(bar, anchorPoint, x, y, barWidth, isRep)
     LayoutDividers(bar, barWidth)
     -- The XP bar's level places itself (XpBar.PlaceLevel).
     if bar == xpSlot then return end
-    -- A narrow bar clips the name, never the numbers.
+    -- A narrow bar clips the name, never the numbers; beside the ring the
+    -- name has what is left of the ring.
     local valueWidth = bar.valueText:GetStringWidth() or 0
+    if Beside() then valueWidth = StripBarHeight() + 8 end
     bar.nameText:SetWidth(math.max(1, barWidth - valueWidth - 4 - (isRep and 0 or (bar.nameOffset or 0))))
 end
 
@@ -1305,6 +1352,7 @@ local function XpHeight()
     return line + S("textGap") + XpBarHeight()
 end
 Bars.XpHeight = XpHeight
+Bars.RowHeightNow = function() return RowHeight() end
 
 -- The space between the XP row and the bars beside it: the rows' own gap
 -- plus the player's extra (may be negative).
@@ -1503,6 +1551,7 @@ local function Layout()
         LayoutDividers(bar, barWidth)
         -- A narrow bar clips the name, never the numbers.
         local valueWidth = bar.valueText:GetStringWidth() or 0
+        if Beside() then valueWidth = StripBarHeight() + 8 end
         bar.nameText:SetWidth(math.max(1, barWidth - valueWidth - 4 - (bar.nameOffset or 0)))
     end
     for i = 1, CFG.NUM_REP_SLOTS do
@@ -1778,6 +1827,7 @@ local function FillSlot(index, line)
     bar.nameText:ClearAllPoints()
     bar.nameText:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", bar.nameOffset, S("textGap"))
     bar.nameText:SetText(ProfessionLabel(line))
+    StripTexts(bar)
     bar.standing:SetText(S("showRank") and RankText(line.maxRank) or "")
     bar.valueText:SetText(string.format("%d/%d", line.rank, line.maxRank))
     bar.sb:SetMinMaxValues(0, math.max(1, line.maxRank))
@@ -1948,6 +1998,7 @@ local function FillRepSlot(index)
     bar.nameText:ClearAllPoints()
     bar.nameText:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", 0, S("textGap"))
     bar.nameText:SetText(found.name)
+    StripTexts(bar)
     bar.valueText:SetText(string.format("%d/%d", bar.data.rank, bar.data.maxRank))
     bar.sb:SetMinMaxValues(0, bar.data.maxRank)
     bar.sb:SetValue(math.min(bar.data.rank, bar.data.maxRank))

@@ -105,9 +105,15 @@ local function barRows()
     local w = screenSize()
     return {
         { type = "header", label = "OPT_BAR_SIZE" },
+        -- The row's width counts only in a row, the column width only in columns.
         { label = "OPT_ROW_WIDTH", min = 200, max = w, step = 1, unit = "px",
-          get = function() return math.min(Settings.Width(w), w) end, set = function(v) Settings.Set("width", v) end },
-        num("columnWidth", "OPT_COLUMN_WIDTH"),
+          get = function() return math.min(Settings.Width(w), w) end, set = function(v) Settings.Set("width", v) end,
+          enabled = function() return S("arrangement") == "ROW" end },
+        (function()
+            local row = num("columnWidth", "OPT_COLUMN_WIDTH")
+            row.enabled = function() return S("arrangement") ~= "ROW" end
+            return row
+        end)(),
         num("barHeight", "OPT_BAR_HEIGHT"),
         num("spacing", "OPT_SPACING"),
         num("segmentWidth", "OPT_SEGMENT_WIDTH"),
@@ -118,6 +124,11 @@ local function barRows()
         { type = "header", label = "OPT_BAR_LOOK" },
         choice("barStyle", "OPT_BAR_STYLE", ns.Styles.LIST, "BAR_STYLE_"),
         { type = "text", label = "OPT_BAR_STYLE_HINT", height = 40 },
+        (function()
+            local row = check("ringBeside", "OPT_RING_BESIDE")
+            row.enabled = function() return S("barStyle") == "RING" end
+            return row
+        end)(),
         colorRow("barBgColor", "OPT_BAR_BG_COLOR", true),
         { label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
           get = function() return S("barBgAlpha") end,
@@ -125,6 +136,7 @@ local function barRows()
         { type = "header", label = "OPT_ICONS" },
         check("showIcons", "OPT_SHOW_ICONS"),
         check("showRank", "OPT_SHOW_RANK"),
+        num("standingY", "OPT_STANDING_Y"),
         num("iconSize", "OPT_ICON_SIZE"),
         num("iconGap", "OPT_ICON_GAP"),
     }

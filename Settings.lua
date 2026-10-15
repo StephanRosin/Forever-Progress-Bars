@@ -42,6 +42,8 @@ Settings.DEFAULTS = {
     -- Bars
     barHeight = 22,
     barStyle = "OWN",       -- the profession and reputation bars' look, see Styles.LIST
+    ringBeside = false,     -- signet ring: the texts beside it instead of above
+    standingY = 0,          -- the rank or standing in the bar, moved up or down
     textHeight = 11,
     textGap = 4,            -- between the text line and its bar
     spacing = 15,
@@ -177,6 +179,7 @@ Settings.RANGES = {
     xpLevelX = { -500, 500 },
     xpLevelY = { -100, 100 },
     xpHeight = { 0, 400 },
+    standingY = { -40, 40 },
     xpInfoLevelTimeX = { -500, 500 }, xpInfoLevelTimeY = { -100, 100 },
     xpInfoSessionTimeX = { -500, 500 }, xpInfoSessionTimeY = { -100, 100 },
     xpInfoPerHourX = { -500, 500 }, xpInfoPerHourY = { -100, 100 },
