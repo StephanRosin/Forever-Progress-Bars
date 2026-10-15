@@ -81,6 +81,7 @@ Settings.DEFAULTS = {
     backdropColor = { 0, 0, 0 },
     backdropAlpha = 100,            -- percent
     backdropPadding = 8,
+    backdropBorderShow = false,     -- the border, with or without the background
     backdropBorder = "GOLD",        -- NONE, FLAT or GOLD
     backdropBorderSize = 1,         -- in screen pixels
     backdropBorderColor = { 0, 0, 0, 1 },
@@ -307,8 +308,9 @@ end
 
 -- Back to the defaults, keeping the language (it is not in the profile).
 -- Up to 1.6 the XP bar took the bars' text line, segments, background,
--- label size and height. Now it has its own; once per account every
--- profile gets them from what the bars had, so nothing moves.
+-- label size and height, and the strip's border came with its background.
+-- Now each has its own; once per account every profile gets them from what
+-- it had, so nothing moves.
 local XP_OWN = { textHeight = "xpTextHeight", textGap = "xpTextGap", segmentWidth = "xpSegmentWidth",
     barBgColor = "xpBgColor", barBgAlpha = "xpBgAlpha" }
 -- Styles whose height is the bar height itself.
@@ -320,6 +322,8 @@ function Settings.MigrateXpOwn()
     account.xpOwnSettings = true
     for name, p in pairs(account.profiles or {}) do
         if type(p) == "table" and name:sub(1, 1) ~= "@" then
+            -- The border had no switch of its own: it came with the background.
+            if p.backdropShow == true and p.backdropBorderShow == nil then p.backdropBorderShow = true end
             for from, to in pairs(XP_OWN) do
                 if p[from] ~= nil and p[to] == nil then
                     local v = p[from]

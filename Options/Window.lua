@@ -389,6 +389,7 @@ local function backdropRows()
           set = function(v) Settings.Set("backdropAlpha", v) end },
         num("backdropPadding", "OPT_BACKDROP_PADDING"),
         { type = "header", label = "OPT_BACKDROP_BORDER" },
+        check("backdropBorderShow", "OPT_BORDER_SHOW"),
         {
             type = "select", label = "OPT_BORDER_STYLE",
             choices = function()

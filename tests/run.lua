@@ -884,9 +884,16 @@ check("level box above the row: the top follows", bd._points.TOPLEFT[4], -row / 
 Settings.Set("levelY", nil)
 ns.DB().reps = nil
 Settings.Changed("reps")
+check("no border unless asked", bd.ring[1]:IsShown(), false)
+Settings.Set("backdropBorderShow", true)
 Settings.Set("backdropBorder", "GOLD")
 Settings.Set("backdropBorderSize", 3)
 check("gold border", bd.ring[1]._gradient ~= nil, true)
+Settings.Set("backdropShow", false)
+check("border without background: shown", bd:IsShown() and bd.ring[1]:IsShown(), true)
+check("border without background: no fill", bd.bg:IsShown(), false)
+Settings.Set("backdropShow", true)
+check("background back", bd.bg:IsShown(), true)
 check("gold inner line", bd.line[1]:IsShown(), true)
 Settings.Set("backdropBorder", "FLAT")
 Settings.Set("backdropBorderColor", { 1, 0, 0, 1 })
@@ -1426,7 +1433,8 @@ do
     -- Once per account, every profile takes over what the bars had.
     local account = ns.AccountDB()
     account.xpOwnSettings = nil
-    account.profiles.Old = { textGap = 7, barHeight = 26, labelFontSize = 14, barBgColor = { 0.1, 0.2, 0.3 } }
+    account.profiles.Old = { textGap = 7, barHeight = 26, labelFontSize = 14, barBgColor = { 0.1, 0.2, 0.3 },
+        backdropShow = true }
     account.profiles.Forever = { barHeight = 26, xpStyle = "RUNE", xpTextGap = 2, textGap = 9 }
     Settings.MigrateXpOwn()
     local old, other = account.profiles.Old, account.profiles.Forever
@@ -1435,6 +1443,8 @@ do
     check("migrated: number size", old.xpValueFontSize, 14)
     check("migrated: background colour copied", old.xpBgColor[2] == 0.2 and old.xpBgColor ~= old.barBgColor, true)
     check("migrated: own values kept", other.xpTextGap, 2)
+    check("migrated: the border stays with the background", old.backdropBorderShow, true)
+    check("migrated: no background, no border", other.backdropBorderShow, nil)
     check("migrated: a taller style keeps its height", other.xpHeight, nil)
     other.textGap = 1
     Settings.MigrateXpOwn()

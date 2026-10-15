@@ -1133,14 +1133,18 @@ end
 
 local function ApplyBackdropLook()
     if not backdrop then return end
-    if not S("backdropShow") then
+    -- The background and the border each on their own: a border may go
+    -- round the bars without a background.
+    local fill, border = S("backdropShow"), S("backdropBorderShow")
+    if not fill and not border then
         backdrop:Hide()
         return
     end
     backdrop:Show()
     local c = S("backdropColor")
     backdrop.bg:SetColorTexture(c[1], c[2], c[3], S("backdropAlpha") / 100)
-    local style, px = S("backdropBorder"), OnePixel(backdrop)
+    backdrop.bg:SetShown(fill)
+    local style, px = border and S("backdropBorder") or "NONE", OnePixel(backdrop)
     local size = S("backdropBorderSize") * px
     ShowRing(backdrop.ring, style ~= "NONE")
     ShowRing(backdrop.line, style == "GOLD" and S("backdropBorderSize") >= 2)
