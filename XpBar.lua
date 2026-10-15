@@ -171,6 +171,31 @@ local function plate(bar)
     return p
 end
 
+-- Forever: a gold line where the XP end and the rested part begins, in
+-- place of the badge that marks it in the other styles.
+function Xp.LayoutMarker()
+    local bar = slot()
+    if not bar then return end
+    local cur = UnitXP("player") or 0
+    local on = S("xpStyle") == "FOREVER" and cur > 0 and cur < (UnitXPMax("player") or 0)
+    if not on then
+        if bar.marker then bar.marker:Hide() end
+        return
+    end
+    if not bar.marker then
+        bar.marker = bar.sb:CreateTexture(nil, "OVERLAY", nil, 7)
+        bar.marker:SetColorTexture(1, 1, 1, 1)
+        local G = { { 0.78, 0.59, 0.13, 1 }, { 1, 0.792, 0.188, 1 } }   -- the rim's SHADE to MID
+        ns.Bars.Gradient(bar.marker, G[1], G[2])
+    end
+    local fill = bar.sb:GetStatusBarTexture()
+    bar.marker:SetWidth(2 * ns.Bars.OnePixel(bar))
+    bar.marker:ClearAllPoints()
+    bar.marker:SetPoint("TOP", fill, "TOPRIGHT", 0, 0)
+    bar.marker:SetPoint("BOTTOM", fill, "BOTTOMRIGHT", 0, 0)
+    bar.marker:Show()
+end
+
 -- Forever: the level text moves onto the plate, as wide as the text; other
 -- styles: the plate hides and the text goes back to the bar.
 function Xp.LayoutHeader()
@@ -272,6 +297,7 @@ function Xp.ApplyStyle()
         bar.rested:SetStatusBarColor(r[1], r[2], r[3], 0.6)
     end
     Xp.LayoutHeader()
+    Xp.LayoutMarker()
 end
 
 -- The title line's fonts. The bars' label size where ours is 0; the level
@@ -384,6 +410,7 @@ function Xp.Update()
         bar.valueText:SetText(title and Xp.Text(S("xpTextMode"), cur, max) or "")
     end
     Xp.LayoutHeader()
+    Xp.LayoutMarker()
     if (bar:IsShown() and true or false) ~= shown then
         bar:SetShown(shown)
         if ns.Bars.Relayout then ns.Bars.Relayout() end
