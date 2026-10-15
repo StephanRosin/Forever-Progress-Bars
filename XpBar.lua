@@ -193,28 +193,24 @@ function Xp.ApplyStyle()
     local bar = slot()
     if not bar then return end
     local def = Xp.Def()
-    local colours = def.ownColours and { fill = S("xpColor"), rested = S("xpRestedColor") } or nil
-    ns.Styles.Apply(bar, S("xpStyle"), Xp.Height(), colours)
+    local opts = def.ownColours and { fill = S("xpColor"), rested = S("xpRestedColor") } or {}
+    opts.bg, opts.bgAlpha = S("xpBgColor"), S("xpBgAlpha")
+    ns.Styles.Apply(bar, S("xpStyle"), Xp.Height(), opts)
     Xp.PlaceLevel()
 end
 
--- The title line's fonts. The bars' label size where ours is 0; the level
--- may have a font of its own. Each text is as tall as its font.
-local function labelSize(fs)
-    local own = S("labelFontSize")
-    if own and own > 0 then return own end
-    local _, size = fs:GetFont()
-    return size or 12
-end
+-- The title line's fonts: the default label size where ours is 0 (not the
+-- bars' label size: that is theirs); the level may have a font of its own.
+-- Each text is as tall as its font.
+local XP_LABEL = Settings.DEFAULTS.labelFontSize
+local function labelSize() return XP_LABEL end
 
 -- The level's size: its own, the style's, or the bars' label size.
 local function levelSize(bar)
     if S("xpLevelFontSize") > 0 then return S("xpLevelFontSize") end
     local style = Xp.Def().level.size
     if style then return style(XP_BASE, Xp.Height()) end
-    local own = S("labelFontSize")
-    if own and own > 0 then return own end
-    return (bar.nameBase and bar.nameBase[2]) or 12
+    return XP_LABEL
 end
 
 function Xp.TitleSize()
@@ -284,7 +280,7 @@ function Xp.PlaceText(value, place, x, y)
     if not bar then return end
     local where, side = place:match("^(%u+)_(%u+)$")
     local s = SIDES[side] or SIDES.RIGHT
-    local gap = S("textGap")
+    local gap = S("xpTextGap")
     value:ClearAllPoints()
     if where == "IN" then
         local p = s[1] == "" and "CENTER" or s[1]
@@ -322,7 +318,7 @@ function Xp.PlaceLevel()
         return
     end
     local p = plate(bar)
-    if place:sub(1, 5) == "ABOVE" then y = y - S("textGap") end
+    if place:sub(1, 5) == "ABOVE" then y = y - S("xpTextGap") end
     Xp.PlaceText(p, place, x, y)
     p:SetWidth(math.floor(name:GetStringWidth() + 2 * PLATE_PAD + 0.5))
     name:SetParent(p)

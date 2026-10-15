@@ -1402,6 +1402,46 @@ do
     end
 end
 
+section("XP bar: settings of its own")
+do
+    Settings.Set("xpEnabled", true)
+    local xp = Bars.XpSlot()
+    local h0 = Bars.XpHeight()
+    local nameH = xp.nameText:GetHeight()
+    Settings.Set("textGap", 12)
+    Settings.Set("textHeight", 20)
+    Settings.Set("labelFontSize", 20)
+    Settings.Set("barBgAlpha", 90)
+    check("the bars' text line leaves it alone", Bars.XpHeight(), h0)
+    check("the bars' text height leaves it alone", xp.nameText:GetHeight(), nameH)
+    check("the bars' label size leaves its numbers alone", select(2, xp.valueText:GetFont()), Settings.DEFAULTS.labelFontSize)
+    check("the bars' background leaves it alone", xp.bg._texColor[4], Settings.DEFAULTS.xpBgAlpha / 100)
+    for _, k in ipairs({ "textGap", "textHeight", "labelFontSize", "barBgAlpha" }) do Settings.Set(k, nil) end
+    Settings.Set("xpTextGap", 12)
+    check("its own gap counts", Bars.XpHeight(), h0 + 12 - Settings.DEFAULTS.xpTextGap)
+    Settings.Set("xpBgAlpha", 80)
+    check("its own background counts", xp.bg._texColor[4], 0.8)
+    for _, k in ipairs({ "xpTextGap", "xpBgAlpha", "xpEnabled" }) do Settings.Set(k, nil) end
+
+    -- Once per account, every profile takes over what the bars had.
+    local account = ns.AccountDB()
+    account.xpOwnSettings = nil
+    account.profiles.Old = { textGap = 7, barHeight = 26, labelFontSize = 14, barBgColor = { 0.1, 0.2, 0.3 } }
+    account.profiles.Forever = { barHeight = 26, xpStyle = "RUNE", xpTextGap = 2, textGap = 9 }
+    Settings.MigrateXpOwn()
+    local old, other = account.profiles.Old, account.profiles.Forever
+    check("migrated: gap", old.xpTextGap, 7)
+    check("migrated: height", old.xpHeight, 26)
+    check("migrated: number size", old.xpValueFontSize, 14)
+    check("migrated: background colour copied", old.xpBgColor[2] == 0.2 and old.xpBgColor ~= old.barBgColor, true)
+    check("migrated: own values kept", other.xpTextGap, 2)
+    check("migrated: a taller style keeps its height", other.xpHeight, nil)
+    other.textGap = 1
+    Settings.MigrateXpOwn()
+    check("only once", other.xpTextGap, 2)
+    account.profiles.Old, account.profiles.Forever = nil, nil
+end
+
 section("Only SavedVariables, nothing private")
 for _, f in ipairs(tocFiles()) do
     local src = io.open(ROOT .. "/" .. f):read("*a")

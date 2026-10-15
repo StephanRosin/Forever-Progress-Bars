@@ -91,7 +91,14 @@ Settings.DEFAULTS = {
     -- ("Level 20" and the numbers) or without.
     xpEnabled = false,
     xpStyle = "OWN",        -- the look, see Styles.LIST
-    xpHeight = 0,           -- 0: the style's height (from the bars' height)
+    xpHeight = 0,           -- 0: the style's height (from the default bar height)
+    -- The XP bar's own counterparts of the bars' settings: none of those
+    -- touch it (Settings.MigrateXpOwn copies them over once).
+    xpTextHeight = 11,      -- the title line's least height
+    xpTextGap = 4,          -- between the texts and the bar
+    xpSegmentWidth = 21,
+    xpBgColor = { 0.192, 0.192, 0.192 },    -- the empty part (style Own)
+    xpBgAlpha = 30,                         -- percent
     xpRow = "BOTTOM",       -- TOP, MIDDLE, BOTTOM or FREE
     -- FREE: X from the middle of the screen, Y from its top edge (0: at the
     -- top, negative: down) for the top of its title line; no room in the
@@ -180,6 +187,10 @@ Settings.RANGES = {
     xpLevelY = { -100, 100 },
     xpHeight = { 0, 400 },
     standingY = { -40, 40 },
+    xpTextHeight = { 8, 30 },
+    xpTextGap = { -10, 20 },
+    xpSegmentWidth = { 4, 60 },
+    xpBgAlpha = { 0, 100 },
     xpInfoLevelTimeX = { -500, 500 }, xpInfoLevelTimeY = { -100, 100 },
     xpInfoSessionTimeX = { -500, 500 }, xpInfoSessionTimeY = { -100, 100 },
     xpInfoPerHourX = { -500, 500 }, xpInfoPerHourY = { -100, 100 },
@@ -295,6 +306,39 @@ function Settings.SetHidden(name, value)
 end
 
 -- Back to the defaults, keeping the language (it is not in the profile).
+-- Up to 1.6 the XP bar took the bars' text line, segments, background,
+-- label size and height. Now it has its own; once per account every
+-- profile gets them from what the bars had, so nothing moves.
+local XP_OWN = { textHeight = "xpTextHeight", textGap = "xpTextGap", segmentWidth = "xpSegmentWidth",
+    barBgColor = "xpBgColor", barBgAlpha = "xpBgAlpha" }
+-- Styles whose height is the bar height itself.
+local PLAIN_STYLES = { OWN = true, FOREVER = true, BLIZZARD = true }
+
+function Settings.MigrateXpOwn()
+    local account = ns.AccountDB()
+    if account.xpOwnSettings then return end
+    account.xpOwnSettings = true
+    for name, p in pairs(account.profiles or {}) do
+        if type(p) == "table" and name:sub(1, 1) ~= "@" then
+            for from, to in pairs(XP_OWN) do
+                if p[from] ~= nil and p[to] == nil then
+                    local v = p[from]
+                    p[to] = type(v) == "table" and { unpack(v) } or v
+                end
+            end
+            local plain = PLAIN_STYLES[p.xpStyle or "OWN"]
+            if p.barHeight ~= nil and p.xpHeight == nil and plain then p.xpHeight = p.barHeight end
+            local label = p.labelFontSize
+            if type(label) == "number" and label > 0 then
+                if p.xpValueFontSize == nil then p.xpValueFontSize = label end
+                if p.xpLevelFontSize == nil and (p.xpStyle == nil or p.xpStyle == "OWN" or p.xpStyle == "BLIZZARD") then
+                    p.xpLevelFontSize = label
+                end
+            end
+        end
+    end
+end
+
 -- Presets: ready-made looks, offered as read-only profiles (Profiles.lua):
 -- the values here, everything else at its default.
 Settings.PRESETS = {

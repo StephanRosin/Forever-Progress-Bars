@@ -274,6 +274,8 @@ local function enabledIf(test)
 end
 local ownColoursOnly = enabledIf(function() return ns.XpBar.Def().ownColours == true end)
 local levelChoice = enabledIf(function() return not ns.XpBar.Def().levelText end)
+-- Segments and the empty part's colour only where the style draws ours.
+local ownLookOnly = enabledIf(function() return S("xpStyle") == "OWN" end)
 local foreverOnly = enabledIf(function() return S("xpStyle") == "FOREVER" end)
 local badgeOnly = enabledIf(function() return ns.XpBar.LevelMode() == "BADGE" end)
 local levelTextOnly = enabledIf(function() return ns.XpBar.LevelMode() ~= "BADGE" end)
@@ -323,6 +325,11 @@ local function xpRows()
         choice("xpStyle", "OPT_XP_STYLE", X.STYLES, "XP_STYLE_"),
         ownColoursOnly(colorRow("xpColor", "OPT_XP_COLOR", true)),
         ownColoursOnly(colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
+        ownLookOnly(num("xpSegmentWidth", "OPT_SEGMENT_WIDTH")),
+        ownLookOnly(colorRow("xpBgColor", "OPT_BAR_BG_COLOR", true)),
+        ownLookOnly({ label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
+          get = function() return S("xpBgAlpha") end,
+          set = function(v) Settings.Set("xpBgAlpha", v) end }),
     }
 end
 
@@ -334,6 +341,8 @@ local function xpTextRows()
     for _, p in ipairs(X.VALUE_PLACES) do levelPlaces[#levelPlaces + 1] = p end
     return {
         { type = "header", label = "OPT_XP_TITLE_HEADER" },
+        num("xpTextHeight", "OPT_TEXT_HEIGHT"),
+        num("xpTextGap", "OPT_TEXT_GAP"),
         check("xpTitle", "OPT_XP_TITLE"),
         levelChoice(levelModeRow()),
         levelTextOnly(choice("xpLevelPlace", "OPT_XP_LEVEL_PLACE", levelPlaces, "XP_VALUE_")),

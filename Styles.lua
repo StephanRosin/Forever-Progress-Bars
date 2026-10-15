@@ -551,7 +551,8 @@ end
 -- part in the bars' colours), then the style on top.
 -- opts: fill, rested (our colours, for the styles that take them); tinted
 -- (a bar whose colour comes from Styles.Colour: professions, reputation);
--- ringLeft (the ring at the bar's left end, its texts beside it).
+-- ringLeft (the ring at the bar's left end, its texts beside it); bg,
+-- bgAlpha (the empty part, else the bars' own).
 function Styles.Apply(bar, id, h, opts)
     opts = opts or {}
     local def = Styles.Get(id)
@@ -566,8 +567,8 @@ function Styles.Apply(bar, id, h, opts)
     B.PlaceRing(bar.borders, bar, 1, 0)
     B.PaintRing(bar.borders, B.BORDER_COLOR)
     bar.bg:SetVertexColor(1, 1, 1, 1)
-    local c = S("barBgColor")
-    bar.bg:SetColorTexture(c[1], c[2], c[3], S("barBgAlpha") / 100)
+    local c = opts.bg or S("barBgColor")
+    bar.bg:SetColorTexture(c[1], c[2], c[3], (opts.bgAlpha or S("barBgAlpha")) / 100)
     local l, t, r, b = 1, 1, 1, 1
     if def.inset then l, t, r, b = def.inset(h, B.OnePixel(bar)) end
     bar.sb:ClearAllPoints()

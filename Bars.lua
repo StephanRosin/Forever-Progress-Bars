@@ -841,7 +841,9 @@ end
 -- out of combat; in combat it waits for PLAYER_REGEN_ENABLED.
 local geometryPending = false
 local function ApplyBarGeometry(bar)
-    local textHeight, iconSize = S("textHeight"), S("iconSize")
+    -- The XP bar has its own text line (XpBar.lua): none of the bars' touch it.
+    local xp = bar == xpSlot
+    local textHeight, iconSize = S(xp and "xpTextHeight" or "textHeight"), S("iconSize")
     bar.icon:SetSize(iconSize, iconSize)
     bar.nameText:SetHeight(textHeight)
     bar.valueText:SetHeight(textHeight)
@@ -849,16 +851,18 @@ local function ApplyBarGeometry(bar)
     local c = S("barBgColor")
     ColorTexture(bar.bg, c[1], c[2], c[3], S("barBgAlpha") / 100)
     -- The text line sits `textGap` above the bar.
-    local gap = S("textGap")
+    local gap = S(xp and "xpTextGap" or "textGap")
     bar.icon:ClearAllPoints()
     bar.icon:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", 0, gap)
     bar.valueText:ClearAllPoints()
     bar.valueText:SetPoint("BOTTOMRIGHT", bar, "TOPRIGHT", 0, gap)
     bar.nameText:ClearAllPoints()
     bar.nameText:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", bar.nameOffset or 0, gap)
-    LabelFont(bar.nameText)
-    LabelFont(bar.valueText)
-    LabelFont(bar.standing)
+    if not xp then
+        LabelFont(bar.nameText)
+        LabelFont(bar.valueText)
+        LabelFont(bar.standing)
+    end
     -- The style may put its own art over the empty part again. The other
     -- bars take it in their own colour (a profession's, a standing's).
     if bar == xpSlot then
@@ -874,7 +878,7 @@ local function ApplyBarGeometry(bar)
     bar:SetHeight(bar == xpSlot and ns.XpBar.Height() or StripBarHeight())
     -- The click area: the text line and the bar, or only the bar with the
     -- texts beside the ring.
-    local above = (bar ~= xpSlot and Beside()) and 0 or textHeight + S("textGap")
+    local above = (not xp and Beside()) and 0 or textHeight + gap
     for _, b in ipairs({ bar.click, bar.open }) do
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, above)
@@ -1222,7 +1226,7 @@ local function LayoutDividers(bar, width)
     local forever = kind == "BLIZZARD"
     -- The XP bar keeps Blizzard's 20; the other bars follow the segment width.
     local segments = (forever and bar == xpSlot) and FOREVER_SEGMENTS
-        or math.max(1, math.floor(usable / S("segmentWidth") + 0.5))
+        or math.max(1, math.floor(usable / S(bar == xpSlot and "xpSegmentWidth" or "segmentWidth") + 0.5))
     local step = usable / segments
     for i = 1, segments - 1 do
         local d = bar.dividers[i]
@@ -1347,9 +1351,9 @@ end
 local function XpHeight()
     if not S("xpTitle") then return XpBarHeight() end
     -- The title line is as tall as its largest font (a big level number).
-    local line = S("textHeight")
+    local line = S("xpTextHeight")
     if ns.XpBar and ns.XpBar.TitleSize then line = math.max(line, ns.XpBar.TitleSize()) end
-    return line + S("textGap") + XpBarHeight()
+    return line + S("xpTextGap") + XpBarHeight()
 end
 Bars.XpHeight = XpHeight
 Bars.RowHeightNow = function() return RowHeight() end
@@ -2203,7 +2207,8 @@ Settings.OnChange(function(key)
         if key:sub(1, 7) == "xpBadge" then
             ApplyLevelLook()
             Layout()
-        elseif key == "xpStyle" or key == "xpHeight" then
+        elseif key == "xpStyle" or key == "xpHeight" or key == "xpTextHeight" or key == "xpTextGap"
+            or key == "xpSegmentWidth" then
             -- Another height, and the badge "matching the bar" changes.
             if xpSlot then ApplyBarGeometry(xpSlot) end
             ApplyLevelLook()
@@ -2281,6 +2286,7 @@ events:SetScript("OnEvent", function(_, event, ...)
         -- The presets as profiles, fresh at every load (after the saved
         -- variables are there).
         ns.RebuildPresets()
+        Settings.MigrateXpOwn()
         Build()
         Bars.ApplyAll()
         Bars.MigrateFreeToTop()
