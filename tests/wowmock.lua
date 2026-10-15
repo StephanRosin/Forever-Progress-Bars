@@ -84,6 +84,7 @@ local function newWidget(name, kind)
         t._owner = self
         return t
     end
+    function w:CreateMaskTexture() return newWidget(nil, "MaskTexture") end
     function w:CreateFontString(_, _, template)
         local fs = newWidget(nil, "FontString")
         fs._font = { "Fonts\\FRIZQT__.TTF", 10, "" }
@@ -219,7 +220,7 @@ function GetProfessionInfo(i)
     return p[1], p[2], p[3], p[4], p[5], p[6], p[7]
 end
 C_SpellBook = { CastSpellBookItem = function(slot, bank) M.casts[#M.casts + 1] = slot end }
-Enum = { SpellBookSpellBank = { Player = 0 } }
+Enum = { SpellBookSpellBank = { Player = 0 }, UITextureSliceMode = { Stretched = 0, Tiled = 1 } }
 
 -- Reputation: name, desc, standing, min, max, value, atWar, canToggle,
 -- isHeader, isCollapsed, hasRep, isWatched, isChild, factionID.

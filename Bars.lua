@@ -985,7 +985,7 @@ local function LevelStyle(keys)
 end
 Bars.LevelStyle = LevelStyle
 Bars.PaintGold, Bars.PaintRing, Bars.PlaceRing, Bars.OnePixel = PaintGold, PaintRing, PlaceRing, OnePixel
-Bars.BORDER_COLOR, Bars.NAME_COLOR = CFG.BORDER_COLOR, CFG.NAME_COLOR
+Bars.BORDER_COLOR, Bars.NAME_COLOR, Bars.Gradient = CFG.BORDER_COLOR, CFG.NAME_COLOR, Gradient
 
 local function ApplyBadgeLook(box, keys, level)
     if not box then return end

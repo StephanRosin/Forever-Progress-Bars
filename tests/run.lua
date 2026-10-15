@@ -1192,9 +1192,14 @@ do
     check("forever: no badge", Bars.BadgeOnXp(), false)
     check("forever: level in the header gold", xp.nameText._textColor and xp.nameText._textColor[1], 1)
     check("forever: level in the header size", select(2, xp.nameText:GetFont()), 18)
+    check("forever: header plate shown", xp.plate and xp.plate:IsShown(), true)
+    check("forever: level on the plate", xp.nameText._parent, xp.plate)
+    check("forever: plate fits the text", xp.plate:GetWidth(), xp.nameText:GetStringWidth() + 28)
     Settings.Set("xpStyle", "OWN")
     check("own after forever: black rim", xp.borders[1]._vertex[1], 0)
     check("own after forever: fill inside one unit", xp.sb._points.TOPLEFT[3], 1)
+    check("own after forever: plate hidden", xp.plate:IsShown(), false)
+    check("own after forever: level back on the bar", xp.nameText._parent, xp)
 
     for _, k in ipairs({ "xpStyle", "xpLevelMode", "xpBadgeFollow" }) do Settings.Set(k, nil) end
     Settings.Set("xpEnabled", false)

@@ -134,6 +134,69 @@ local function blizzard() return S("xpStyle") == "BLIZZARD" end
 local HEADER_FONT, HEADER_SIZE, HEADER_COLOR = "Friz Quadrata", 18, { 1, 0.82, 0.29 }
 function Xp.LevelMode() return S("xpStyle") == "FOREVER" and "TEXT" or S("xpLevelMode") end
 
+-- The plate the header sits on, centred on the bar's top edge: the quest
+-- log's title bar (Tracker.lua): dark, rounded top corners, a gold shine
+-- rising to the top, a faint gold line along the bottom.
+local PLATE_H, PLATE_PAD, PLATE_RADIUS = 32, 14, 10
+local PLATE_MASK = "Interface\\AddOns\\ForeverProgressBars\\Media\\Rounded10.tga"
+
+local function plate(bar)
+    if bar.plate then return bar.plate end
+    local p = CreateFrame("Frame", nil, bar)
+    p:SetHeight(PLATE_H)
+    p:SetPoint("BOTTOM", bar, "TOP", 0, 0)
+    p.bg = p:CreateTexture(nil, "BACKGROUND")
+    p.bg:SetAllPoints(p)
+    p.shine = p:CreateTexture(nil, "BACKGROUND", nil, 1)
+    p.shine:SetAllPoints(p)
+    p.shine:SetColorTexture(1, 1, 1, 1)
+    ns.Bars.Gradient(p.shine, { 1, 0.79, 0.19, 0 }, { 1, 0.79, 0.19, 0.10 })
+    p.line = p:CreateTexture(nil, "ARTWORK")
+    p.line:SetHeight(1)
+    p.line:SetPoint("BOTTOMLEFT")
+    p.line:SetPoint("BOTTOMRIGHT")
+    p.line:SetColorTexture(0.78, 0.59, 0.13, 0.45)
+    -- Rounded on top only: the mask reaches a radius below the plate.
+    if p.CreateMaskTexture then
+        local mask = p:CreateMaskTexture()
+        mask:SetTexture(PLATE_MASK, "CLAMP", "CLAMP")
+        mask:SetTextureSliceMargins(PLATE_RADIUS, PLATE_RADIUS, PLATE_RADIUS, PLATE_RADIUS)
+        mask:SetTextureSliceMode(Enum.UITextureSliceMode.Stretched)
+        mask:SetPoint("TOPLEFT")
+        mask:SetPoint("BOTTOMRIGHT", 0, -PLATE_RADIUS)
+        p.bg:AddMaskTexture(mask)
+        p.shine:AddMaskTexture(mask)
+    end
+    bar.plate = p
+    return p
+end
+
+-- Forever: the level text moves onto the plate, as wide as the text; other
+-- styles: the plate hides and the text goes back to the bar.
+function Xp.LayoutHeader()
+    local bar = slot()
+    if not bar then return end
+    local name, on = bar.nameText, S("xpStyle") == "FOREVER" and S("xpTitle")
+    if not on then
+        if bar.plate then bar.plate:Hide() end
+        if name:GetParent() ~= bar then
+            name:SetParent(bar)
+            name:SetJustifyH("LEFT")
+        end
+        return
+    end
+    local p = plate(bar)
+    p.bg:SetColorTexture(unpack(FOREVER_BG))
+    name:SetParent(p)
+    name:SetJustifyH("CENTER")
+    p:SetWidth(math.floor(name:GetStringWidth() + 2 * PLATE_PAD + 0.5))
+    -- Pinned on both sides: Bars.lua gives the label a width of its own.
+    name:ClearAllPoints()
+    name:SetPoint("LEFT", p, "LEFT", PLATE_PAD, 0)
+    name:SetPoint("RIGHT", p, "RIGHT", -PLATE_PAD, 0)
+    p:Show()
+end
+
 -- The frame around the bar: one texture over the fill, below the numbers,
 -- the ends kept by slice margins while the middle stretches to any width.
 local function frameArt(bar)
@@ -208,6 +271,7 @@ function Xp.ApplyStyle()
         bar.rested:SetStatusBarTexture(OWN_TEXTURE)
         bar.rested:SetStatusBarColor(r[1], r[2], r[3], 0.6)
     end
+    Xp.LayoutHeader()
 end
 
 -- The title line's fonts. The bars' label size where ours is 0; the level
@@ -227,8 +291,8 @@ function Xp.TitleSize()
     if S("xpValuePlace"):sub(1, 5) ~= "ABOVE" then val = 0 end
     -- As a badge the level is no text in the line: only the numbers count.
     if Xp.LevelMode() == "BADGE" then return val end
-    local lvl = S("xpLevelFontSize") > 0 and S("xpLevelFontSize")
-        or S("xpStyle") == "FOREVER" and HEADER_SIZE or labelSize(bar.nameText)
+    if S("xpStyle") == "FOREVER" then return math.max(PLATE_H, val) end
+    local lvl = S("xpLevelFontSize") > 0 and S("xpLevelFontSize") or labelSize(bar.nameText)
     return math.max(lvl, val)
 end
 
@@ -319,6 +383,7 @@ function Xp.Update()
         bar.nameText:SetText(asText and L.XP_LEVEL:format(UnitLevel("player") or 0) or "")
         bar.valueText:SetText(title and Xp.Text(S("xpTextMode"), cur, max) or "")
     end
+    Xp.LayoutHeader()
     if (bar:IsShown() and true or false) ~= shown then
         bar:SetShown(shown)
         if ns.Bars.Relayout then ns.Bars.Relayout() end
