@@ -242,7 +242,7 @@ end
 
 -- The colour pickers mean nothing over Blizzard's art: dimmed there.
 local function ownStyleOnly(row)
-    row.enabled = function() return S("xpStyle") ~= "FOREVER" end
+    row.enabled = function() return S("xpStyle") ~= "BLIZZARD" end
     return row
 end
 

@@ -87,7 +87,7 @@ Settings.DEFAULTS = {
     -- professions and reputation) or at the BOTTOM; with its title line
     -- ("Level 20" and the numbers) or without.
     xpEnabled = false,
-    xpStyle = "OWN",        -- OWN (our colours) or FOREVER (Blizzard's art), see XpBar.STYLES
+    xpStyle = "OWN",        -- OWN, FOREVER (gold rim) or BLIZZARD (Blizzard's art), see XpBar.STYLES
     xpRow = "BOTTOM",       -- TOP, MIDDLE, BOTTOM or FREE
     -- FREE: X from the middle of the screen, Y from its top edge (0: at the
     -- top, negative: down) for the top of its title line; no room in the

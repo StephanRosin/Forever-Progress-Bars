@@ -984,6 +984,8 @@ local function LevelStyle(keys)
     return style
 end
 Bars.LevelStyle = LevelStyle
+Bars.PaintGold, Bars.PaintRing, Bars.PlaceRing, Bars.OnePixel = PaintGold, PaintRing, PlaceRing, OnePixel
+Bars.BORDER_COLOR = CFG.BORDER_COLOR
 
 local function ApplyBadgeLook(box, keys, level)
     if not box then return end
@@ -1148,7 +1150,7 @@ local function LayoutDividers(bar, width)
         for _, d in ipairs(bar.dividers) do d:Hide() end
         return
     end
-    local forever = bar == xpSlot and S("xpStyle") == "FOREVER"
+    local forever = bar == xpSlot and S("xpStyle") == "BLIZZARD"
     local segments = forever and FOREVER_SEGMENTS or math.max(1, math.floor(usable / S("segmentWidth") + 0.5))
     local step = usable / segments
     for i = 1, segments - 1 do

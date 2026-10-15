@@ -1128,13 +1128,13 @@ do
     check("own: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
     check("own: rim shown", xp.borders[1]:IsShown(), true)
 
-    Settings.Set("xpStyle", "FOREVER")
-    check("forever: Blizzard's fill", xp.sb._barTex, "UI-HUD-ExperienceBar-Fill-Experience")
-    check("forever: fill not tinted", table.concat(xp.sb._color, ","), "1,1,1")
-    check("forever: Blizzard's background", xp.bg._atlas, "UI-HUD-ExperienceBar-Background")
-    check("forever: prediction for the rested part", xp.rested._barTex, "UI-HUD-ExperienceBar-Fill-Prediction")
-    check("forever: rim hidden", xp.borders[1]:IsShown(), false)
-    check("forever: frame shown", xp.frameArt and xp.frameArt:IsShown(), true)
+    Settings.Set("xpStyle", "BLIZZARD")
+    check("blizzard: Blizzard's fill", xp.sb._barTex, "UI-HUD-ExperienceBar-Fill-Experience")
+    check("blizzard: fill not tinted", table.concat(xp.sb._color, ","), "1,1,1")
+    check("blizzard: Blizzard's background", xp.bg._atlas, "UI-HUD-ExperienceBar-Background")
+    check("blizzard: prediction for the rested part", xp.rested._barTex, "UI-HUD-ExperienceBar-Fill-Prediction")
+    check("blizzard: rim hidden", xp.borders[1]:IsShown(), false)
+    check("blizzard: frame shown", xp.frameArt and xp.frameArt:IsShown(), true)
     local shown, art = 0, true
     for _, d in ipairs(xp.dividers) do
         if d:IsShown() then
@@ -1142,13 +1142,13 @@ do
             if d._atlas ~= "ui-hud-experiencebar-divider" then art = false end
         end
     end
-    check("forever: 20 segments", shown, 19)
-    check("forever: Blizzard's dividers", art, true)
+    check("blizzard: 20 segments", shown, 19)
+    check("blizzard: Blizzard's dividers", art, true)
 
     M.state.rested = 3000
     M.Fire("UPDATE_EXHAUSTION")
-    check("forever rested: the fill stays purple", xp.sb._barTex, "UI-HUD-ExperienceBar-Fill-Experience")
-    check("forever rested: the rested part shows", xp.rested:IsShown(), true)
+    check("blizzard rested: the fill stays purple", xp.sb._barTex, "UI-HUD-ExperienceBar-Fill-Experience")
+    check("blizzard rested: the rested part shows", xp.rested:IsShown(), true)
     M.state.rested = 0
     M.Fire("UPDATE_EXHAUSTION")
 
@@ -1156,7 +1156,7 @@ do
     Settings.Set("xpLevelMode", "BADGE")
     Settings.Set("xpBadgeFollow", true)
     local box = Bars.XpBadge()
-    check("forever: badge rides on the fill", select(2, box:GetPoint("CENTER")), xp.sb:GetStatusBarTexture())
+    check("blizzard: badge rides on the fill", select(2, box:GetPoint("CENTER")), xp.sb:GetStatusBarTexture())
     Settings.Set("xpStyle", "OWN")
     check("own: badge rides on the fill", select(2, box:GetPoint("CENTER")), xp.sb:GetStatusBarTexture())
 
@@ -1175,8 +1175,21 @@ do
     local colour
     for _, r in ipairs(rows or {}) do if r.label == "OPT_XP_COLOR" then colour = r end end
     check("colour row: usable for own", colour and colour.enabled(), true)
+    Settings.Set("xpStyle", "BLIZZARD")
+    check("colour row: dimmed for blizzard", colour and colour.enabled(), false)
+
+    -- Forever: our fill in the other Forever addons' look.
     Settings.Set("xpStyle", "FOREVER")
-    check("colour row: dimmed for forever", colour and colour.enabled(), false)
+    check("colour row: usable for forever", colour and colour.enabled(), true)
+    check("forever: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
+    check("forever: our colour", xp.sb._color[1], S("xpColor")[1])
+    check("forever: gold rim", xp.borders[1]:IsShown() and xp.borders[1]._gradient ~= nil, true)
+    check("forever: dark background", xp.bg._texColor[4], 0.82)
+    check("forever: no Blizzard frame", xp.frameArt:IsShown(), false)
+    check("forever: fill inside a two-pixel rim", xp.sb._points.TOPLEFT[3], 2 * ns.Bars.OnePixel(xp))
+    Settings.Set("xpStyle", "OWN")
+    check("own after forever: black rim", xp.borders[1]._vertex[1], 0)
+    check("own after forever: fill inside one unit", xp.sb._points.TOPLEFT[3], 1)
 
     for _, k in ipairs({ "xpStyle", "xpLevelMode", "xpBadgeFollow" }) do Settings.Set(k, nil) end
     Settings.Set("xpEnabled", false)

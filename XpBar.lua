@@ -30,10 +30,12 @@ local Xp = {}
 ns.XpBar = Xp
 
 Xp.TEXT_MODES = { "CURRENT_MAX", "CURRENT_MAX_PERCENT", "PERCENT", "NONE" }
--- OWN: our texture in the chosen colours. FOREVER: Blizzard's own XP bar
--- art (Blizzard_StatusTrackingBar, Mainline): background, fill, rested
--- fill, the rested bonus as a prediction, the frame, 20 dividers (Bars.lua).
-Xp.STYLES = { "OWN", "FOREVER" }
+-- OWN: our texture in the chosen colours. FOREVER: the same, in the look of
+-- the other Forever addons (dark background, gold rim, as the quest log).
+-- BLIZZARD: Blizzard's own XP bar art (Blizzard_StatusTrackingBar,
+-- Mainline): background, fill, the rested bonus as a prediction, the frame,
+-- 20 dividers (Bars.lua).
+Xp.STYLES = { "OWN", "FOREVER", "BLIZZARD" }
 Xp.ROWS = { "TOP", "MIDDLE", "BOTTOM", "FREE" }
 Xp.VALUE_PLACES = { "ABOVE_LEFT", "ABOVE_CENTER", "ABOVE_RIGHT", "IN_LEFT", "IN_CENTER", "IN_RIGHT",
     "BELOW_LEFT", "BELOW_CENTER", "BELOW_RIGHT" }
@@ -122,8 +124,10 @@ local ATLAS = {
 -- the rest of its atlas size.
 local BLIZZARD_BAR_W, BLIZZARD_BAR_H = 1189, 14
 
-local function forever() return S("xpStyle") == "FOREVER" end
-Xp.IsForever = forever
+-- The Forever look's background: the quest log's (its FOREVER preset).
+local FOREVER_BG = { 0.047, 0.047, 0.055, 0.82 }
+
+local function blizzard() return S("xpStyle") == "BLIZZARD" end
 
 -- The frame around the bar: one texture over the fill, below the numbers,
 -- the ends kept by slice margins while the middle stretches to any width.
@@ -165,10 +169,17 @@ end
 function Xp.ApplyStyle()
     local bar = slot()
     if not bar then return end
-    local on = forever()
+    local on = blizzard()
     for _, b in ipairs(bar.borders or {}) do b:SetShown(not on) end
     local art = on and frameArt(bar) or bar.frameArt
     if art then art:SetShown(on) end
+    -- Forever: a gold rim two screen pixels wide, as the minimap's; else one unit.
+    local B, gold = ns.Bars, S("xpStyle") == "FOREVER"
+    local rim = gold and 2 * B.OnePixel(bar) or 1
+    B.PlaceRing(bar.borders, bar, rim, 0)
+    bar.sb:ClearAllPoints()
+    bar.sb:SetPoint("TOPLEFT", bar, "TOPLEFT", rim, -rim)
+    bar.sb:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -rim, rim)
     if on then
         bar.bg:SetAtlas(ATLAS.background)
         bar.bg:SetVertexColor(1, 1, 1, 1)
@@ -177,8 +188,14 @@ function Xp.ApplyStyle()
         bar.rested:SetStatusBarColor(1, 1, 1, 1)
     else
         bar.bg:SetVertexColor(1, 1, 1, 1)
-        local c = S("barBgColor")
-        bar.bg:SetColorTexture(c[1], c[2], c[3], S("barBgAlpha") / 100)
+        if gold then
+            bar.bg:SetColorTexture(unpack(FOREVER_BG))
+            B.PaintGold(bar.borders)
+        else
+            local c = S("barBgColor")
+            bar.bg:SetColorTexture(c[1], c[2], c[3], S("barBgAlpha") / 100)
+            B.PaintRing(bar.borders, B.BORDER_COLOR)
+        end
         bar.fillAtlas = nil
         bar.sb:SetStatusBarTexture(OWN_TEXTURE)
         bar.sb:SetStatusBarColor(unpack(S("xpColor")))
