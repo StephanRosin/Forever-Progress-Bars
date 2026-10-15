@@ -246,6 +246,12 @@ local function ownStyleOnly(row)
     return row
 end
 
+-- Forever always shows the level as its header: the choice is dimmed there.
+local function notForever(row)
+    row.enabled = function() return S("xpStyle") ~= "FOREVER" end
+    return row
+end
+
 -- XP bar: the bar and its place; the title line (the level as text or as
 -- a badge, the numbers); the badge, used only with "as badge".
 local function xpRows()
@@ -264,7 +270,7 @@ local function xpRows()
 
         { type = "header", label = "OPT_XP_TITLE_HEADER" },
         check("xpTitle", "OPT_XP_TITLE"),
-        choice("xpLevelMode", "OPT_XP_LEVEL_MODE", { "TEXT", "BADGE" }, "XP_LEVEL_"),
+        notForever(choice("xpLevelMode", "OPT_XP_LEVEL_MODE", { "TEXT", "BADGE" }, "XP_LEVEL_")),
         {
             type = "select", label = "OPT_XP_LEVEL_FONT",
             choices = function()

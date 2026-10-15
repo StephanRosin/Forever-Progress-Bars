@@ -620,7 +620,7 @@ local xpSlot            -- the experience bar (XpBar.lua fills it)
 -- The level badge sits on the experience bar instead of in the rows: the
 -- XP bar shows and its title line wants the badge rather than the text.
 local function BadgeOnXp()
-    return xpSlot ~= nil and xpSlot:IsShown() and S("xpTitle") and S("xpLevelMode") == "BADGE"
+    return xpSlot ~= nil and xpSlot:IsShown() and S("xpTitle") and ns.XpBar.LevelMode() == "BADGE"
 end
 Bars.BadgeOnXp = BadgeOnXp
 local levelText, levelBox
@@ -985,7 +985,7 @@ local function LevelStyle(keys)
 end
 Bars.LevelStyle = LevelStyle
 Bars.PaintGold, Bars.PaintRing, Bars.PlaceRing, Bars.OnePixel = PaintGold, PaintRing, PlaceRing, OnePixel
-Bars.BORDER_COLOR = CFG.BORDER_COLOR
+Bars.BORDER_COLOR, Bars.NAME_COLOR = CFG.BORDER_COLOR, CFG.NAME_COLOR
 
 local function ApplyBadgeLook(box, keys, level)
     if not box then return end

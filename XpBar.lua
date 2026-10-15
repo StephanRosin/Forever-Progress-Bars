@@ -129,6 +129,11 @@ local FOREVER_BG = { 0.047, 0.047, 0.055, 0.82 }
 
 local function blizzard() return S("xpStyle") == "BLIZZARD" end
 
+-- Forever shows the level as a header above the bar (the quest log's title:
+-- Friz Quadrata, gold, shadow), never as the badge.
+local HEADER_FONT, HEADER_SIZE, HEADER_COLOR = "Friz Quadrata", 18, { 1, 0.82, 0.29 }
+function Xp.LevelMode() return S("xpStyle") == "FOREVER" and "TEXT" or S("xpLevelMode") end
+
 -- The frame around the bar: one texture over the fill, below the numbers,
 -- the ends kept by slice margins while the middle stretches to any width.
 local function frameArt(bar)
@@ -221,8 +226,9 @@ function Xp.TitleSize()
     -- Numbers in or below the bar take no room in the title line.
     if S("xpValuePlace"):sub(1, 5) ~= "ABOVE" then val = 0 end
     -- As a badge the level is no text in the line: only the numbers count.
-    if S("xpLevelMode") == "BADGE" then return val end
-    local lvl = S("xpLevelFontSize") > 0 and S("xpLevelFontSize") or labelSize(bar.nameText)
+    if Xp.LevelMode() == "BADGE" then return val end
+    local lvl = S("xpLevelFontSize") > 0 and S("xpLevelFontSize")
+        or S("xpStyle") == "FOREVER" and HEADER_SIZE or labelSize(bar.nameText)
     return math.max(lvl, val)
 end
 
@@ -230,10 +236,17 @@ function Xp.StyleTitle()
     local bar = slot()
     if not bar then return end
     local name, value = bar.nameText, bar.valueText
-    local path, _, flags = name:GetFont()
-    if S("xpLevelFont") ~= "" then path = ns.Media.FontPath(S("xpLevelFont")) end
-    local size = S("xpLevelFontSize") > 0 and S("xpLevelFontSize") or labelSize(name)
+    local header = S("xpStyle") == "FOREVER"
+    -- The font before any of ours, so leaving the header style restores it.
+    bar.nameBase = bar.nameBase or { name:GetFont() }
+    local path, base, flags = unpack(bar.nameBase)
+    if S("xpLevelFont") ~= "" then path = ns.Media.FontPath(S("xpLevelFont"))
+    elseif header then path = ns.Media.FontPath(HEADER_FONT) end
+    local own = S("labelFontSize")
+    local size = S("xpLevelFontSize") > 0 and S("xpLevelFontSize") or header and HEADER_SIZE
+        or own and own > 0 and own or base or 12
     if path then pcall(name.SetFont, name, path, size, flags) end
+    name:SetTextColor(unpack(header and HEADER_COLOR or ns.Bars.NAME_COLOR))
     name:SetHeight(size)
     local vpath, _, vflags = value:GetFont()
     local vsize = S("xpValueFontSize") > 0 and S("xpValueFontSize") or labelSize(value)
@@ -302,7 +315,7 @@ function Xp.Update()
         bar.rested:SetShown(rested > 0)
         local title = S("xpTitle")
         -- The level as text, or none when the badge sits on the bar.
-        local asText = title and S("xpLevelMode") ~= "BADGE"
+        local asText = title and Xp.LevelMode() ~= "BADGE"
         bar.nameText:SetText(asText and L.XP_LEVEL:format(UnitLevel("player") or 0) or "")
         bar.valueText:SetText(title and Xp.Text(S("xpTextMode"), cur, max) or "")
     end
