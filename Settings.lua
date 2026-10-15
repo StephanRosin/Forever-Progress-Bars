@@ -41,7 +41,13 @@ Settings.DEFAULTS = {
 
     -- Bars
     barHeight = 22,
-    barStyle = "OWN",       -- the profession and reputation bars' look, see Styles.LIST
+    barStyle = "FOREVER",   -- the profession and reputation bars' look, see Styles.LIST
+    -- Forever: the bars' rim (NONE, FLAT or GOLD, in screen pixels) and a
+    -- gold marker where the fill ends.
+    barBorder = "FLAT",
+    barBorderSize = 1,
+    barBorderColor = { 0, 0, 0, 0.9 },
+    barMarker = false,
     ringBeside = false,     -- signet ring: the texts beside it instead of above
     standingY = 0,          -- the rank or standing in the bar, moved up or down
     textHeight = 11,
@@ -72,7 +78,11 @@ Settings.DEFAULTS = {
     -- professions and reputation) or at the BOTTOM; with its title line
     -- ("Level 20" and the numbers) or without.
     xpEnabled = false,
-    xpStyle = "OWN",        -- the look, see Styles.LIST
+    xpStyle = "FOREVER",    -- the look, see Styles.LIST
+    xpBorder = "FLAT",      -- Forever: the rim, as the bars'
+    xpBorderSize = 1,
+    xpBorderColor = { 0, 0, 0, 0.9 },
+    xpMarker = false,
     xpHeight = 0,           -- 0: the style's height (from the default bar height)
     -- The XP bar's own counterparts of the bars' settings: none of those
     -- touch it (Settings.MigrateXpOwn copies them over once).
@@ -116,7 +126,7 @@ Settings.DEFAULTS = {
     xpLevelPlace = "AUTO",
     xpLevelX = 0,
     xpLevelY = 0,
-    xpHeaderPlate = true,   -- Forever style: the plate behind the level
+    xpHeaderPlate = false,  -- Forever style: the plate behind the level
     -- The numbers: font, size, colour ("", 0 and off: the style's).
     xpValueFont = "",
     xpValueFontSize = 0,
@@ -146,10 +156,9 @@ Settings.DEFAULTS = {
 -- The XP bar's colours, one pair per style (XpBar ColourKey):
 -- xpColor<STYLE>, xpRestedColor<STYLE>, taken while xpStyleColours<STYLE>
 -- is on; off, the style's own colours (Own and Forever: these defaults).
--- On by default for Own and Forever, which always took the colours.
+-- On by default for Forever, which always took the colours.
 Settings.XP_COLOURS = {
-    OWN = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 }, true },     -- Blizzard's classic purple and rested blue
-    FOREVER = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 }, true },
+    FOREVER = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 }, true },  -- Blizzard's classic purple and rested blue
     BLIZZARD = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 } },
     RUNE = { { 0.58, 0.40, 1.0 }, { 0.35, 0.30, 0.75 } },
     GEMS = { { 0.69, 0.42, 0.94 }, { 0.24, 0.38, 0.66 } },
@@ -187,6 +196,8 @@ Settings.RANGES = {
     xpLevelX = { -500, 500 },
     xpLevelY = { -100, 100 },
     xpHeight = { 0, 400 },
+    xpBorderSize = { 1, 8 },
+    barBorderSize = { 1, 8 },
     standingY = { -40, 40 },
     xpTextHeight = { 8, 30 },
     xpTextGap = { -10, 20 },
@@ -371,6 +382,59 @@ function Settings.MigrateXpColours()
                     if p["xpStyleColours" .. style] == nil then p["xpStyleColours" .. style] = p.xpStyleColours end
                 end
                 p.xpStyleColours = nil
+            end
+        end
+    end
+end
+
+-- "Own" was Forever with a thin black rim and no extras: it leaves, Forever
+-- takes its place with the rim set (defaults: Own's look). A profile on the
+-- old Forever gets its look written out: gold rim, dark ground, marker,
+-- plate, the level as a gold header in the middle. Once per account.
+local FOREVER_LOOK = {
+    border = "GOLD", borderSize = 2, bg = { 0.047, 0.047, 0.055 }, bgAlpha = 82, marker = true,
+}
+local function setIfNil(p, k, v) if p[k] == nil then p[k] = v end end
+
+function Settings.MigrateOwnMerged()
+    local account = ns.AccountDB()
+    if account.ownMerged then return end
+    account.ownMerged = true
+    for name, p in pairs(account.profiles or {}) do
+        if type(p) == "table" and name:sub(1, 1) ~= "@" then
+            -- The XP bar.
+            if p.xpStyle == "FOREVER" then
+                setIfNil(p, "xpBorder", FOREVER_LOOK.border)
+                setIfNil(p, "xpBorderSize", FOREVER_LOOK.borderSize)
+                setIfNil(p, "xpBgColor", { unpack(FOREVER_LOOK.bg) })
+                setIfNil(p, "xpBgAlpha", FOREVER_LOOK.bgAlpha)
+                setIfNil(p, "xpMarker", FOREVER_LOOK.marker)
+                setIfNil(p, "xpHeaderPlate", true)
+                if p.xpLevelPlace == nil or p.xpLevelPlace == "AUTO" then p.xpLevelPlace = "ABOVE_CENTER" end
+                if (p.xpLevelFontSize or 0) == 0 then p.xpLevelFontSize = 18 end
+                setIfNil(p, "xpLevelFont", "Friz Quadrata")
+                if p.xpLevelFont == "" then p.xpLevelFont = "Friz Quadrata" end
+                if not p.xpLevelColorOwn then
+                    p.xpLevelColorOwn = true
+                    setIfNil(p, "xpLevelColor", { 1, 0.82, 0.29 })
+                end
+            elseif p.xpStyle == "OWN" or p.xpStyle == nil then
+                p.xpStyle = nil
+                -- Its colours are now Forever's.
+                for _, base in ipairs({ "xpColor", "xpRestedColor", "xpStyleColours" }) do
+                    if p[base .. "OWN"] ~= nil then p[base .. "FOREVER"] = p[base .. "OWN"] end
+                end
+            end
+            for _, base in ipairs({ "xpColor", "xpRestedColor", "xpStyleColours" }) do p[base .. "OWN"] = nil end
+            -- The profession and reputation bars.
+            if p.barStyle == "FOREVER" then
+                setIfNil(p, "barBorder", FOREVER_LOOK.border)
+                setIfNil(p, "barBorderSize", FOREVER_LOOK.borderSize)
+                setIfNil(p, "barBgColor", { unpack(FOREVER_LOOK.bg) })
+                setIfNil(p, "barBgAlpha", FOREVER_LOOK.bgAlpha)
+                setIfNil(p, "barMarker", FOREVER_LOOK.marker)
+            elseif p.barStyle == "OWN" then
+                p.barStyle = nil
             end
         end
     end

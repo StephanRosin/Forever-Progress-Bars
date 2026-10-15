@@ -20,7 +20,7 @@ Each style says:
   hiddenFill     the bar's fill stays unseen (the style draws its own)
   build(bar, x)  makes its own textures once: x.under on the bar (below the
                  fill), x.over on a frame above the fill
-  apply(bar, x, h)                   the static look
+  apply(bar, x, h, opts)             the static look
   update(bar, x, cur, max, rested)   what follows the values; also runs
                                      when the bar changes size
 
@@ -41,9 +41,7 @@ local OWN_TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar"   -- Bars.lua CFG.
 -- carries meaning, so a style with a material of its own takes their colour.
 local SHADE = MEDIA .. "FillShade.tga"
 
-Styles.LIST = { "OWN", "FOREVER", "BLIZZARD", "RUNE", "GEMS", "RING", "THIN", "EMBER" }
-
-local GOLD_TEXT = { 1, 0.82, 0.29 }
+Styles.LIST = { "FOREVER", "BLIZZARD", "RUNE", "GEMS", "RING", "THIN", "EMBER" }
 
 -- Helpers -------------------------------------------------------------------
 
@@ -108,41 +106,46 @@ local function midway(cur, max) return (cur or 0) > 0 and (cur or 0) < (max or 0
 local DEF = {}
 Styles.DEF = DEF
 
--- Our texture in the chosen colours, a thin black rim.
-DEF.OWN = {
-    height = function(base) return base end,
-    dividers = "OWN", ownColours = true, badge = "CREST",
-    level = { place = "ABOVE_LEFT" },
-    value = {},
-}
+-- Forever, the plain look: our texture in the chosen colours, the empty part
+-- in the background colour, a rim as set (none, flat in a colour, or gold
+-- shaded like the minimap's), and if asked a gold marker where the fill ends
+-- (tools/badges/marker.svg; Blizzard's own tick is 10 x 14 only and blurs
+-- when grown; the bar fills 100 of the marker's 160 height, it is half as
+-- wide). opts.border = { style, size (screen pixels), color }, opts.marker.
+local function rim(opts)
+    return opts and opts.border or { style = "FLAT", size = 1, color = ns.Bars.BORDER_COLOR }
+end
 
--- The look of the other Forever addons: dark, a gold rim two screen pixels
--- wide (the minimap's), the level as text on a plate (XpBar.lua) or as the
--- badge, and a gold marker
--- where the fill ends (tools/badges/marker.svg; Blizzard's own tick is
--- 10 x 14 only and blurs when grown). The bar fills 100 of the marker's
--- 160 height; it is half as wide.
 DEF.FOREVER = {
     height = function(base) return base end,
-    inset = function(h, px) local r = 2 * px return r, r, r, r end,
+    inset = function(h, px, opts)
+        local b = rim(opts)
+        if b.style == "NONE" then return 0, 0, 0, 0 end
+        local r = b.size * px
+        return r, r, r, r
+    end,
     dividers = "OWN", ownColours = true, badge = "CREST",
-    level = { place = "ABOVE_CENTER", size = function() return 18 end, font = "Friz Quadrata", color = GOLD_TEXT },
+    level = { place = "ABOVE_LEFT" },
     value = {},
     build = function(bar, x)
         x.marker = over(x, "OVERLAY", MEDIA .. "BadgeMarker.tga")
     end,
-    apply = function(bar, x, h)
-        local B = ns.Bars
-        bar.bg:SetColorTexture(0.047, 0.047, 0.055, 0.82)   -- the quest log's FOREVER preset
-        B.PlaceRing(bar.borders, bar, 2 * B.OnePixel(bar), 0)
-        B.PaintGold(bar.borders)
+    apply = function(bar, x, h, opts)
+        local B, b = ns.Bars, rim(opts)
+        if b.style == "NONE" then
+            for _, t in ipairs(bar.borders) do t:Hide() end
+        else
+            B.PlaceRing(bar.borders, bar, b.size * B.OnePixel(bar), 0)
+            if b.style == "GOLD" then B.PaintGold(bar.borders) else B.PaintRing(bar.borders, b.color) end
+        end
         local m = math.floor(h * 160 / 100 + 0.5)
         x.marker:SetSize(m / 2, m)
+        x.markerOn = opts and opts.marker == true
     end,
     update = function(bar, x, cur, max)
         x.marker:ClearAllPoints()
         x.marker:SetPoint("CENTER", ends(bar), "RIGHT", 0, 0)
-        x.marker:SetShown(midway(cur, max))
+        x.marker:SetShown(x.markerOn and midway(cur, max))
     end,
 }
 
@@ -548,7 +551,7 @@ DEF.EMBER = {
 
 -- Applying ----------------------------------------------------------------------
 
-function Styles.Get(id) return DEF[id] or DEF.OWN end
+function Styles.Get(id) return DEF[id] or DEF.FOREVER end
 
 local function parts(bar, id)
     bar.styleParts = bar.styleParts or {}
@@ -577,9 +580,10 @@ end
 -- (a bar whose colour comes from Styles.Colour: professions, reputation);
 -- ringLeft (the ring at the bar's left end, its texts beside it);
 -- restedTint (the rested part's colour for a tinted bar); bg,
--- bgAlpha (the empty part, else the bars' own).
+-- bgAlpha (the empty part, else the bars' own); border, marker (Forever).
 function Styles.Apply(bar, id, h, opts)
     opts = opts or {}
+    if not DEF[id] then id = "FOREVER" end   -- a style no longer offered (Own)
     local def = Styles.Get(id)
     bar.styleId = id
     bar.styleTinted = opts.tinted
@@ -596,7 +600,7 @@ function Styles.Apply(bar, id, h, opts)
     local c = opts.bg or S("barBgColor")
     bar.bg:SetColorTexture(c[1], c[2], c[3], (opts.bgAlpha or S("barBgAlpha")) / 100)
     local l, t, r, b = 1, 1, 1, 1
-    if def.inset then l, t, r, b = def.inset(h, B.OnePixel(bar)) end
+    if def.inset then l, t, r, b = def.inset(h, B.OnePixel(bar), opts) end
     bar.sb:ClearAllPoints()
     bar.sb:SetPoint("TOPLEFT", bar, "TOPLEFT", l, -t)
     bar.sb:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -r, b)
@@ -612,7 +616,7 @@ function Styles.Apply(bar, id, h, opts)
     local x = (def.build or def.apply or def.update) and parts(bar, id)
     if x then
         showParts(x, true)
-        if def.apply then def.apply(bar, x, h) end
+        if def.apply then def.apply(bar, x, h, opts) end
     end
     -- A tinted bar keeps its colour through a change of look.
     if bar.styleTinted and bar.styleTint then Styles.Colour(bar, unpack(bar.styleTint)) end

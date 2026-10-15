@@ -863,7 +863,10 @@ local function ApplyBarGeometry(bar)
     if bar == xpSlot then
         if ns.XpBar and ns.XpBar.ApplyStyle then ns.XpBar.ApplyStyle() end
     else
-        ns.Styles.Apply(bar, S("barStyle"), StripBarHeight(), { tinted = true, ringLeft = Beside() })
+        ns.Styles.Apply(bar, S("barStyle"), StripBarHeight(), {
+            tinted = true, ringLeft = Beside(), marker = S("barMarker"),
+            border = { style = S("barBorder"), size = S("barBorderSize"), color = S("barBorderColor") },
+        })
         StripTexts(bar)
     end
     if Locked() then
@@ -2139,7 +2142,7 @@ Settings.OnChange(function(key)
             ApplyLevelLook()
             Layout()
         elseif key == "xpStyle" or key == "xpHeight" or key == "xpTextHeight" or key == "xpTextGap"
-            or key == "xpSegmentWidth" then
+            or key == "xpSegmentWidth" or key == "xpBorder" or key == "xpBorderSize" then
             -- Another height, and the badge "matching the bar" changes.
             if xpSlot then ApplyBarGeometry(xpSlot) end
             ApplyLevelLook()
@@ -2219,6 +2222,7 @@ events:SetScript("OnEvent", function(_, event, ...)
         Settings.MigrateXpOwn()
         Settings.MigrateLevelGone()
         Settings.MigrateXpColours()
+        Settings.MigrateOwnMerged()
         Build()
         Bars.ApplyAll()
         Bars.MigrateFreeToTop()

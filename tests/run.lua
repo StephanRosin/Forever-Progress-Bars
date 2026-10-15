@@ -1101,10 +1101,10 @@ do
         end
         return byLabel
     end
-    check("own by default", S("xpStyle"), "OWN")
+    check("forever by default", S("xpStyle"), "FOREVER")
     check("own: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
     check("own: rim shown", xp.borders[1]:IsShown(), true)
-    check("eight styles", #X.STYLES, 8)
+    check("seven styles (Own went into Forever)", #X.STYLES, 7)
     for _, id in ipairs(X.STYLES) do
         check("style " .. id .. " named", ns.L["XP_STYLE_" .. id] ~= nil, true)
     end
@@ -1138,7 +1138,7 @@ do
     Settings.Set("xpBadgeFollow", true)
     local box = Bars.XpBadge()
     check("blizzard: badge rides on the fill", select(2, box:GetPoint("CENTER")), xp.sb:GetStatusBarTexture())
-    Settings.Set("xpStyle", "OWN")
+    Settings.Set("xpStyle", "FOREVER")
     check("own: badge rides on the fill", select(2, box:GetPoint("CENTER")), xp.sb:GetStatusBarTexture())
     check("own again: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
     check("own again: our colour", xp.sb._color[1], S("xpColor" .. S("xpStyle"))[1])
@@ -1153,8 +1153,13 @@ do
     Settings.Set("xpStyle", "BLIZZARD")
     check("colour row: dimmed for blizzard", rows().OPT_XP_COLOR.enabled(), false)
 
-    -- Forever: our fill in the other Forever addons' look.
+    -- Forever in the other Forever addons' look: the rim, ground, marker,
+    -- plate and header as set.
     Settings.Set("xpStyle", "FOREVER")
+    local LOOK = { xpBorder = "GOLD", xpBorderSize = 2, xpBgColor = { 0.047, 0.047, 0.055 }, xpBgAlpha = 82,
+        xpMarker = true, xpHeaderPlate = true, xpLevelPlace = "ABOVE_CENTER", xpLevelFontSize = 18,
+        xpLevelColorOwn = true, xpLevelColor = { 1, 0.82, 0.29 } }
+    for k, v in pairs(LOOK) do Settings.Set(k, v) end
     check("colour row: usable for forever", rows().OPT_XP_COLOR.enabled(), true)
     check("forever: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
     check("forever: our colour", xp.sb._color[1], S("xpColor" .. S("xpStyle"))[1])
@@ -1176,11 +1181,11 @@ do
     check("forever: plate centred above", xp.plate._points.BOTTOM ~= nil, true)
     Settings.Set("xpLevelPlace", "BELOW_RIGHT")
     check("forever: plate goes where the level goes", xp.plate._points.TOPRIGHT ~= nil, true)
-    Settings.Set("xpLevelPlace", nil)
+    Settings.Set("xpLevelPlace", "ABOVE_CENTER")
     Settings.Set("xpHeaderPlate", false)
     check("forever: plate can go", xp.plate:IsShown(), false)
     check("forever: level stays without the plate", xp.nameText:GetText(), "Level 20")
-    Settings.Set("xpHeaderPlate", nil)
+    Settings.Set("xpHeaderPlate", true)
     check("forever: plate back", xp.plate.bg:IsShown(), true)
     local r = rows()
     check("forever with text: badge rows dimmed", r.OPT_XP_BADGE_FOLLOW.enabled(), false)
@@ -1191,11 +1196,18 @@ do
     check("forever: a marker at the end of the fill", marker:IsShown(), true)
     check("forever: the marker hangs on the fill", marker._points.CENTER[1], xp.sb:GetStatusBarTexture())
     check("forever: our gold marker", marker._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\BadgeMarker.tga")
-    Settings.Set("xpStyle", "OWN")
+    for k in pairs(LOOK) do Settings.Set(k, nil) end
     check("own after forever: black rim", xp.borders[1]._vertex[1], 0)
-    check("own after forever: fill inside one unit", xp.sb._points.TOPLEFT[3], 1)
+    check("own after forever: fill inside one pixel", xp.sb._points.TOPLEFT[3], ns.Bars.OnePixel(xp))
     check("own after forever: plate hidden", xp.plate:IsShown(), false)
-    check("own after forever: Forever's parts hidden", parts("FOREVER").over:IsShown(), false)
+    check("own after forever: no marker", parts("FOREVER").marker:IsShown(), false)
+    Settings.Set("xpBorder", "NONE")
+    check("no rim: hidden", xp.borders[1]:IsShown(), false)
+    check("no rim: the fill to the edge", xp.sb._points.TOPLEFT[3], 0)
+    Settings.Set("xpBorder", "FLAT")
+    Settings.Set("xpBorderColor", { 1, 0, 0, 1 })
+    check("flat rim in its colour", xp.borders[1]._vertex[1], 1)
+    for _, k in ipairs({ "xpBorder", "xpBorderColor" }) do Settings.Set(k, nil) end
     check("own with badge: badge rows usable", rows().OPT_XP_BADGE_FOLLOW.enabled(), true)
     check("own after forever: level back on the text layer", xp.nameText._parent, X.TextLayer())
 
@@ -1210,7 +1222,7 @@ do
         check(id .. ": own level size", select(2, xp.nameText:GetFont()), 23)
         Settings.Set("xpLevelPlace", "BELOW_CENTER")
         Settings.Set("xpLevelX", 7)
-        local where = id == "FOREVER" and xp.plate or xp.nameText
+        local where = (id == "FOREVER" and S("xpHeaderPlate")) and xp.plate or xp.nameText
         check(id .. ": level at its own place", where._points.TOP and where._points.TOP[3], 7)
         Settings.Set("xpValueColorOwn", true)
         Settings.Set("xpValueColor", { 0.6, 0.5, 0.4 })
@@ -1256,16 +1268,15 @@ do
     Settings.Set("xpStyle", "RUNE")
     check("rune: its own colour", xp.sb._color[1], 0.1)
     check("the colour row shows the chosen style's", rows().OPT_XP_COLOR.get()[1], 0.1)
-    Settings.Set("xpStyle", "OWN")
-    check("own: untouched", xp.sb._color[1], Settings.DEFAULTS.xpColorOWN[1])
-    check("own: own colours on by default", rows().OPT_XP_STYLE_COLOURS.get(), true)
-    Settings.Set("xpColorOWN", { 0.3, 0.3, 0.3 })
-    check("own: the chosen colour", xp.sb._color[1], 0.3)
-    Settings.Set("xpStyleColoursOWN", false)
-    check("own switched off: the style's colour", xp.sb._color[1], Settings.DEFAULTS.xpColorOWN[1])
-    check("own switched off: pickers dimmed", rows().OPT_XP_COLOR.enabled(), false)
-    Settings.Set("xpStyleColoursOWN", nil)
-    Settings.Set("xpColorOWN", nil)
+    Settings.Set("xpStyle", "FOREVER")
+    check("forever: untouched", xp.sb._color[1], Settings.DEFAULTS.xpColorFOREVER[1])
+    check("forever: own colours on by default", rows().OPT_XP_STYLE_COLOURS.get(), true)
+    Settings.Set("xpColorFOREVER", { 0.3, 0.3, 0.3 })
+    check("forever: the chosen colour", xp.sb._color[1], 0.3)
+    Settings.Set("xpStyleColoursFOREVER", false)
+    check("forever switched off: pickers dimmed", rows().OPT_XP_COLOR.enabled(), false)
+    Settings.Set("xpStyleColoursFOREVER", nil)
+    Settings.Set("xpColorFOREVER", nil)
     Settings.Set("xpStyle", "FOREVER")
     Settings.Set("xpStyleColoursFOREVER", false)
     check("forever switched off: the style's colour", xp.sb._color[1], Settings.DEFAULTS.xpColorFOREVER[1])
@@ -1282,7 +1293,7 @@ do
     Settings.Set("xpColorRING", { 0.9, 0.1, 0.1 })
     check("ring with own colours: the arc", parts("RING").arc[1]._vertex[1], 0.9)
     for _, k in ipairs({ "xpStyleColoursRING", "xpColorRING" }) do Settings.Set(k, nil) end
-    Settings.Set("xpStyle", "OWN")
+    Settings.Set("xpStyle", "FOREVER")
     for _, k in ipairs({ "xpStyleColoursRUNE", "xpStyleColoursEMBER", "xpColorRUNE" }) do Settings.Set(k, nil) end
     Settings.Set("xpStyle", "EMBER")
     check("forge: molten again", xp.sb._barTex, "Interface\\AddOns\\ForeverProgressBars\\Media\\FillEmber.tga")
@@ -1328,7 +1339,7 @@ do
     Settings.Set("xpBadgeStyle", nil)
     check("badge menu offers matching", Bars.AvailableLevelStyles(Bars.XP_BADGE)[1], "MATCH")
 
-    Settings.Set("xpStyle", "OWN")
+    Settings.Set("xpStyle", "FOREVER")
     check("own after all: parts of the others hidden", parts("EMBER").over:IsShown() or parts("RING").over:IsShown(), false)
     check("own after all: bars' height", xp:GetHeight(), base)
 
@@ -1348,7 +1359,7 @@ do
     check("a shown profession bar", bar ~= nil, true)
     if bar then
         local c = bar.styleTint
-        check("own by default", S("barStyle"), "OWN")
+        check("forever by default", S("barStyle"), "FOREVER")
         check("own: our texture", bar.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
         check("own: its own colour", bar.sb._color[1], c[1])
         local base = S("barHeight")
@@ -1388,7 +1399,11 @@ do
         Settings.Set("segmentWidth", nil)
         Settings.Set("barStyle", "FOREVER")
         check("forever: the fill seen again", bar.sb._color[4], 1)
-        check("forever: gold rim", bar.borders[1]._gradient ~= nil, true)
+        Settings.Set("barBorder", "GOLD")
+        check("forever: gold rim as set", bar.borders[1]._gradient ~= nil, true)
+        Settings.Set("barMarker", true)
+        check("forever: the marker as set", bar.styleParts.FOREVER.markerOn, true)
+        for _, k in ipairs({ "barBorder", "barMarker" }) do Settings.Set(k, nil) end
         check("forever: still its colour", bar.sb._color[1], c[1])
         Settings.Set("barStyle", "EMBER")
         check("xp badge follows its own style, not the bars'", Bars.LevelStyle(Bars.XP_BADGE) ~= "SHIELD" or S("xpStyle") == "EMBER", true)
@@ -1532,6 +1547,25 @@ do
     local first = W.PAGES[1].rows()
     check("General starts with both switches", first[2].label .. "," .. first[3].label, "OPT_BARS_ENABLED,OPT_XP_ENABLED")
     W.Toggle()
+end
+
+section("Own merged into Forever: from before")
+do
+    local account = ns.AccountDB()
+    account.ownMerged = nil
+    account.profiles.Gold = { xpStyle = "FOREVER", barStyle = "FOREVER", xpColorOWN = { 0.5, 0.5, 0.5 } }
+    account.profiles.Plain = { xpStyle = "OWN", barStyle = "OWN", xpColorOWN = { 0.2, 0.3, 0.4 } }
+    Settings.MigrateOwnMerged()
+    local gold, plain = account.profiles.Gold, account.profiles.Plain
+    check("forever profile: gold rim written", gold.xpBorder .. gold.xpBorderSize, "GOLD2")
+    check("forever profile: the marker and plate", gold.xpMarker and gold.xpHeaderPlate, true)
+    check("forever profile: the gold header", gold.xpLevelPlace .. gold.xpLevelFontSize, "ABOVE_CENTER18")
+    check("forever profile: the bars' look too", gold.barBorder .. tostring(gold.barMarker), "GOLDtrue")
+    check("forever profile: Own's colours dropped", gold.xpColorOWN, nil)
+    check("own profile: now Forever (the default)", plain.xpStyle == nil and plain.barStyle == nil, true)
+    check("own profile: its colours now Forever's", plain.xpColorFOREVER[1], 0.2)
+    check("own profile: nothing else written", plain.xpBorder == nil and plain.xpMarker == nil, true)
+    account.profiles.Gold, account.profiles.Plain = nil, nil
 end
 
 section("Only SavedVariables, nothing private")

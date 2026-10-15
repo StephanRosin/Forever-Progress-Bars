@@ -109,10 +109,51 @@ local function colorRow(key, label, noOpacity)
     }
 end
 
+-- Forever's rim: none, flat in a colour, or gold; its width; and the gold
+-- marker where the fill ends. Dimmed outside Forever (styleKey: xpStyle or
+-- barStyle); the colour counts only for a flat rim.
+local function rimRows(prefix, styleKey)
+    local function key(k) return prefix .. k end
+    local function forever() return (S(styleKey) == "FOREVER") or not ns.Styles.DEF[S(styleKey)] end
+    local style = {
+        type = "select", label = "OPT_RIM",
+        choices = function()
+            return {
+                { label = L.BORDER_NONE, value = "NONE" },
+                { label = L.BORDER_FLAT, value = "FLAT" },
+                { label = L.BORDER_GOLD, value = "GOLD" },
+            }
+        end,
+        get = function() return S(key("Border")) end,
+        set = function(v) Settings.Set(key("Border"), v) end,
+        enabled = forever,
+    }
+    local size = num(key("BorderSize"), "OPT_RIM_SIZE")
+    size.enabled = function() return forever() and S(key("Border")) ~= "NONE" end
+    local colour = colorRow(key("BorderColor"), "OPT_RIM_COLOR")
+    colour.enabled = function() return forever() and S(key("Border")) == "FLAT" end
+    local marker = check(key("Marker"), "OPT_MARKER")
+    marker.enabled = forever
+    return { style, size, colour, marker }
+end
+
+-- Puts the rows of `extra` where the list holds the marker string.
+local function splice(rows, marker, extra)
+    local out = {}
+    for _, r in ipairs(rows) do
+        if r == marker then
+            for _, e in ipairs(extra) do out[#out + 1] = e end
+        else
+            out[#out + 1] = r
+        end
+    end
+    return out
+end
+
 -- Leisten: their size (both widths), text line, look, icons.
 local function barRows()
     local w = screenSize()
-    return {
+    return splice({
         { type = "header", label = "OPT_BAR_LOOK" },
         choice("barStyle", "OPT_BAR_STYLE", ns.Styles.LIST, "BAR_STYLE_"),
         { type = "text", label = "OPT_BAR_STYLE_HINT", height = 40 },
@@ -121,6 +162,7 @@ local function barRows()
             row.enabled = function() return S("barStyle") == "RING" end
             return row
         end)(),
+        "RIM",
         colorRow("barBgColor", "OPT_BAR_BG_COLOR", true),
         { label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
           get = function() return S("barBgAlpha") end,
@@ -154,7 +196,7 @@ local function barRows()
         num("standingY", "OPT_STANDING_Y"),
         num("iconSize", "OPT_ICON_SIZE"),
         num("iconGap", "OPT_ICON_GAP"),
-    }
+    }, "RIM", rimRows("bar", "barStyle"))
 end
 
 local function repRows()
@@ -254,8 +296,8 @@ end
 local ownColoursOnly = enabledIf(function() return ns.XpBar.TakesColours() end)
 local levelChoice = enabledIf(function() return not ns.XpBar.Def().levelText end)
 -- Segments and the empty part's colour only where the style draws ours.
-local ownLookOnly = enabledIf(function() return S("xpStyle") == "OWN" end)
-local foreverOnly = enabledIf(function() return S("xpStyle") == "FOREVER" end)
+local ownLookOnly = enabledIf(function() return ns.XpBar.StyleId() == "FOREVER" end)
+local foreverOnly = enabledIf(function() return ns.XpBar.StyleId() == "FOREVER" end)
 local badgeOnly = enabledIf(function() return ns.XpBar.LevelMode() == "BADGE" end)
 local levelTextOnly = enabledIf(function() return ns.XpBar.LevelMode() ~= "BADGE" end)
 local levelColourOnly = enabledIf(function()
@@ -267,13 +309,13 @@ local valueColourOnly = enabledIf(function() return S("xpValueColorOwn") == true
 -- it reads and writes the key of whatever style is chosen.
 local function styleKeyed(make, base, ...)
     local args = { ... }
-    local row = make(base .. "OWN", unpack(args))
+    local row = make(base .. "FOREVER", unpack(args))
     local keyed = {}
     for _, style in ipairs(ns.Styles.LIST) do
         if Settings.DEFAULTS[base .. style] ~= nil then keyed[style] = make(base .. style, unpack(args)) end
     end
-    -- A style without colours of its own shows Own's (dimmed anyway).
-    local function current() return keyed[S("xpStyle")] or keyed.OWN end
+    -- A style without colours of its own shows Forever's (dimmed anyway).
+    local function current() return keyed[ns.XpBar.StyleId()] or keyed.FOREVER end
     row.get = function(...) return current().get(...) end
     row.set = function(...) return current().set(...) end
     return row
@@ -303,7 +345,7 @@ end
 -- XP bar: whether it shows and hides, its place, size and look.
 local function xpRows()
     local X = ns.XpBar
-    return {
+    return splice({
         { type = "header", label = "OPT_BAR_LOOK" },
         choice("xpStyle", "OPT_XP_STYLE", X.STYLES, "XP_STYLE_"),
         -- Each style keeps its own colours: the keys follow the chosen style.
@@ -311,6 +353,7 @@ local function xpRows()
         ownColoursOnly(styleKeyed(colorRow, "xpColor", "OPT_XP_COLOR", true)),
         ownColoursOnly(styleKeyed(colorRow, "xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
         ownLookOnly(num("xpSegmentWidth", "OPT_SEGMENT_WIDTH")),
+        "RIM",
         ownLookOnly(colorRow("xpBgColor", "OPT_BAR_BG_COLOR", true)),
         ownLookOnly({ label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
           get = function() return S("xpBgAlpha") end,
@@ -326,7 +369,7 @@ local function xpRows()
         num("xpFreeY", "OPT_XP_FREE_Y"),
         num("xpWidth", "OPT_XP_WIDTH"),
         num("xpHeight", "OPT_XP_HEIGHT"),
-    }
+    }, "RIM", rimRows("xp", "xpStyle"))
 end
 
 -- XP bar texts: the title line, the level as text or as a badge, the

@@ -109,7 +109,13 @@ end
 local function slot() return ns.Bars.XpSlot and ns.Bars.XpSlot() end
 
 -- The chosen style (Styles.lua).
-function Xp.Def() return ns.Styles.Get(S("xpStyle")) end
+-- The chosen style's id; one no longer offered (Own, merged into Forever)
+-- counts as Forever.
+function Xp.StyleId()
+    local id = S("xpStyle")
+    return ns.Styles.DEF[id] and id or "FOREVER"
+end
+function Xp.Def() return ns.Styles.Get(Xp.StyleId()) end
 
 -- The bar's height: its own, or (0) the style's from the default bar
 -- height. Not from the bars' height setting: that is for the profession
@@ -132,7 +138,7 @@ end
 function Xp.Dividers() return Xp.Def().dividers or "OWN" end
 
 -- The chosen style's own colour settings: xpColor<STYLE> and so on.
-function Xp.ColourKey(base) return base .. S("xpStyle") end
+function Xp.ColourKey(base) return base .. Xp.StyleId() end
 
 -- Whether the chosen colours count: in every style, while switched on.
 function Xp.TakesColours() return S(Xp.ColourKey("xpStyleColours")) == true end
@@ -190,7 +196,7 @@ local function plate(bar)
 end
 
 local function plateShown()
-    return S("xpStyle") == "FOREVER" and S("xpTitle") and S("xpHeaderPlate") and Xp.LevelMode() ~= "BADGE"
+    return Xp.StyleId() == "FOREVER" and S("xpTitle") and S("xpHeaderPlate") and Xp.LevelMode() ~= "BADGE"
 end
 
 -- Look of the bar for the chosen style; Bars.lua calls it after it painted
@@ -204,14 +210,16 @@ function Xp.ApplyStyle()
     local opts = {}
     if def.ownColours then
         -- Our styles draw in colours anyway: the chosen ones, or their own.
-        local pair = Settings.XP_COLOURS[S("xpStyle")]
+        local pair = Settings.XP_COLOURS[Xp.StyleId()]
         opts.fill, opts.rested = own and fill or pair[1], own and rested or pair[2]
     end
     opts.bg, opts.bgAlpha = S("xpBgColor"), S("xpBgAlpha")
+    opts.border = { style = S("xpBorder"), size = S("xpBorderSize"), color = S("xpBorderColor") }
+    opts.marker = S("xpMarker")
     -- The others take the chosen colours over their material when asked.
     local tint = own and not def.ownColours
     opts.tinted, opts.restedTint = tint, tint and rested or nil
-    ns.Styles.Apply(bar, S("xpStyle"), Xp.Height(), opts)
+    ns.Styles.Apply(bar, Xp.StyleId(), Xp.Height(), opts)
     if tint then ns.Styles.Colour(bar, unpack(fill)) end
     Xp.PlaceLevel()
 end
