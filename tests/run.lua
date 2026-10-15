@@ -1549,6 +1549,48 @@ do
     account.profiles.Gold, account.profiles.Plain = nil, nil
 end
 
+section("What's new")
+do
+    local N = ns.News
+    local oldCurrent = N.Current
+    N.Current = function() return "1.7.0" end
+    check("1.7.0 has news", N.Entry("1.7.0") ~= nil, true)
+    for _, key in ipairs(N.Entry("1.7.0").lines) do check("news line " .. key, type(ns.L[key]), "string") end
+    check("older", N.Compare("1.6.0", "1.7.0"), -1)
+    check("newer", N.Compare("1.10.0", "1.7.0"), 1)
+    check("the same", N.Compare("1.7", "1.7.0"), 0)
+    local account = ns.AccountDB()
+    -- A fresh install: nothing shows, the version is recorded.
+    account.newsSeen = nil
+    N.Begin({ profiles = { Default = {} } })
+    check("fresh install: recorded", account.newsSeen, "1.7.0")
+    check("fresh install: not due", N.Due(), false)
+    -- An update from before the news: the account held settings.
+    account.newsSeen = nil
+    N.Begin({ profiles = { Default = { barHeight = 30 } } })
+    check("update: due", N.Due(), true)
+    N.AtLogin()
+    check("update: shown", N.IsOpen(), true)
+    check("update: recorded once seen", account.newsSeen, "1.7.0")
+    check("update: not due again", N.Due(), false)
+    N.Close()
+    -- Seen an older version's news: due again.
+    account.newsSeen = "1.6.0"
+    check("older news seen: due", N.Due(), true)
+    account.newsSeen = "1.8.0"
+    check("a downgrade: not due", N.Due(), false)
+    -- /fpb news opens it again.
+    account.newsSeen = "1.7.0"
+    SlashCmdList["FOREVERPROGRESSBARS"]("news")
+    check("/fpb news shows it", N.IsOpen(), true)
+    N.Close()
+    N.Current = function() return "9.9.9" end
+    M.chat = {}
+    SlashCmdList["FOREVERPROGRESSBARS"]("news")
+    check("/fpb news without news: says so", N.IsOpen(), false)
+    N.Current = oldCurrent
+end
+
 section("Only SavedVariables, nothing private")
 for _, f in ipairs(tocFiles()) do
     local src = io.open(ROOT .. "/" .. f):read("*a")

@@ -30,6 +30,7 @@ XpInfo.lua
 Options\Style.lua
 Options\Widgets.lua
 Options\Window.lua
+Options\News.lua
 Options\Panel.lua
 Options\MinimapButton.lua
 Commands.lua

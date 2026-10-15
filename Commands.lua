@@ -20,6 +20,9 @@ SlashCmdList["FOREVERPROGRESSBARS"] = function(msg)
         ns.Print(L.MSG_UNLOCKED)
     elseif cmd == "status" then
         for _, line in ipairs(ns.Bars.Status()) do ns.Print(line) end
+    elseif cmd == "news" then
+        -- What's new in this version (Options/News.lua).
+        if not ns.News.Open(ns.News.Current()) then ns.Print(L.NEWS_NONE) end
     else
         ns.Print(L.MSG_USAGE)
     end
