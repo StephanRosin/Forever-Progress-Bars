@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="128" viewBox="-8 0 80 160">
+  <!-- The XP bar's Forever style: where the XP end and the rested part begins.
+       A gold stem with a diamond above and below the bar (the bar is the middle 100 of 160; the texture is 64 x 128, a power of two). -->
+  <defs>
+    <linearGradient id="stem" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6e4c12"/>
+      <stop offset="0.45" stop-color="#fff0b0"/>
+      <stop offset="1" stop-color="#7a5616"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff4c0"/>
+      <stop offset="0.35" stop-color="#f0cc62"/>
+      <stop offset="0.7" stop-color="#b3842a"/>
+      <stop offset="1" stop-color="#6e4c12"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="22" width="16" height="116" fill="url(#stem)" stroke="#2a1c05" stroke-width="2.5"/>
+  <path d="M32 2 L52 22 L32 42 L12 22 Z" fill="url(#gold)" stroke="#2a1c05" stroke-width="3"/>
+  <path d="M32 13 L41 22 L32 31 L23 22 Z" fill="#3a2708"/>
+  <path d="M32 118 L52 138 L32 158 L12 138 Z" fill="url(#gold)" stroke="#2a1c05" stroke-width="3"/>
+  <path d="M32 129 L41 138 L32 147 L23 138 Z" fill="#3a2708"/>
+</svg>

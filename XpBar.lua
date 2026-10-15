@@ -171,8 +171,12 @@ local function plate(bar)
     return p
 end
 
--- Forever: a gold line where the XP end and the rested part begins, in
--- place of the badge that marks it in the other styles.
+-- Forever: a gold marker (tools/badges/marker.svg) where the XP end and the
+-- rested part begins, in place of the badge that marks it in the other
+-- styles. Blizzard's own tick (Frame-Pip) is 10 x 14 only and blurs when
+-- grown. The bar fills 100 of the marker's 160 height; it is half as wide.
+local MARKER = "Interface\\AddOns\\ForeverProgressBars\\Media\\BadgeMarker.tga"
+local MARKER_REACH = 160 / 100
 function Xp.LayoutMarker()
     local bar = slot()
     if not bar then return end
@@ -183,16 +187,17 @@ function Xp.LayoutMarker()
         return
     end
     if not bar.marker then
-        bar.marker = bar.sb:CreateTexture(nil, "OVERLAY", nil, 7)
-        bar.marker:SetColorTexture(1, 1, 1, 1)
-        local G = { { 0.78, 0.59, 0.13, 1 }, { 1, 0.792, 0.188, 1 } }   -- the rim's SHADE to MID
-        ns.Bars.Gradient(bar.marker, G[1], G[2])
+        -- On a layer above the bar, so it may stand out over the rim.
+        local holder = CreateFrame("Frame", nil, bar)
+        holder:SetAllPoints(bar)
+        holder:SetFrameLevel((bar.sb:GetFrameLevel() or 1) + 2)
+        bar.marker = holder:CreateTexture(nil, "OVERLAY")
+        bar.marker:SetTexture(MARKER)
     end
-    local fill = bar.sb:GetStatusBarTexture()
-    bar.marker:SetWidth(2 * ns.Bars.OnePixel(bar))
+    local h = math.floor((bar:GetHeight() or 20) * MARKER_REACH + 0.5)
+    bar.marker:SetSize(h / 2, h)
     bar.marker:ClearAllPoints()
-    bar.marker:SetPoint("TOP", fill, "TOPRIGHT", 0, 0)
-    bar.marker:SetPoint("BOTTOM", fill, "BOTTOMRIGHT", 0, 0)
+    bar.marker:SetPoint("CENTER", bar.sb:GetStatusBarTexture(), "RIGHT", 0, 0)
     bar.marker:Show()
 end
 
