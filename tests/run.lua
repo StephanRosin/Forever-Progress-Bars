@@ -1115,6 +1115,74 @@ do
     M.state.level = 43
 end
 
+section("XP bar style")
+do
+    local X = ns.XpBar
+    M.state.xp, M.state.xpMax, M.state.rested = 730, 23200, 0
+    M.state.level = 20
+    M.atlases["UI-HUD-ExperienceBar-Frame"] = true
+    _G.StatusTrackingBarManager = M.newWidget("StatusTrackingBarManager")
+    Settings.Set("xpEnabled", true)
+    local xp = Bars.XpSlot()
+    check("own by default", S("xpStyle"), "OWN")
+    check("own: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
+    check("own: rim shown", xp.borders[1]:IsShown(), true)
+
+    Settings.Set("xpStyle", "FOREVER")
+    check("forever: Blizzard's fill", xp.sb._barTex, "UI-HUD-ExperienceBar-Fill-Experience")
+    check("forever: fill not tinted", table.concat(xp.sb._color, ","), "1,1,1")
+    check("forever: Blizzard's background", xp.bg._atlas, "UI-HUD-ExperienceBar-Background")
+    check("forever: prediction for the rested part", xp.rested._barTex, "UI-HUD-ExperienceBar-Fill-Prediction")
+    check("forever: rim hidden", xp.borders[1]:IsShown(), false)
+    check("forever: frame shown", xp.frameArt and xp.frameArt:IsShown(), true)
+    local shown, art = 0, true
+    for _, d in ipairs(xp.dividers) do
+        if d:IsShown() then
+            shown = shown + 1
+            if d._atlas ~= "ui-hud-experiencebar-divider" then art = false end
+        end
+    end
+    check("forever: 20 segments", shown, 19)
+    check("forever: Blizzard's dividers", art, true)
+
+    M.state.rested = 3000
+    M.Fire("UPDATE_EXHAUSTION")
+    check("forever rested: the rested fill", xp.sb._barTex, "UI-HUD-ExperienceBar-Fill-Rested")
+    M.state.rested = 0
+    M.Fire("UPDATE_EXHAUSTION")
+    check("forever: back to the plain fill", xp.sb._barTex, "UI-HUD-ExperienceBar-Fill-Experience")
+
+    -- The badge riding on the fill works in both styles.
+    Settings.Set("xpLevelMode", "BADGE")
+    Settings.Set("xpBadgeFollow", true)
+    local box = Bars.XpBadge()
+    check("forever: badge rides on the fill", select(2, box:GetPoint("CENTER")), xp.sb:GetStatusBarTexture())
+    Settings.Set("xpStyle", "OWN")
+    check("own: badge rides on the fill", select(2, box:GetPoint("CENTER")), xp.sb:GetStatusBarTexture())
+
+    Settings.Set("xpStyle", "OWN")
+    check("own again: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
+    check("own again: our colour", xp.sb._color[1], S("xpColor")[1])
+    check("own again: frame hidden", xp.frameArt:IsShown(), false)
+    check("own again: rim shown", xp.borders[1]:IsShown(), true)
+    local thin = true
+    for _, d in ipairs(xp.dividers) do if d:IsShown() and d._w ~= 1 then thin = false end end
+    check("own again: our dividers", thin, true)
+
+    -- The colour pickers dim under Blizzard's art.
+    local rows
+    for _, page in ipairs(ns.Window.PAGES) do if page.id == "xp" then rows = page.rows() end end
+    local colour
+    for _, r in ipairs(rows or {}) do if r.label == "OPT_XP_COLOR" then colour = r end end
+    check("colour row: usable for own", colour and colour.enabled(), true)
+    Settings.Set("xpStyle", "FOREVER")
+    check("colour row: dimmed for forever", colour and colour.enabled(), false)
+
+    for _, k in ipairs({ "xpStyle", "xpLevelMode", "xpBadgeFollow" }) do Settings.Set(k, nil) end
+    Settings.Set("xpEnabled", false)
+    M.state.level = 43
+end
+
 section("Only SavedVariables, nothing private")
 for _, f in ipairs(tocFiles()) do
     local src = io.open(ROOT .. "/" .. f):read("*a")

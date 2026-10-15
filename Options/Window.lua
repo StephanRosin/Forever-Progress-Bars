@@ -240,6 +240,12 @@ local function levelRows()
     return rows
 end
 
+-- The colour pickers mean nothing over Blizzard's art: dimmed there.
+local function ownStyleOnly(row)
+    row.enabled = function() return S("xpStyle") ~= "FOREVER" end
+    return row
+end
+
 -- XP bar: the bar and its place; the title line (the level as text or as
 -- a badge, the numbers); the badge, used only with "as badge".
 local function xpRows()
@@ -252,8 +258,9 @@ local function xpRows()
         num("xpFreeX", "OPT_XP_FREE_X"),
         num("xpFreeY", "OPT_XP_FREE_Y"),
         num("xpWidth", "OPT_XP_WIDTH"),
-        colorRow("xpColor", "OPT_XP_COLOR", true),
-        colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true),
+        choice("xpStyle", "OPT_XP_STYLE", X.STYLES, "XP_STYLE_"),
+        ownStyleOnly(colorRow("xpColor", "OPT_XP_COLOR", true)),
+        ownStyleOnly(colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
 
         { type = "header", label = "OPT_XP_TITLE_HEADER" },
         check("xpTitle", "OPT_XP_TITLE"),
@@ -480,6 +487,14 @@ local function widgetFor(page, opt)
     else
         o.min, o.max, o.step = opt.min, opt.max, opt.step or 1
         row = Widgets.Slider(page, o)
+    end
+    -- A row that is only usable under a setting.
+    if opt.enabled then
+        local refresh = row.Refresh
+        function row:Refresh()
+            refresh(self)
+            row:SetEnabled(opt.enabled())
+        end
     end
     -- A label that follows the settings (e.g. "X" for a free level).
     if type(opt.label) == "function" then

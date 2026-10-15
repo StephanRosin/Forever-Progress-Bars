@@ -30,6 +30,10 @@ local Xp = {}
 ns.XpBar = Xp
 
 Xp.TEXT_MODES = { "CURRENT_MAX", "CURRENT_MAX_PERCENT", "PERCENT", "NONE" }
+-- OWN: our texture in the chosen colours. FOREVER: Blizzard's own XP bar
+-- art (Blizzard_StatusTrackingBar, Mainline): background, fill, rested
+-- fill, the rested bonus as a prediction, the frame, 20 dividers (Bars.lua).
+Xp.STYLES = { "OWN", "FOREVER" }
 Xp.ROWS = { "TOP", "MIDDLE", "BOTTOM", "FREE" }
 Xp.VALUE_PLACES = { "ABOVE_LEFT", "ABOVE_CENTER", "ABOVE_RIGHT", "IN_LEFT", "IN_CENTER", "IN_RIGHT",
     "BELOW_LEFT", "BELOW_CENTER", "BELOW_RIGHT" }
@@ -105,6 +109,86 @@ local function hideTooltip(self)
 end
 
 local function slot() return ns.Bars.XpSlot and ns.Bars.XpSlot() end
+
+local OWN_TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar"   -- Bars.lua CFG.BAR_TEXTURE
+local ATLAS = {
+    background = "UI-HUD-ExperienceBar-Background",
+    fill = "UI-HUD-ExperienceBar-Fill-Experience",
+    fillRested = "UI-HUD-ExperienceBar-Fill-Rested",
+    prediction = "UI-HUD-ExperienceBar-Fill-Prediction",
+    frame = "UI-HUD-ExperienceBar-Frame",
+}
+-- Blizzard's bar inside that frame (Camelot StatusTrackingBarConstants:
+-- container 1192 x 17, bar 3 smaller); the frame art reaches past it by
+-- the rest of its atlas size.
+local BLIZZARD_BAR_W, BLIZZARD_BAR_H = 1189, 14
+
+local function forever() return S("xpStyle") == "FOREVER" end
+Xp.IsForever = forever
+
+-- The frame around the bar: one texture over the fill, below the numbers,
+-- the ends kept by slice margins while the middle stretches to any width.
+local function frameArt(bar)
+    if bar.frameArt then return bar.frameArt end
+    local holder = CreateFrame("Frame", nil, bar)
+    holder:SetAllPoints(bar.sb)
+    holder:SetFrameLevel((bar.sb:GetFrameLevel() or 1) + 2)
+    local tex = holder:CreateTexture(nil, "OVERLAY")
+    local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(ATLAS.frame)
+    if not info or not tex.SetAtlas then return nil end
+    tex:SetAtlas(ATLAS.frame, false)
+    local ox = math.max(0, ((info.width or 0) - BLIZZARD_BAR_W) / 2)
+    local oy = math.max(0, ((info.height or 0) - BLIZZARD_BAR_H) / 2)
+    tex:SetPoint("TOPLEFT", holder, "TOPLEFT", -ox, oy)
+    tex:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", ox, -oy)
+    if tex.SetTextureSliceMargins then
+        local cap = info.height or 0
+        pcall(tex.SetTextureSliceMargins, tex, cap, 0, cap, 0)
+        local mode = Enum and Enum.UITextureSliceMode
+        if mode and tex.SetTextureSliceMode then pcall(tex.SetTextureSliceMode, tex, mode.Stretched) end
+    end
+    bar.frameArt = holder
+    return holder
+end
+
+-- The fill's art follows the rest state, as Blizzard's does (ExpBarOverrides).
+-- Set only on a change: the badge riding on the fill hangs from its texture.
+local function foreverFill(bar, rested)
+    local atlas = rested and ATLAS.fillRested or ATLAS.fill
+    if bar.fillAtlas ~= atlas then
+        bar.fillAtlas = atlas
+        bar.sb:SetStatusBarTexture(atlas)
+    end
+    bar.sb:SetStatusBarColor(1, 1, 1)
+end
+
+-- Look of the bar for the chosen style; Bars.lua calls it after it painted
+-- the empty part and the rim, and Apply after a change of style.
+function Xp.ApplyStyle()
+    local bar = slot()
+    if not bar then return end
+    local on = forever()
+    for _, b in ipairs(bar.borders or {}) do b:SetShown(not on) end
+    local art = on and frameArt(bar) or bar.frameArt
+    if art then art:SetShown(on) end
+    if on then
+        bar.bg:SetAtlas(ATLAS.background)
+        bar.bg:SetVertexColor(1, 1, 1, 1)
+        foreverFill(bar, ((GetXPExhaustion and GetXPExhaustion()) or 0) > 0)
+        bar.rested:SetStatusBarTexture(ATLAS.prediction)
+        bar.rested:SetStatusBarColor(1, 1, 1, 1)
+    else
+        bar.bg:SetVertexColor(1, 1, 1, 1)
+        local c = S("barBgColor")
+        bar.bg:SetColorTexture(c[1], c[2], c[3], S("barBgAlpha") / 100)
+        bar.fillAtlas = nil
+        bar.sb:SetStatusBarTexture(OWN_TEXTURE)
+        bar.sb:SetStatusBarColor(unpack(S("xpColor")))
+        local r = S("xpRestedColor")
+        bar.rested:SetStatusBarTexture(OWN_TEXTURE)
+        bar.rested:SetStatusBarColor(r[1], r[2], r[3], 0.6)
+    end
+end
 
 -- The title line's fonts. The bars' label size where ours is 0; the level
 -- may have a font of its own. Each text is as tall as its font.
@@ -201,6 +285,7 @@ function Xp.Update()
         bar.rested:SetMinMaxValues(0, max)
         bar.rested:SetValue(math.min(max, cur + rested))
         bar.rested:SetShown(rested > 0)
+        if forever() then foreverFill(bar, rested > 0) end
         local title = S("xpTitle")
         -- The level as text, or none when the badge sits on the bar.
         local asText = title and S("xpLevelMode") ~= "BADGE"
@@ -222,9 +307,7 @@ function Xp.Apply()
         bar:SetScript("OnEnter", showTooltip)
         bar:SetScript("OnLeave", hideTooltip)
     end
-    bar.sb:SetStatusBarColor(unpack(S("xpColor")))
-    local c = S("xpRestedColor")
-    bar.rested:SetStatusBarColor(c[1], c[2], c[3], 0.6)
+    Xp.ApplyStyle()
     blizzardBars(not S("xpEnabled"))
     Xp.StyleTitle()
     Xp.Update()

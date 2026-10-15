@@ -688,6 +688,7 @@ local function BuildBar(index, plain, parent)
         borders[i] = bar:CreateTexture(nil, "BORDER")
         ColorTexture(borders[i], unpack(CFG.BORDER_COLOR))
     end
+    bar.borders = borders
     local top, bottom, left, right = unpack(borders)
     top:SetPoint("TOPLEFT"); top:SetPoint("TOPRIGHT"); top:SetHeight(1)
     bottom:SetPoint("BOTTOMLEFT"); bottom:SetPoint("BOTTOMRIGHT"); bottom:SetHeight(1)
@@ -814,6 +815,8 @@ local function ApplyBarGeometry(bar)
     LabelFont(bar.nameText)
     LabelFont(bar.valueText)
     LabelFont(bar.standing)
+    -- The XP bar's style may put Blizzard's art over the empty part again.
+    if bar == xpSlot and ns.XpBar and ns.XpBar.ApplyStyle then ns.XpBar.ApplyStyle() end
     if Locked() then
         geometryPending = true
         return
@@ -1135,23 +1138,33 @@ end
 -- Layout
 -- =============================================================================
 
+-- The XP bar in the Forever style divides like Blizzard's: always 20
+-- segments, its own divider art (StatusTrackingManagerOverrides.lua).
+local FOREVER_SEGMENTS, FOREVER_DIVIDER = 20, "ui-hud-experiencebar-divider"
+
 local function LayoutDividers(bar, width)
     local usable = width - 2
     if usable <= 0 then
         for _, d in ipairs(bar.dividers) do d:Hide() end
         return
     end
-    local segments = math.max(1, math.floor(usable / S("segmentWidth") + 0.5))
+    local forever = bar == xpSlot and S("xpStyle") == "FOREVER"
+    local segments = forever and FOREVER_SEGMENTS or math.max(1, math.floor(usable / S("segmentWidth") + 0.5))
     local step = usable / segments
     for i = 1, segments - 1 do
         local d = bar.dividers[i]
         if not d then
             d = bar.sb:CreateTexture(nil, "OVERLAY")
-            d:SetWidth(1)
-            ColorTexture(d, unpack(CFG.SEGMENT_COLOR))
             bar.dividers[i] = d
         end
-        local x = math.floor(i * step + 0.5)
+        if forever then
+            d:SetAtlas(FOREVER_DIVIDER)
+            d:SetWidth(3)
+        else
+            ColorTexture(d, unpack(CFG.SEGMENT_COLOR))
+            d:SetWidth(1)
+        end
+        local x = math.floor(i * step + 0.5) - (forever and 1 or 0)
         d:ClearAllPoints()
         d:SetPoint("TOPLEFT", bar.sb, "TOPLEFT", x, 0)
         d:SetPoint("BOTTOMLEFT", bar.sb, "BOTTOMLEFT", x, 0)
