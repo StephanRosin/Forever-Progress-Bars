@@ -18,6 +18,7 @@ Each style says:
                  format (the level's text, else "Level %d")
   badge          the badge style "matching the bar" (Bars.lua, MATCH)
   hiddenFill     the bar's fill stays unseen (the style draws its own)
+  tintable       may take chosen colours instead of its material's (XP bar)
   build(bar, x)  makes its own textures once: x.under on the bar (below the
                  fill), x.over on a frame above the fill
   apply(bar, x, h)                   the static look
@@ -197,7 +198,7 @@ local RUNE_LIT, RUNE_DARK = { 0.80, 0.72, 1 }, { 0.36, 0.37, 0.41 }
 DEF.RUNE = {
     height = function(base) return math.floor(base * 2.6 + 0.5) end,
     inset = function(h) return 34, math.floor(h * 0.2 + 0.5), 34, math.floor(h * 0.42 + 0.5) end,
-    dividers = "NONE", badge = "RUNESTONE",
+    dividers = "NONE", badge = "RUNESTONE", tintable = true,
     level = { place = "ABOVE_LEFT", color = { 0.85, 0.80, 1 } },
     value = {},   -- white: grey on the bright violet fill reads badly
     build = function(bar, x)
@@ -230,7 +231,9 @@ DEF.RUNE = {
         paintFill(bar, 1, 1, 1)
         if bar.rested then
             bar.rested:SetStatusBarTexture(WHITE)
-            bar.rested:SetStatusBarColor(0.58, 0.40, 1, 0.30)
+            local rc = bar.styleRestedTint
+            if rc then bar.rested:SetStatusBarColor(rc[1], rc[2], rc[3], 0.5)
+            else bar.rested:SetStatusBarColor(0.58, 0.40, 1, 0.30) end
         end
         local _, top, _, bottom = DEF.RUNE.inset(h)
         x.shade:SetHeight(math.max(2, math.floor((h - top - bottom) * 0.25)))
@@ -452,7 +455,7 @@ DEF.EMBER = {
         local side, edge = math.floor(h * 0.42 + 0.5), math.floor(h * 0.27 + 0.5)
         return side, edge, side, edge
     end,
-    dividers = "NONE", badge = "SHIELD",
+    dividers = "NONE", badge = "SHIELD", tintable = true,
     level = { place = "ABOVE_LEFT", color = { 1, 0.70, 0.36 } },
     value = { color = { 0.91, 0.79, 0.63 } },
     build = function(bar, x)
@@ -482,7 +485,9 @@ DEF.EMBER = {
         paintFill(bar, 1, 1, 1)
         if bar.rested then
             bar.rested:SetStatusBarTexture(WHITE)
-            bar.rested:SetStatusBarColor(0.50, 0.13, 0.05, 0.55)
+            local rc = bar.styleRestedTint
+            if rc then bar.rested:SetStatusBarColor(rc[1], rc[2], rc[3], 0.5)
+            else bar.rested:SetStatusBarColor(0.50, 0.13, 0.05, 0.55) end
         end
         x.h = h
     end,
@@ -551,7 +556,8 @@ end
 -- part in the bars' colours), then the style on top.
 -- opts: fill, rested (our colours, for the styles that take them); tinted
 -- (a bar whose colour comes from Styles.Colour: professions, reputation);
--- ringLeft (the ring at the bar's left end, its texts beside it); bg,
+-- ringLeft (the ring at the bar's left end, its texts beside it);
+-- restedTint (the rested part's colour for a tinted bar); bg,
 -- bgAlpha (the empty part, else the bars' own).
 function Styles.Apply(bar, id, h, opts)
     opts = opts or {}
@@ -559,6 +565,7 @@ function Styles.Apply(bar, id, h, opts)
     bar.styleId = id
     bar.styleTinted = opts.tinted
     bar.styleRingLeft = opts.ringLeft
+    bar.styleRestedTint = opts.restedTint
     for other, x in pairs(bar.styleParts or {}) do
         if other ~= id then showParts(x, false) end
     end

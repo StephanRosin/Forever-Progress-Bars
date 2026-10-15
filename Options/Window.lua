@@ -247,7 +247,8 @@ local function enabledIf(test)
         return row
     end
 end
-local ownColoursOnly = enabledIf(function() return ns.XpBar.Def().ownColours == true end)
+local ownColoursOnly = enabledIf(function() return ns.XpBar.TakesColours() end)
+local tintableOnly = enabledIf(function() return ns.XpBar.Def().tintable == true end)
 local levelChoice = enabledIf(function() return not ns.XpBar.Def().levelText end)
 -- Segments and the empty part's colour only where the style draws ours.
 local ownLookOnly = enabledIf(function() return S("xpStyle") == "OWN" end)
@@ -286,6 +287,7 @@ local function xpRows()
     return {
         { type = "header", label = "OPT_BAR_LOOK" },
         choice("xpStyle", "OPT_XP_STYLE", X.STYLES, "XP_STYLE_"),
+        tintableOnly(check("xpStyleColours", "OPT_XP_STYLE_COLOURS")),
         ownColoursOnly(colorRow("xpColor", "OPT_XP_COLOR", true)),
         ownColoursOnly(colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
         ownLookOnly(num("xpSegmentWidth", "OPT_SEGMENT_WIDTH")),

@@ -131,6 +131,13 @@ end
 
 function Xp.Dividers() return Xp.Def().dividers or "OWN" end
 
+-- Whether the colour settings count: always for our styles, for a style
+-- with a material of its own when its own colours are switched on.
+function Xp.TakesColours()
+    local def = Xp.Def()
+    return def.ownColours == true or (def.tintable == true and S("xpStyleColours") == true)
+end
+
 -- Some styles always show the level as text (the ring's middle), never as
 -- the badge.
 function Xp.LevelMode() return Xp.Def().levelText and "TEXT" or S("xpLevelMode") end
@@ -195,7 +202,11 @@ function Xp.ApplyStyle()
     local def = Xp.Def()
     local opts = def.ownColours and { fill = S("xpColor"), rested = S("xpRestedColor") } or {}
     opts.bg, opts.bgAlpha = S("xpBgColor"), S("xpBgAlpha")
+    -- A style with a material of its own takes the chosen colours when asked.
+    local tint = Xp.TakesColours() and not def.ownColours
+    opts.tinted, opts.restedTint = tint, tint and S("xpRestedColor") or nil
     ns.Styles.Apply(bar, S("xpStyle"), Xp.Height(), opts)
+    if tint then ns.Styles.Colour(bar, unpack(S("xpColor"))) end
     Xp.PlaceLevel()
 end
 

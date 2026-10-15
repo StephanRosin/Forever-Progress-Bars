@@ -72,6 +72,7 @@ Settings.DEFAULTS = {
     xpEnabled = false,
     xpStyle = "OWN",        -- the look, see Styles.LIST
     xpHeight = 0,           -- 0: the style's height (from the default bar height)
+    xpStyleColours = false, -- Rune stone, Forge: the colours below instead of the material's
     -- The XP bar's own counterparts of the bars' settings: none of those
     -- touch it (Settings.MigrateXpOwn copies them over once).
     xpTextHeight = 11,      -- the title line's least height
