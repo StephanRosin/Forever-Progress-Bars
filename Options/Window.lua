@@ -110,6 +110,18 @@ end
 local function barRows()
     local w = screenSize()
     return {
+        { type = "header", label = "OPT_BAR_LOOK" },
+        choice("barStyle", "OPT_BAR_STYLE", ns.Styles.LIST, "BAR_STYLE_"),
+        { type = "text", label = "OPT_BAR_STYLE_HINT", height = 40 },
+        (function()
+            local row = check("ringBeside", "OPT_RING_BESIDE")
+            row.enabled = function() return S("barStyle") == "RING" end
+            return row
+        end)(),
+        colorRow("barBgColor", "OPT_BAR_BG_COLOR", true),
+        { label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
+          get = function() return S("barBgAlpha") end,
+          set = function(v) Settings.Set("barBgAlpha", v) end },
         { type = "header", label = "OPT_BAR_SIZE" },
         -- The row's width counts only in a row, the column width only in columns.
         { label = "OPT_ROW_WIDTH", min = 200, max = w, step = 1, unit = "px",
@@ -127,18 +139,6 @@ local function barRows()
         num("textHeight", "OPT_TEXT_HEIGHT"),
         num("textGap", "OPT_TEXT_GAP"),
         num("labelFontSize", "OPT_LABEL_FONT_SIZE"),
-        { type = "header", label = "OPT_BAR_LOOK" },
-        choice("barStyle", "OPT_BAR_STYLE", ns.Styles.LIST, "BAR_STYLE_"),
-        { type = "text", label = "OPT_BAR_STYLE_HINT", height = 40 },
-        (function()
-            local row = check("ringBeside", "OPT_RING_BESIDE")
-            row.enabled = function() return S("barStyle") == "RING" end
-            return row
-        end)(),
-        colorRow("barBgColor", "OPT_BAR_BG_COLOR", true),
-        { label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
-          get = function() return S("barBgAlpha") end,
-          set = function(v) Settings.Set("barBgAlpha", v) end },
         { type = "header", label = "OPT_ICONS" },
         check("showIcons", "OPT_SHOW_ICONS"),
         check("showRank", "OPT_SHOW_RANK"),
@@ -309,6 +309,15 @@ end
 local function xpRows()
     local X = ns.XpBar
     return {
+        { type = "header", label = "OPT_BAR_LOOK" },
+        choice("xpStyle", "OPT_XP_STYLE", X.STYLES, "XP_STYLE_"),
+        ownColoursOnly(colorRow("xpColor", "OPT_XP_COLOR", true)),
+        ownColoursOnly(colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
+        ownLookOnly(num("xpSegmentWidth", "OPT_SEGMENT_WIDTH")),
+        ownLookOnly(colorRow("xpBgColor", "OPT_BAR_BG_COLOR", true)),
+        ownLookOnly({ label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
+          get = function() return S("xpBgAlpha") end,
+          set = function(v) Settings.Set("xpBgAlpha", v) end }),
         { type = "header", label = "OPT_SHOW" },
         check("xpEnabled", "OPT_XP_ENABLED"),
         { type = "header", label = "OPT_HIDE" },
@@ -322,14 +331,6 @@ local function xpRows()
         num("xpFreeY", "OPT_XP_FREE_Y"),
         num("xpWidth", "OPT_XP_WIDTH"),
         num("xpHeight", "OPT_XP_HEIGHT"),
-        choice("xpStyle", "OPT_XP_STYLE", X.STYLES, "XP_STYLE_"),
-        ownColoursOnly(colorRow("xpColor", "OPT_XP_COLOR", true)),
-        ownColoursOnly(colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
-        ownLookOnly(num("xpSegmentWidth", "OPT_SEGMENT_WIDTH")),
-        ownLookOnly(colorRow("xpBgColor", "OPT_BAR_BG_COLOR", true)),
-        ownLookOnly({ label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
-          get = function() return S("xpBgAlpha") end,
-          set = function(v) Settings.Set("xpBgAlpha", v) end }),
     }
 end
 
