@@ -26,7 +26,9 @@ Settings.DEFAULTS = {
     -- stacked: professions, then reputation); stacked, bars are columnWidth
     -- wide.
     arrangement = "ROW",
-    -- What shows at all: the profession bars, the reputation bars.
+    -- What shows at all: the progress bars as a whole (off: hidden, their
+    -- menu too), the profession bars, the reputation bars.
+    barsEnabled = true,
     showProfessions = true,
     showReputation = true,
     -- Hide while in combat / in a group: the strip (professions,

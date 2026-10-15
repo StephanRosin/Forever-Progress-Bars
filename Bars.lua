@@ -2027,6 +2027,8 @@ end
 -- is a plain frame: events are enough.
 local visibilityPending = false
 local function StripCondition()
+    -- Switched off altogether (General): hidden, its menu too.
+    if not S("barsEnabled") then return "hide" end
     local parts = {}
     if S("hideInCombat") then parts[#parts + 1] = "[combat] hide" end
     if S("hideInGroup") then parts[#parts + 1] = "[group] hide" end

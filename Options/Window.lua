@@ -59,6 +59,10 @@ end
 -- What concerns everything: the scale, the lock, the minimap button.
 local function generalRows()
     return {
+        -- Each part on or off; off, its pages leave the navigation too.
+        { type = "header", label = "OPT_SHOW" },
+        check("barsEnabled", "OPT_BARS_ENABLED"),
+        check("xpEnabled", "OPT_XP_ENABLED"),
         { type = "header", label = "OPT_GENERAL" },
         { label = "OPT_SCALE", min = 50, max = 200, step = 5, unit = "%",
           get = function() return S("scale") end, set = function(v) Settings.Set("scale", v) end },
@@ -311,8 +315,6 @@ local function xpRows()
         ownLookOnly({ label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
           get = function() return S("xpBgAlpha") end,
           set = function(v) Settings.Set("xpBgAlpha", v) end }),
-        { type = "header", label = "OPT_SHOW" },
-        check("xpEnabled", "OPT_XP_ENABLED"),
         { type = "header", label = "OPT_HIDE" },
         check("xpHideInCombat", "OPT_XP_HIDE_COMBAT"),
         check("xpHideInGroup", "OPT_XP_HIDE_GROUP"),
@@ -830,20 +832,35 @@ local function createNav(parent)
     return nav
 end
 
+-- A group shows while its part is switched on (General).
+local GROUP_ON = {
+    NAV_GROUP_BARS = function() return S("barsEnabled") == true end,
+    NAV_GROUP_XP = function() return S("xpEnabled") == true end,
+}
+
+local function pageShown(page)
+    local on = page.group and GROUP_ON[page.group]
+    if on and not on() then return false end
+    return not page.shown or page.shown()
+end
+
 -- The navigation's order: a caption above each group, the pages in it
--- indented; a page whose `shown` says no leaves no gap.
+-- indented; a page not shown (its part off, or `shown` says no) and a group
+-- with none leave no gap.
 local function layoutNav()
     if not frame or not frame.nav then return end
     local nav, y, group = frame.nav, NAV_TOP, nil
+    for _, caption in pairs(frame.navCaptions) do caption:Hide() end
     for _, page in ipairs(Window.PAGES) do
         local b = frame.navButtons[page.id]
-        local shown = not page.shown or page.shown()
+        local shown = pageShown(page)
         b:SetShown(shown)
         if shown then
             if page.group ~= group then
                 group = page.group
                 local caption = group and frame.navCaptions[group]
                 if caption then
+                    caption:Show()
                     caption:ClearAllPoints()
                     caption:SetPoint("TOPLEFT", nav, "TOPLEFT", INSET, -(y + NAV_CAPTION_H - 14))
                     y = y + NAV_CAPTION_H
@@ -966,6 +983,10 @@ end
 function Window.ShowPage(id)
     ensureWindow()
     layoutNav()
+    -- A page of a part switched off is not offered: General instead.
+    for _, p in ipairs(Window.PAGES) do
+        if p.id == id and not pageShown(p) then id = "general" end
+    end
     local page = pageFor(id)
     if not page then return end
     Widgets.CloseList()
@@ -989,8 +1010,10 @@ function Window.Refresh()
     if not frame or not current then return end
     layoutNav()
     for i, p in ipairs(Window.PAGES) do
-        if p.id == current and p.shown and not p.shown() then
-            Window.ShowPage(Window.PAGES[i - 1].id)
+        if p.id == current and not pageShown(p) then
+            -- The page before it in its group, else General.
+            local before = Window.PAGES[i - 1]
+            Window.ShowPage(before and before.group == p.group and pageShown(before) and before.id or "general")
             return
         end
     end

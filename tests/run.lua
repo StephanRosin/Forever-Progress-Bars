@@ -1480,11 +1480,13 @@ do
     local first
     for _, p in ipairs(W.PAGES) do if p.id == "xptext" then first = p.rows()[2] end end
     check("the level choice comes first on the texts page", first.label, "OPT_XP_LEVEL_MODE")
+    Settings.Set("xpEnabled", true)
     W.Open("xpbadge")
     Settings.Set("xpLevelMode", "TEXT")
     check("its page gives way", W.Current(), "xptext")
     W.Toggle()
     Settings.Set("xpLevelMode", nil)
+    Settings.Set("xpEnabled", nil)
 end
 
 section("XP colours per style: from before")
@@ -1500,6 +1502,36 @@ do
     check("migrated: the switch for both", old.xpStyleColoursRUNE and old.xpStyleColoursEMBER, true)
     check("migrated: the shared keys leave", old.xpColor == nil and old.xpStyleColours == nil, true)
     account.profiles.Old = nil
+end
+
+section("Progress bars and XP bar on and off")
+do
+    local W = ns.Window
+    local function shown(id)
+        W.Open("general")
+        local b = _G["ForeverProgressBarsNav" .. id]
+        return b ~= nil and b:IsShown()
+    end
+    check("both on by default: the bars' pages", shown("bars"), true)
+    Settings.Set("barsEnabled", false)
+    check("bars off: hidden", Bars.StripCondition(), "hide")
+    check("bars off: their pages gone", shown("bars") or shown("professions") or shown("backdrop"), false)
+    W.Open("bars")
+    check("bars off: their page not offered", W.Current(), "general")
+    Settings.Set("barsEnabled", nil)
+    check("bars on again: shown", Bars.StripCondition() ~= "hide", true)
+    check("bars on again: their pages", shown("bars"), true)
+    Settings.Set("xpEnabled", false)
+    check("xp off: its pages gone", shown("xp") or shown("xptext") or shown("xpinfo"), false)
+    Settings.Set("xpEnabled", true)
+    check("xp on: its pages", shown("xp"), true)
+    W.Open("xptext")
+    Settings.Set("xpEnabled", false)
+    check("xp off while on its page: back to General", W.Current(), "general")
+    Settings.Set("xpEnabled", nil)
+    local first = W.PAGES[1].rows()
+    check("General starts with both switches", first[2].label .. "," .. first[3].label, "OPT_BARS_ENABLED,OPT_XP_ENABLED")
+    W.Toggle()
 end
 
 section("Only SavedVariables, nothing private")
