@@ -40,7 +40,7 @@ M.RunTimers()
 M.RunTimers()
 
 section("Defaults")
-check("an empty profile gets the defaults", S("levelStyle"), Settings.DEFAULTS.levelStyle)
+check("an empty profile gets the defaults", S("xpBadgeStyle"), Settings.DEFAULTS.xpBadgeStyle)
 check("the backdrop as by default", Bars.backdrop:IsShown(), Settings.DEFAULTS.backdropShow)
 check("the bar height by default", Bars.Slot(1):GetHeight(), Settings.DEFAULTS.barHeight)
 check("locked as by default", Bars.container:IsMovable(), not Settings.DEFAULTS.locked)
@@ -50,7 +50,6 @@ local TEST_VALUES = {
     y = -29, locked = false, width = 1180, barHeight = 25, textHeight = 14, textGap = 1, spacing = 13,
     segmentWidth = 22, labelFontSize = 14, iconSize = 18, iconGap = 1,
     barBgColor = { 0, 0, 0 }, barBgAlpha = 60,
-    levelStyle = "CLASSIC", levelFontSize = 38, levelBoxPadX = 10,
     backdropShow = false, backdropAlpha = 50, backdropPadding = 6, backdropBorder = "NONE",
 }
 local function useTestValues()
@@ -245,35 +244,43 @@ Bars.RepSlot(1).click:GetScript("OnClick")(nil, "RightButton", false)
 check("right-click opens the reputation tab", M.state.characterTab, "ReputationFrame")
 
 section("Level number")
-check("level shown", Bars.levelText:GetText(), "43")
+-- The level shows on the XP bar's badge (the strip has none of its own).
+M.state.xp, M.state.xpMax = 730, 23200
+Settings.Set("xpEnabled", true)
+Settings.Set("xpLevelMode", "BADGE")
+Settings.Set("xpBadgeStyle", "CLASSIC")
+Settings.Set("xpBadgeFontSize", 38)
+Settings.Set("xpBadgePadX", 10)
+local badge = Bars.XpBadge()
+check("level shown", badge.text:GetText(), "43")
 M.Fire("PLAYER_LEVEL_UP", 44)
-check("level up", Bars.levelText:GetText(), "44")
-check("default colour: gold", Bars.levelText._textColor[1], ns.CFG.LEVEL_COLORS.GOLD[1])
-Settings.Set("levelColor", "CLASS")
-check("class colour", Bars.levelText._textColor[3], 0.93)
-Settings.Set("levelColor", nil)
-check("default style: classic ring", Bars.levelBox.ring[1]:IsShown(), true)
-check("classic: no inner line", Bars.levelBox.line[1]:IsShown(), false)
-Settings.Set("levelStyle", "GOLD")
+check("level up", badge.text:GetText(), "44")
+check("default colour: gold", badge.text._textColor[1], ns.CFG.LEVEL_COLORS.GOLD[1])
+Settings.Set("xpBadgeColor", "CLASS")
+check("class colour", badge.text._textColor[3], 0.93)
+Settings.Set("xpBadgeColor", nil)
+check("default style: classic ring", badge.ring[1]:IsShown(), true)
+check("classic: no inner line", badge.line[1]:IsShown(), false)
+Settings.Set("xpBadgeStyle", "GOLD")
 local G = ns.CFG.GOLD
-local tg, sg, bg = Bars.levelBox.ring[1]._gradient, Bars.levelBox.ring[3]._gradient, Bars.levelBox.ring[2]._gradient
+local tg, sg, bg = badge.ring[1]._gradient, badge.ring[3]._gradient, badge.ring[2]._gradient
 check("gold: top MID up to LIGHT", tg and tg[2].g == G.MID[2] and tg[3].b == G.LIGHT[3], true)
 check("gold: sides meet the top", sg and sg[3].g == tg[2].g, true)
 check("gold: sides meet the bottom", bg and sg[2].g == bg[3].g, true)
-check("gold: inner line", Bars.levelBox.line[1]:IsShown(), true)
-Settings.Set("levelStyle", "NONE")
-check("none: no box", Bars.levelBox.bg:IsShown(), false)
-check("none: no ring", Bars.levelBox.ring[1]:IsShown(), false)
-Settings.Set("levelStyle", TEST_VALUES.levelStyle)
-check("box height from the font", Bars.levelBox:GetHeight(), 38 + 2 * 10)
+check("gold: inner line", badge.line[1]:IsShown(), true)
+Settings.Set("xpBadgeStyle", "NONE")
+check("none: no box", badge.bg:IsShown(), false)
+check("none: no ring", badge.ring[1]:IsShown(), false)
+Settings.Set("xpBadgeStyle", "CLASSIC")
+check("box height from the font", badge:GetHeight(), 38 + 2 * 10)
 
 section("Level badges")
 local styles = table.concat(Bars.AvailableLevelStyles(), ",")
 check("drawn badges always offered", styles:find("CREST", 1, true) ~= nil and styles:find("WINGS", 1, true) ~= nil, true)
 check("Blizzard ring the client has", styles:find("RING_GOLD", 1, true) ~= nil, true)
 check("Blizzard ring the client lacks", styles:find("RING_ORNATE", 1, true), nil)
-local lb = Bars.levelBox
-Settings.Set("levelStyle", "LAUREL")
+local lb = badge
+Settings.Set("xpBadgeStyle", "LAUREL")
 check("laurel texture", lb.art._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\BadgeLaurel.tga")
 check("art shown", lb.art:IsShown(), true)
 check("no square behind it", lb.bg:IsShown(), false)
@@ -283,30 +290,18 @@ check("no ring", lb.ring[1]:IsShown(), false)
 check("badge sized so the digits fit its middle", near(lb:GetHeight(), 58 / 0.54), true)
 check("square badge", near(lb:GetWidth(), lb:GetHeight()), true)
 check("art as big as the box", near(lb.art:GetWidth(), lb:GetWidth()), true)
-Settings.Set("levelStyle", "WINGS")
+Settings.Set("xpBadgeStyle", "WINGS")
 check("wings: the cropped width", near(lb:GetWidth(), lb:GetHeight() * 468 / 256), true)
 check("wings: empty margin cut off", lb.art._texCoord and near(lb.art._texCoord[1], 22 / 512), true)
-local wingGap = slot(3)._points.BOTTOMLEFT[3] - (slot(2)._points.BOTTOMLEFT[3] + slot(2):GetWidth())
-check("the bars make room for the wings", wingGap >= lb:GetWidth(), true)
--- The gap between bar 2 and bar 3 is the badge, its margin of 2 on each
--- side and the usual space between two bars.
-check("but only just", near(wingGap, lb:GetWidth() + 2 * 2 + S("spacing")), true)
-Settings.Set("levelStyle", "CREST")
-check("crest: digits lifted", select(5, Bars.levelText:GetPoint("CENTER")) > 0, true)
-Settings.Set("backdropShow", true)
-Settings.Set("levelY", 20)
-local badgeTop = -(14 + 1 + 25) / 2 + 20 + lb:GetHeight() / 2
-check("moved up, the badge reaches above the text line", badgeTop > 0, true)
-check("the backdrop covers the badge", near(Bars.backdrop._points.TOPLEFT[4], badgeTop + 6), true)
-Settings.Set("levelY", nil)
-Settings.Set("backdropShow", TEST_VALUES.backdropShow)
-Settings.Set("levelStyle", "RANK")
+Settings.Set("xpBadgeStyle", "CREST")
+check("crest: digits lifted", select(5, badge.text:GetPoint("CENTER")) > 0, true)
+Settings.Set("xpBadgeStyle", "RANK")
 check("rank medal offered", styles:find("RANK", 1, true) ~= nil, true)
 check("rank: tiers by ten levels", Bars.RankTier(1) .. Bars.RankTier(9) .. Bars.RankTier(10) .. Bars.RankTier(59)
       .. Bars.RankTier(60) .. Bars.RankTier(70), "112677")
 check("rank: the level's texture", lb.art._texture,
       "Interface\\AddOns\\ForeverProgressBars\\Media\\BadgeRank" .. Bars.RankTier(M.state.level) .. ".tga")
-check("rank: digits lifted onto the medal", near(select(5, Bars.levelText:GetPoint("CENTER")), lb:GetHeight() * 56 / 512), true)
+check("rank: digits lifted onto the medal", near(select(5, badge.text:GetPoint("CENTER")), lb:GetHeight() * 56 / 512), true)
 check("rank: margins cut off", near(lb:GetWidth(), lb:GetHeight() * 432 / 512), true)
 local oldLevel = M.state.level
 M.Fire("PLAYER_LEVEL_UP", 60)
@@ -314,7 +309,7 @@ check("level up: the new step at once", lb.art._texture, "Interface\\AddOns\\For
 M.state.level = oldLevel
 -- A 1 at the front pulls left, at the end pushes right, 11 stays put, 25
 -- needs nothing; 5 % of the font size.
-local probe = Bars.levelText
+local probe = badge.text
 local shown = probe:GetText()
 local fontSize = select(2, probe:GetFont())
 for _, case in ipairs({ { "18", -0.05 * fontSize }, { "21", 0.05 * fontSize }, { "11", 0 }, { "25", 0 } }) do
@@ -322,22 +317,25 @@ for _, case in ipairs({ { "18", -0.05 * fontSize }, { "21", 0.05 * fontSize }, {
     check("optical nudge " .. case[1], near(Bars.OpticalNudge(probe), case[2]), true)
 end
 probe:SetText(shown)
-Settings.Set("levelStyle", "RING_GOLD")
+Settings.Set("xpBadgeStyle", "RING_GOLD")
 check("ring: Blizzard atlas", lb.art._atlas, "communities-ring-gold")
 check("open ring: dark disc behind", lb.disc:IsShown(), true)
 check("ring: a circle", lb:GetWidth(), lb:GetHeight())
-Settings.Set("levelStyle", "LAUREL")
+Settings.Set("xpBadgeStyle", "LAUREL")
 check("drawn badge: no disc", lb.disc:IsShown(), false)
 check("drawn badge: whole texture", lb.art._texCoord and lb.art._texCoord[2], 1)
-check("digits centred again", select(5, Bars.levelText:GetPoint("CENTER")), 0)
-Settings.Set("levelStyle", "RING_ORNATE")
-check("missing art falls back to Classic", Bars.LevelStyle(), "CLASSIC")
-ns.DB().levelStyle = "HEX"
-check("a style no longer offered: Classic", Bars.LevelStyle(), "CLASSIC")
-Settings.Set("levelStyle", "RING_ORNATE")
+check("digits centred again", select(5, badge.text:GetPoint("CENTER")), 0)
+Settings.Set("xpBadgeStyle", "RING_ORNATE")
+check("missing art falls back to Classic", Bars.LevelStyle(Bars.XP_BADGE), "CLASSIC")
+ns.DB().xpBadgeStyle = "HEX"
+check("a style no longer offered: Classic", Bars.LevelStyle(Bars.XP_BADGE), "CLASSIC")
+Settings.Set("xpBadgeStyle", "RING_ORNATE")
 check("classic ring shown instead", lb.ring[1]:IsShown(), true)
 check("no art then", lb.art:IsShown(), false)
-Settings.Set("levelStyle", TEST_VALUES.levelStyle)
+Settings.Set("xpBadgeStyle", "CLASSIC")
+for _, k in ipairs({ "xpEnabled", "xpLevelMode", "xpBadgeStyle", "xpBadgeFontSize", "xpBadgePadX" }) do
+    Settings.Set(k, nil)
+end
 
 section("Position and size")
 local c = Bars.container
@@ -479,7 +477,6 @@ end
 section("Arrangement and scale")
 do
     local c = Bars.container
-    local levelBox = Bars.LevelBox and Bars.LevelBox() or nil
     local function at(bar) local p = bar._points.BOTTOMLEFT; return p[3], p[4], p[2] end
     local colW = S("columnWidth")
     check("default: in a row", S("arrangement"), "ROW")
@@ -495,29 +492,23 @@ do
     local _, y4 = at(slot(4))
     check("columns: stacked downwards", y4 < y1, true)
     check("columns: two columns wide", c:GetWidth(), 2 * colW + S("spacing"))
-    check("level above: the bars start below it", y1 < -RowHeightForTest(), true)
-
-    Settings.Set("levelPlace", "MIDDLE")
-    rx = at(Bars.RepSlot(1))
-    check("level in the middle: the columns make room", rx > colW + S("spacing"), true)
-    local _, ym = at(slot(1))
-    check("level in the middle: bars start at the top", ym, -RowHeightForTest())
-
-    Settings.Set("levelPlace", "BOTTOM")
-    local _, yb = at(slot(1))
-    check("level below: bars start at the top", yb, -RowHeightForTest())
-    check("level below: the container reaches past the bars", c:GetHeight() > -select(2, at(slot(4))), true)
+    check("columns: bars start at the top", y1, -RowHeightForTest())
 
     Settings.Set("arrangement", "COLUMN")
-    Settings.Set("levelPlace", "TOP")
     local cx = at(Bars.RepSlot(1))
     local _, cy = at(Bars.RepSlot(1))
     local _, p4 = at(slot(4))
     check("one column: reputation under the professions", cx == 0 and cy < p4, true)
     check("one column: one bar wide", c:GetWidth(), colW)
 
+    -- One under the other: their own gap.
+    local _, y2 = at(slot(2))
+    check("one column: rows rowGap apart", y2, y1 - RowHeightForTest() - S("rowGap"))
+    Settings.Set("rowGap", 10)
+    local _, y2b = at(slot(2))
+    check("one column: the gap counts", y2b, y1 - RowHeightForTest() - 10)
+    Settings.Set("rowGap", nil)
     Settings.Set("arrangement", nil)
-    Settings.Set("levelPlace", nil)
     check("back in a row: automatic width again", c:GetWidth(), TEST_VALUES.width)
 
     -- Scale: everything together, the position stays in screen pixels.
@@ -635,7 +626,7 @@ do
     local xp = Bars.XpSlot()
     local c = Bars.container
     local rowH = RowHeightForTest()
-    local gap = ns.CFG.REP_ROW_GAP
+    local gap = S("rowGap")
     check("hidden while off", xp:IsShown(), false)
     Settings.Set("xpEnabled", true)
     check("Blizzard's bars hidden", StatusTrackingBarManager:IsShown(), false)
@@ -734,10 +725,8 @@ do
     GameTooltip.AddLine, GameTooltip.AddDoubleLine = oldAdd, oldDouble
     xp:GetScript("OnLeave")(xp)
     -- A badge of its own instead of the text, on the bar.
-    local rowBox = Bars.LevelBox()
     Settings.Set("xpLevelMode", "BADGE")
     local box = Bars.XpBadge()
-    check("badge: a second badge", box ~= rowBox, true)
     check("badge: shown", box:IsShown(), true)
     check("badge: the level", box.text:GetText(), tostring(M.state.level))
     check("badge: no level text", xp.nameText:GetText(), "")
@@ -756,8 +745,6 @@ do
     Settings.Set("xpBadgeFollow", nil)
     Settings.Set("xpBadgeFontSize", 40)
     check("badge: its own size", select(2, box.text:GetFont()), 40)
-    check("row badge unchanged", select(2, rowBox.text:GetFont()), S("levelFontSize"))
-    check("row badge still shown", rowBox:IsShown(), true)
     for _, k in ipairs({ "xpLevelMode", "xpBadgePoint", "xpBadgeX", "xpBadgeY", "xpBadgeFontSize" }) do
         Settings.Set(k, nil)
     end
@@ -787,47 +774,23 @@ do
     M.state.level = lvl
 end
 
-section("Level number can be hidden")
-check("level box shown by default", Bars.LevelBox():IsShown(), true)
-local slot3x = slot(3)._points.BOTTOMLEFT[3]
-Settings.Set("levelShow", false)
-check("level box hidden", Bars.LevelBox():IsShown(), false)
-check("the row closes up", slot(3)._points.BOTTOMLEFT[3] < slot3x, true)
-Settings.Set("levelShow", nil)
-check("shown again", Bars.LevelBox():IsShown(), true)
--- Free: X from the screen's middle, Y from its top edge, no room kept.
-Settings.Set("levelPlace", "FREE")
-Settings.Set("levelOffsetX", 50)
-Settings.Set("levelOffsetY", -20)
-local _, rel, rp, fx, fy = Bars.LevelBox():GetPoint("TOP")
-check("free: from the screen's top", rel == UIParent and rp == "TOP", true)
-check("free: at X/Y", fx .. "," .. fy, "50,-20")
-check("free: the row closes up", slot(3)._points.BOTTOMLEFT[3] < slot3x, true)
-Settings.Set("arrangement", "COLUMN")
-_, rel, rp, fx, fy = Bars.LevelBox():GetPoint("TOP")
-check("free in a column too", fx .. "," .. fy, "50,-20")
-Settings.Set("scale", 200)
-_, rel, rp, fx, fy = Bars.LevelBox():GetPoint("TOP")
-check("free: screen pixels at any scale", fx * 2 .. "," .. fy * 2, "50,-20")
-Settings.Set("scale", nil)
-for _, k in ipairs({ "arrangement", "levelPlace", "levelOffsetX", "levelOffsetY" }) do Settings.Set(k, nil) end
-check("back in the row", slot(3)._points.BOTTOMLEFT[3], slot3x)
-
+section("Free places from before")
 -- Free places from before (1.1.0/1.1.1: from the screen's middle) move to
 -- the new reckoning once, to the same spot.
 do
     local account = ns.AccountDB()
     account.freeFromTop = nil
     local db = ns.DB()
-    db.levelPlace, db.levelOffsetY = "FREE", 100
-    local boxHalf = Bars.LevelBox():GetHeight() / 2
+    db.xpRow, db.xpFreeY = "FREE", 100
+    local barHalf = S("barHeight") / 2
+    local title = Bars.XpHeight() - S("barHeight")
     Bars.MigrateFreeToTop()
-    check("migrated: the same spot from the top", S("levelOffsetY"), math.floor(100 + boxHalf - 540 + 0.5))
+    check("migrated: the same spot from the top", S("xpFreeY"), math.floor(100 + barHalf + title - 540 + 0.5))
     check("migrated once", account.freeFromTop, true)
-    local once = S("levelOffsetY")
+    local once = S("xpFreeY")
     Bars.MigrateFreeToTop()
-    check("not twice", S("levelOffsetY"), once)
-    db.levelPlace, db.levelOffsetY = nil, nil
+    check("not twice", S("xpFreeY"), once)
+    db.xpRow, db.xpFreeY = nil, nil
     Settings.Changed(nil)
 end
 
@@ -840,7 +803,7 @@ check("the value too", slot(1).valueText._points.BOTTOMRIGHT[4], 6)
 check("the icon too", slot(1).icon._points.BOTTOMLEFT[4], 6)
 check("the row grows", c:GetHeight(), 14 + 6 + 25)
 check("the click area covers the text", slot(1).open._points.TOPLEFT[4], 14 + 6)
-check("the reputation row moves down", Bars.RepSlot(2)._points.BOTTOMLEFT[4], -(14 + 6 + 25 + 4))
+check("the reputation row moves down", Bars.RepSlot(2)._points.BOTTOMLEFT[4], -(14 + 6 + 25 + S("rowGap")))
 check("reputation names too", Bars.RepSlot(2).nameText._points.BOTTOMLEFT[4], 6)
 Settings.Set("textGap", -3)
 check("negative: into the bar", nameY(), -3)
@@ -855,12 +818,14 @@ check("reputation bars too", Bars.RepSlot(1).bg._texColor[4], 0.25)
 Settings.Set("barBgColor", TEST_VALUES.barBgColor)
 Settings.Set("barBgAlpha", TEST_VALUES.barBgAlpha)
 
-section("The level sits in the middle")
--- 2*barWidth + 1.5*spacing + levelGap/2 == width/2
+section("Space between the bars")
 local w, sp = c:GetWidth(), S("spacing")
 local barWidth = slot(1):GetWidth()
-local gap = slot(3)._points.BOTTOMLEFT[3] - (slot(2)._points.BOTTOMLEFT[3] + barWidth) - sp
-check("centred", near(2 * barWidth + 1.5 * sp + gap / 2, w / 2), true)
+check("four bars and three gaps fill the row", near(4 * barWidth + 3 * sp, w), true)
+check("side by side: spacing apart", near(slot(3)._points.BOTTOMLEFT[3] - slot(2)._points.BOTTOMLEFT[3], barWidth + sp), true)
+Settings.Set("rowGap", 9)
+check("the reputation row: rowGap below", Bars.RepSlot(1)._points.BOTTOMLEFT[4], -(RowHeightForTest() + 9))
+Settings.Set("rowGap", nil)
 
 section("Backdrop")
 local bd = Bars.backdrop
@@ -870,18 +835,12 @@ check("shown", bd:IsShown(), true)
 check("opacity 50 %", bd.bg._texColor[4], 0.5)
 local row = 14 + 1 + 25
 local topLeft, bottomRight = bd._points.TOPLEFT, bd._points.BOTTOMRIGHT
--- The level box (58 high, centred 25 below the row's middle) reaches lowest
--- of all? The reputation row ends at -(2*39+4) = -82; the box at
--- -19.5-25-29 = -73.5. The top: the box reaches -19.5-25+29 = -15.5, below 0.
 check("top: the text line, plus padding", topLeft[4], 0 + 6)
 check("left: padding", topLeft[3], -6)
 check("bottom: the reputation row, plus padding", bottomRight[4], -(2 * row + 4) - 6)
 check("right: padding", bottomRight[3], 6)
 for i = 1, 4 do Settings.SetRep(i, 0) end
-check("no reputation: the level box sets the bottom", bd._points.BOTTOMRIGHT[4], -row / 2 - 25 - 29 - 6)
-Settings.Set("levelY", 40)
-check("level box above the row: the top follows", bd._points.TOPLEFT[4], -row / 2 + 40 + 29 + 6)
-Settings.Set("levelY", nil)
+check("no reputation: the professions set the bottom", bd._points.BOTTOMRIGHT[4], -row - 6)
 ns.DB().reps = nil
 Settings.Changed("reps")
 check("no border unless asked", bd.ring[1]:IsShown(), false)
@@ -1321,7 +1280,6 @@ do
     check("ember: a chosen badge stays", Bars.LevelStyle(Bars.XP_BADGE), "LAUREL")
     Settings.Set("xpBadgeStyle", nil)
     check("badge menu offers matching", Bars.AvailableLevelStyles(Bars.XP_BADGE)[1], "MATCH")
-    check("row badge menu offers it too", Bars.AvailableLevelStyles(Bars.ROW_BADGE)[1], "MATCH")
 
     Settings.Set("xpStyle", "OWN")
     check("own after all: parts of the others hidden", parts("EMBER").over:IsShown() or parts("RING").over:IsShown(), false)
@@ -1385,12 +1343,8 @@ do
         check("forever: the fill seen again", bar.sb._color[4], 1)
         check("forever: gold rim", bar.borders[1]._gradient ~= nil, true)
         check("forever: still its colour", bar.sb._color[1], c[1])
-        check("row badge matches the bars", Bars.LevelStyle(Bars.ROW_BADGE) ~= nil, true)
-        Settings.Set("levelStyle", "MATCH")
         Settings.Set("barStyle", "EMBER")
-        check("row badge matching: the shield", Bars.LevelStyle(Bars.ROW_BADGE), "SHIELD")
-        check("xp badge follows its own style", Bars.LevelStyle(Bars.XP_BADGE) ~= "SHIELD" or S("xpStyle") == "EMBER", true)
-        Settings.Set("levelStyle", nil)
+        check("xp badge follows its own style, not the bars'", Bars.LevelStyle(Bars.XP_BADGE) ~= "SHIELD" or S("xpStyle") == "EMBER", true)
         Settings.Set("barStyle", nil)
         check("own again: bars' height", bar:GetHeight(), base)
         check("own again: our texture", bar.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
@@ -1450,6 +1404,21 @@ do
     Settings.MigrateXpOwn()
     check("only once", other.xpTextGap, 2)
     account.profiles.Old, account.profiles.Forever = nil, nil
+end
+
+section("The strip's own level badge is gone")
+do
+    check("no level page", (function() for _, p in ipairs(ns.Window.PAGES) do if p.id == "level" then return false end end return true end)(), true)
+    check("no level settings", Settings.DEFAULTS.levelShow == nil and Settings.DEFAULTS.levelStyle == nil, true)
+    local account = ns.AccountDB()
+    account.levelGone = nil
+    account.profiles.Old = { levelShow = true, levelStyle = "WINGS", levelBoxPadX = 4, levelBoxMinW = 44 }
+    Settings.MigrateLevelGone()
+    local old = account.profiles.Old
+    check("migrated: the badge padding moves to the XP badge", old.xpBadgePadX, 4)
+    check("migrated: its least width too", old.xpBadgeMinW, 44)
+    check("migrated: the level settings leave", old.levelShow == nil and old.levelStyle == nil and old.levelBoxPadX == nil, true)
+    account.profiles.Old = nil
 end
 
 section("Only SavedVariables, nothing private")

@@ -68,9 +68,8 @@ end
 local CFG = {
     NUM_SLOTS = 4,          -- 2 primary professions + 2 secondary skills
     NUM_REP_SLOTS = 4,
-    REP_ROW_GAP = 4,        -- between the profession row and the reputation row
+    XP_ROW_GAP = 4,         -- between the XP row and the bars beside it (plus xpGap)
     LEVEL_COLORS = { GOLD = { 1.00, 0.90, 0.45 }, WHITE = { 1, 1, 1 } },
-    LEVEL_BOX_MARGIN = 10,  -- between the level box and the bars
     LEVEL_BOX_BG = { 0, 0, 0, 0.60 },
     LEVEL_BOX_BG_DARK = { 0.03, 0.03, 0.05, 0.85 },
     LEVEL_BOX_BORDER = { 0.65, 0.55, 0.28, 0.95 },
@@ -661,22 +660,18 @@ local container
 local slots, repSlots = {}, {}
 local xpSlot            -- the experience bar (XpBar.lua fills it)
 
--- The level badge sits on the experience bar instead of in the rows: the
--- XP bar shows and its title line wants the badge rather than the text.
+-- The level badge on the experience bar: the XP bar shows and its title
+-- line wants the badge rather than the text.
 local function BadgeOnXp()
     return xpSlot ~= nil and xpSlot:IsShown() and S("xpTitle") and ns.XpBar.LevelMode() == "BADGE"
 end
 Bars.BadgeOnXp = BadgeOnXp
-local levelText, levelBox
 local xpBadge           -- the level badge on the experience bar (own settings)
 
--- Which settings a badge reads: the row's level badge, or the one on the
--- experience bar with settings of its own.
-local ROW_BADGE = { style = "levelStyle", font = "levelFont", size = "levelFontSize",
-    flag = "levelFontFlag", color = "levelColor" }
+-- Which settings the badge reads.
 local XP_BADGE = { style = "xpBadgeStyle", font = "xpBadgeFont", size = "xpBadgeFontSize",
     flag = "xpBadgeFontFlag", color = "xpBadgeColor" }
-Bars.ROW_BADGE, Bars.XP_BADGE = ROW_BADGE, XP_BADGE
+Bars.XP_BADGE = XP_BADGE
 local layoutBusy
 local lastWidth = -1
 
@@ -1024,7 +1019,7 @@ local function AtlasExists(atlas)
 end
 
 -- The styles this client can draw, in menu order, after MATCH: the one
--- belonging to the bars' style (XpBar.MatchBadge, Styles.lua).
+-- belonging to the XP bar's style (XpBar.MatchBadge, Styles.lua).
 function Bars.AvailableLevelStyles()
     local list = { "MATCH" }
     for _, style in ipairs(Bars.LEVEL_STYLES) do
@@ -1037,10 +1032,9 @@ end
 -- The chosen style, or Classic if this client lacks its art or the style
 -- is no longer offered (an older version had more).
 local function LevelStyle(keys)
-    local style = S((keys or ROW_BADGE).style)
+    local style = S((keys or XP_BADGE).style)
     if style == "MATCH" then
-        if keys == XP_BADGE then style = ns.XpBar and ns.XpBar.MatchBadge and ns.XpBar.MatchBadge() or "CREST"
-        else style = StripStyle().badge or "CREST" end
+        style = ns.XpBar and ns.XpBar.MatchBadge and ns.XpBar.MatchBadge() or "CREST"
     end
     local known = false
     for _, s in ipairs(Bars.LEVEL_STYLES) do
@@ -1064,7 +1058,7 @@ local function ApplyBadgeLook(box, keys, level)
     if not ok or not text:GetFont() then
         pcall(text.SetFont, text, ns.Media.DEFAULT_FONT, size, flag)
     end
-    box:SetHeight(size + 2 * S("levelBoxPadY"))
+    box:SetHeight(size + 2 * S("xpBadgePadY"))
 
     local colour = CFG.LEVEL_COLORS[S(keys.color)] or (S(keys.color) == "CLASS" and ClassColour())
                    or CFG.LEVEL_COLORS.GOLD
@@ -1109,7 +1103,6 @@ end
 
 -- level: at a level up, the new one (UnitLevel may still answer the old).
 local function ApplyLevelLook(level)
-    ApplyBadgeLook(levelBox, ROW_BADGE, level)
     ApplyBadgeLook(xpBadge, XP_BADGE, level)
 end
 
@@ -1181,12 +1174,9 @@ local function BuildBadge(parent)
     return box
 end
 
-local function BuildLevelBox()
-    levelBox = BuildBadge()
-    levelText = levelBox.text
+local function BuildXpBadge()
     xpBadge = BuildBadge(xpHolder)
     xpBadge:Hide()
-    Bars.levelBox, Bars.levelText = levelBox, levelText
 end
 
 -- The reputation row: the same bars one row down. Left-click picks the
@@ -1277,19 +1267,19 @@ local function SizeBadge(box, keys)
     local text = box.text
     local fontSize = S(keys.size)
     local textWidth = text:GetStringWidth() or 0
-    local w = math.max(S("levelBoxMinW"), textWidth + 2 * S("levelBoxPadX"))
-    local h = fontSize + 2 * S("levelBoxPadY")
+    local w = math.max(S("xpBadgeMinW"), textWidth + 2 * S("xpBadgePadX"))
+    local h = fontSize + 2 * S("xpBadgePadY")
     local art = Bars.ART_STYLES[LevelStyle(keys)]
     local lift = 0
     if art and (art.file or art.tiers) then
         -- The digits (and at least the font's height) fill the badge's middle.
-        local content = math.max(textWidth, fontSize) + 2 * S("levelBoxPadX")
+        local content = math.max(textWidth, fontSize) + 2 * S("xpBadgePadX")
         h = content / art.inner
         w = h * (art.aspect or 1)
         box.art:SetSize(w, h)
         lift = (art.lift or 0) * h
     elseif art and art.round then
-        local d = math.max(textWidth + 2 * S("levelBoxPadX"), h)
+        local d = math.max(textWidth + 2 * S("xpBadgePadX"), h)
         w, h = d, d
         box.art:SetSize(d * art.scale, d * art.scale)
         box.disc:SetSize(d * 0.9, d * 0.9)
@@ -1301,19 +1291,6 @@ local function SizeBadge(box, keys)
     text:ClearAllPoints()
     text:SetPoint("CENTER", box, "CENTER", OpticalNudge(text), lift)
     return w, h, art
-end
-
-local function UpdateLevelBox()
-    -- Switched off: no box, and no room kept for it (the row closes up).
-    levelBox:SetShown(S("levelShow"))
-    if not S("levelShow") then return 0, 0 end
-    local w, h, art = SizeBadge(levelBox, ROW_BADGE)
-    if S("levelPlace") == "FREE" then return 0, 0 end   -- placed freely, no room kept
-    local reach = art and art.round and w * art.scale or w
-    local reachH = art and art.round and h * art.scale or h
-    local margin = art and art.margin or CFG.LEVEL_BOX_MARGIN
-    -- The room it takes across (the row) and down (the stacked layouts).
-    return math.max(S("levelGap"), reach + 2 * margin), reachH + 2 * margin
 end
 
 -- One bar at its place and width, the text line fitted to it.
@@ -1364,80 +1341,66 @@ Bars.RowHeightNow = function() return RowHeight() end
 
 -- The space between the XP row and the bars beside it: the rows' own gap
 -- plus the player's extra (may be negative).
-local function XpGap() return CFG.REP_ROW_GAP + S("xpGap") end
+local function XpGap() return CFG.XP_ROW_GAP + S("xpGap") end
 
 -- In a row with the XP row between professions and reputation: how far the
 -- reputation row moves down.
 local function RowXpShift()
     if not (XpInRow() and S("xpRow") == "MIDDLE" and S("showProfessions")) then return 0 end
-    return XpHeight() + 2 * XpGap() - CFG.REP_ROW_GAP
+    return XpHeight() + 2 * XpGap() - S("rowGap")
 end
 
 -- The stacked arrangements. Bars hang from the container's top: a bar's
 -- bottom lies its row's height (text line and bar) below where it starts,
--- rows REP_ROW_GAP apart. Empty slots keep their place, as in the row.
+-- rows rowGap apart. Empty slots keep their place, as in the row.
 local function LayoutStacked(mode)
-    local colW, gap, rowH = S("columnWidth"), CFG.REP_ROW_GAP, RowHeight()
-    local levelAcross, levelDown = UpdateLevelBox()
-    local place = S("levelPlace")          -- TOP, MIDDLE or BOTTOM
-    local middle = place == "MIDDLE"
-    -- The XP row: on TOP of everything (the level included), in the MIDDLE
-    -- between professions and reputation (one column only; two columns
-    -- have no between, it goes on top there), or at the BOTTOM.
+    local colW, gap, rowH = S("columnWidth"), S("rowGap"), RowHeight()
+    -- The XP row: on TOP of everything, in the MIDDLE between professions
+    -- and reputation (one column only; two columns have no between, it
+    -- goes on top there), or at the BOTTOM.
     local xpGap = XpGap()
     local xpRowH = XpInRow() and (XpHeight() + xpGap) or 0
     local xpWhere = S("xpRow")
     if xpWhere == "MIDDLE" and mode == "COLUMNS" then xpWhere = "TOP" end
-    local xpAbove = xpWhere == "TOP" and xpRowH or 0
+    local top = xpWhere == "TOP" and xpRowH or 0
     -- In the middle: a gap on both sides of it.
     local xpMid = (xpWhere == "MIDDLE" and xpRowH > 0) and (xpRowH + xpGap) or 0
-    local levelAbove = place == "TOP" and levelDown or 0
-    local top = xpAbove + levelAbove
     local blockH = CFG.NUM_SLOTS * rowH + (CFG.NUM_SLOTS - 1) * gap
     local function y(start, k) return -(start + k * rowH + (k - 1) * gap) end
     -- A block switched off takes no room: the other one closes up.
     local profOn, repOn = S("showProfessions"), S("showReputation")
-    local width, barsH, levelY, xpBottom
+    local width, barsH, xpBottom
     if mode == "COLUMNS" then
         local both = profOn and repOn
-        local colGap = both and (middle and math.max(S("spacing"), levelAcross) or S("spacing")) or 0
+        local colGap = both and S("spacing") or 0
         width = (both and 2 or 1) * colW + colGap
         barsH = (profOn or repOn) and blockH or 0
         for k = 1, CFG.NUM_SLOTS do PutBar(slots[k], "TOPLEFT", 0, y(top, k), colW) end
         local repX = profOn and (colW + colGap) or 0
         for k = 1, CFG.NUM_REP_SLOTS do PutBar(repSlots[k], "TOPLEFT", repX, y(top, k), colW, true) end
-        if middle then levelY = -(top + barsH / 2) end
     else
         local profH, repH = profOn and blockH or 0, repOn and blockH or 0
         -- Between the blocks only when both show.
         if not (profOn and repOn) and xpMid > 0 then xpMid = xpRowH end
-        local groupGap = (profOn and repOn) and (middle and levelDown or (xpMid > 0 and 0 or 3 * gap)) or 0
+        local groupGap = (profOn and repOn) and (xpMid > 0 and 0 or 3 * gap) or 0
         width, barsH = colW, profH + repH + groupGap + xpMid
         for k = 1, CFG.NUM_SLOTS do PutBar(slots[k], "TOPLEFT", 0, y(top, k), colW) end
-        -- Between the blocks: the XP row first, then the level's room.
         if xpMid > 0 then xpBottom = -(top + profH + xpGap + XpHeight()) end
         local repStart = top + profH + xpMid + groupGap
         for k = 1, CFG.NUM_REP_SLOTS do PutBar(repSlots[k], "TOPLEFT", 0, y(repStart, k), colW, true) end
-        if middle then levelY = -(top + profH + xpMid + groupGap / 2) end
     end
-    local levelBelow = place == "BOTTOM" and levelDown or 0
-    if place == "TOP" then levelY = -(xpAbove + levelDown / 2) end
-    if place == "BOTTOM" then levelY = -(top + barsH + levelDown / 2) end
-    local below = levelBelow
+    local below = 0
     if XpInRow() then
         if xpWhere == "TOP" then
             xpBottom = -XpHeight()
         elseif xpWhere == "BOTTOM" then
-            xpBottom = -(top + barsH + levelBelow + xpGap + XpHeight())
-            below = below + xpRowH
+            xpBottom = -(top + barsH + xpGap + XpHeight())
+            below = xpRowH
         end
         PutBar(xpSlot, "TOPLEFT", 0, xpBottom, XpWidth(width), true)
     end
     container:SetWidth(width)
     container:SetHeight(top + barsH + below)
-    levelBox:ClearAllPoints()
-    -- FREE: placed afterwards by PlaceFreeLevel.
-    levelBox:SetPoint("CENTER", container, "TOP", S("levelOffsetX"), (levelY or 0) + S("levelOffsetY"))
 end
 
 -- The badge on the experience bar: its centre at a point of the bar,
@@ -1479,17 +1442,6 @@ local function PlaceFreeXp()
     LayoutDividers(xpSlot, width)
 end
 
--- The row's level badge placed freely, as the strip is placed: X from the
--- middle of the screen, Y from its top edge for the badge's top, in every
--- arrangement; divided by the strip's scale to stay screen pixels.
-local function PlaceFreeLevel()
-    if S("levelPlace") ~= "FREE" then return end
-    local scale = (container.GetScale and container:GetScale()) or 1
-    if scale <= 0 then scale = 1 end
-    levelBox:ClearAllPoints()
-    levelBox:SetPoint("TOP", UIParent, "TOP", S("levelOffsetX") / scale, S("levelOffsetY") / scale)
-end
-
 -- 1.1.0 and 1.1.1 measured free places from the middle of the screen (the
 -- element's centre). Once per account every profile moves to the new
 -- reckoning so nothing jumps: the same spot, now from the top edge.
@@ -1499,13 +1451,9 @@ function Bars.MigrateFreeToTop()
     account.freeFromTop = true
     local half = ((UIParent.GetHeight and UIParent:GetHeight()) or 0) / 2
     if half <= 0 then return end
-    local boxHalf = ((levelBox and levelBox:GetHeight()) or 0) / 2
     local barHalf = S("barHeight") / 2
     local title = XpHeight() - S("barHeight")
     for _, p in pairs(account.profiles or {}) do
-        if p.levelPlace == "FREE" and type(p.levelOffsetY) == "number" then
-            p.levelOffsetY = math.floor(p.levelOffsetY + boxHalf - half + 0.5)
-        end
         if p.xpRow == "FREE" and type(p.xpFreeY) == "number" then
             p.xpFreeY = math.floor(p.xpFreeY + barHalf + title - half + 0.5)
         end
@@ -1522,7 +1470,6 @@ local function Layout()
         LayoutStacked(mode)
         lastWidth = container:GetWidth() or 0
         layoutBusy = false
-        PlaceFreeLevel()
         PlaceFreeXp()
         PlaceBadgeOnXp()
         Bars.LayoutBackdrop()
@@ -1531,22 +1478,10 @@ local function Layout()
     layoutBusy = true
     local width = container:GetWidth() or 0
     local spacing = S("spacing")
-
-    levelBox:ClearAllPoints()
-    levelBox:SetPoint("CENTER", container, "CENTER", S("levelOffsetX"), S("levelY") + S("levelOffsetY"))
-
-    local levelGap = UpdateLevelBox()
-    local barWidth = (width - levelGap - 3 * spacing) / CFG.NUM_SLOTS
+    local barWidth = (width - 3 * spacing) / CFG.NUM_SLOTS
     if barWidth < 1 then layoutBusy = false; return end
-
-    -- Slots 1|2, the level box, 3|4. 2*barWidth + 1.5*spacing + levelGap/2
-    -- equals width/2, so the level sits exactly in the middle.
-    local offsets = {
-        0,
-        barWidth + spacing,
-        2 * barWidth + 2 * spacing + levelGap,
-        3 * barWidth + 3 * spacing + levelGap,
-    }
+    local offsets = {}
+    for i = 1, CFG.NUM_SLOTS do offsets[i] = (i - 1) * (barWidth + spacing) end
     local rowHeight = RowHeight()
     -- The XP row between professions and reputation pushes the reputation
     -- row down by its height.
@@ -1566,7 +1501,7 @@ local function Layout()
         local bar = repSlots[i]
         bar:ClearAllPoints()
         -- Without the professions the reputation row takes their place.
-        local repY = S("showProfessions") and (-(rowHeight + CFG.REP_ROW_GAP) - xpMid) or 0
+        local repY = S("showProfessions") and (-(rowHeight + S("rowGap")) - xpMid) or 0
         bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", offsets[i], repY)
         bar:SetWidth(barWidth)
         LayoutDividers(bar, barWidth)
@@ -1587,26 +1522,24 @@ local function Layout()
                 if repSlots[i]:IsShown() then repShown = true end
             end
             -- Below the lowest row's bottom: its gap, then the whole XP row.
-            local last = (repShown and S("showProfessions")) and -(rowHeight + CFG.REP_ROW_GAP) or 0
+            local last = (repShown and S("showProfessions")) and -(rowHeight + S("rowGap")) or 0
             y = last - XpGap() - XpHeight()
         end
         PutBar(xpSlot, "BOTTOMLEFT", 0, y, XpWidth(width), true)
     end
     lastWidth = width
     layoutBusy = false
-    PlaceFreeLevel()
     PlaceFreeXp()
     PlaceBadgeOnXp()
     Bars.LayoutBackdrop()
 end
 
 -- The backdrop covers everything shown: from the text line above the top row
--- down to the reputation row (if one of its bars shows), and the level box
--- where it reaches past either, plus the padding all around. Offsets are
--- relative to the container, whose top is the top of the first text line.
+-- down to the reputation row (if one of its bars shows), plus the padding all
+-- around. Offsets are relative to the container, whose top is the top of the
+-- first text line.
 -- The top and bottom of everything shown, relative to the container's top
--- (the row arrangement; stacked, the container holds it all). The level
--- badge counts only where it takes room.
+-- (the row arrangement; stacked, the container holds it all).
 function Bars.ShownSpan()
     local mode = S("arrangement")
     if mode == "COLUMNS" or mode == "COLUMN" then
@@ -1616,7 +1549,7 @@ function Bars.ShownSpan()
     local top, bottom = 0, -rowHeight
     for i = 1, CFG.NUM_REP_SLOTS do
         if repSlots[i] and repSlots[i]:IsShown() and S("showProfessions") then
-            bottom = -(2 * rowHeight + CFG.REP_ROW_GAP) - RowXpShift()
+            bottom = -(2 * rowHeight + S("rowGap")) - RowXpShift()
             break
         end
     end
@@ -1634,20 +1567,13 @@ function Bars.LayoutBackdrop()
     local pad = S("backdropPadding")
     local mode = S("arrangement")
     if mode == "COLUMNS" or mode == "COLUMN" then
-        -- Stacked: the container holds everything, the level included.
+        -- Stacked: the container holds everything.
         backdrop:ClearAllPoints()
         backdrop:SetPoint("TOPLEFT", container, "TOPLEFT", -pad, pad)
         backdrop:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", pad, -pad)
         return
     end
-    local rowHeight = RowHeight()
     local top, bottom = Bars.ShownSpan()
-    if levelBox and levelBox:IsShown() and S("levelPlace") ~= "FREE" then
-        local centre = -rowHeight / 2 + S("levelY") + S("levelOffsetY")
-        local half = (levelBox:GetHeight() or 0) / 2
-        top = math.max(top, centre + half)
-        bottom = math.min(bottom, centre - half)
-    end
     backdrop:ClearAllPoints()
     backdrop:SetPoint("TOPLEFT", container, "TOPLEFT", -pad, top + pad)
     backdrop:SetPoint("BOTTOMRIGHT", container, "TOPRIGHT", pad, bottom - pad)
@@ -1848,7 +1774,6 @@ end
 local function Refresh()
     if not container then return end
     ResolveProfessionNames()
-    levelText:SetText(tostring(UnitLevel("player") or ""))
     if xpBadge then xpBadge.text:SetText(tostring(UnitLevel("player") or "")) end
 
     local primaries, secondaries, reason = ScanSkills()
@@ -2086,7 +2011,7 @@ local function Build()
     xpSlot.rested:SetPoint("BOTTOMRIGHT", xpSlot.sb, "BOTTOMRIGHT", 0, 0)
     xpSlot.rested:SetStatusBarTexture(CFG.BAR_TEXTURE)
     xpSlot.sb:SetFrameLevel(xpSlot.rested:GetFrameLevel() + 1)
-    BuildLevelBox()
+    BuildXpBadge()
     BuildBackdrop()
     container:SetScript("OnSizeChanged", function(_, w)
         if math.abs((w or 0) - lastWidth) < 0.5 then return end
@@ -2225,7 +2150,6 @@ Settings.OnChange(function(key)
 end)
 
 Bars.Slot = function(i) return slots[i] end
-Bars.LevelBox = function() return levelBox end
 Bars.XpBadge = function() return xpBadge end
 Bars.Relayout = function() return Layout() end
 Bars.XpSlot = function() return xpSlot end
@@ -2291,6 +2215,7 @@ events:SetScript("OnEvent", function(_, event, ...)
         -- variables are there).
         ns.RebuildPresets()
         Settings.MigrateXpOwn()
+        Settings.MigrateLevelGone()
         Build()
         Bars.ApplyAll()
         Bars.MigrateFreeToTop()
@@ -2303,9 +2228,10 @@ events:SetScript("OnEvent", function(_, event, ...)
             ScheduleRefresh()
         end
     elseif event == "PLAYER_LEVEL_UP" then
-        if levelText then levelText:SetText(tostring(... or UnitLevel("player"))) end
-        if xpBadge then xpBadge.text:SetText(tostring(... or UnitLevel("player"))) end
-        if levelBox then ApplyLevelLook(...) end
+        if xpBadge then
+            xpBadge.text:SetText(tostring(... or UnitLevel("player")))
+            ApplyLevelLook(...)
+        end
         ScheduleRefresh()
     elseif event == "UPDATE_FACTION" then
         -- Our own expand/collapse fires this again.

@@ -76,7 +76,6 @@ local function layoutRows()
         { type = "header", label = "OPT_SHOW" },
         check("showProfessions", "OPT_SHOW_PROFESSIONS"),
         check("showReputation", "OPT_SHOW_REPUTATION"),
-        check("levelShow", "OPT_LEVEL_SHOW"),
         { type = "header", label = "OPT_HIDE" },
         check("hideInCombat", "OPT_HIDE_COMBAT"),
         check("hideInGroup", "OPT_HIDE_GROUP"),
@@ -133,7 +132,13 @@ local function barRows()
             return row
         end)(),
         num("barHeight", "OPT_BAR_HEIGHT"),
-        num("spacing", "OPT_SPACING"),
+        -- Side by side only in a row or two columns.
+        (function()
+            local row = num("spacing", "OPT_SPACING")
+            row.enabled = function() return S("arrangement") ~= "COLUMN" end
+            return row
+        end)(),
+        num("rowGap", "OPT_ROW_GAP"),
         num("segmentWidth", "OPT_SEGMENT_WIDTH"),
         { type = "header", label = "OPT_BAR_TEXT" },
         num("textHeight", "OPT_TEXT_HEIGHT"),
@@ -177,7 +182,7 @@ local function repRows()
 end
 
 -- The look of a level badge: font, size, outline, colour, style. keys: the
--- settings it reads (ns.Bars.ROW_BADGE or ns.Bars.XP_BADGE).
+-- settings it reads (ns.Bars.XP_BADGE).
 local function badgeLookRows(keys)
     return {
         {
@@ -229,36 +234,6 @@ local function badgeLookRows(keys)
             set = function(v) Settings.Set(keys.color, v) end,
         },
     }
-end
-
--- A row whose label reads differently while the level is placed freely.
-local function freeLabelled(row, freeLabel)
-    local normal = row.label
-    row.label = function()
-        return S("levelPlace") == "FREE" and L[freeLabel] or L[normal]
-    end
-    return row
-end
-
--- Choosing "Free" or back relabels the two sliders at once (labels that
--- are functions are read again on every refresh).
-
--- Stufe: where the row's badge sits, then how it looks.
-local function levelRows()
-    local rows = {
-        { type = "header", label = "OPT_LEVEL" },
-        choice("levelPlace", "OPT_LEVEL_PLACE", { "TOP", "MIDDLE", "BOTTOM", "FREE" }, "LEVEL_PLACE_"),
-        -- With "Free" the two become its coordinates.
-        freeLabelled(num("levelOffsetX", "OPT_LEVEL_X"), "OPT_LEVEL_FREE_X"),
-        freeLabelled(num("levelOffsetY", "OPT_LEVEL_Y"), "OPT_LEVEL_FREE_Y"),
-        num("levelGap", "OPT_LEVEL_GAP"),
-        { type = "header", label = "OPT_LEVEL_BOX" },
-    }
-    for _, row in ipairs(badgeLookRows(ns.Bars.ROW_BADGE)) do rows[#rows + 1] = row end
-    rows[#rows + 1] = num("levelBoxPadX", "OPT_LEVEL_BOX_PAD_X")
-    rows[#rows + 1] = num("levelBoxPadY", "OPT_LEVEL_BOX_PAD_Y")
-    rows[#rows + 1] = num("levelBoxMinW", "OPT_LEVEL_BOX_MIN_W")
-    return rows
 end
 
 -- Rows that mean something only in some looks are dimmed in the others:
@@ -377,6 +352,9 @@ local function xpBadgeRows()
         badgeOnly(num("xpBadgeY", "OPT_XP_BADGE_Y")),
     }
     for _, row in ipairs(badgeLookRows(ns.Bars.XP_BADGE)) do rows[#rows + 1] = badgeOnly(row) end
+    rows[#rows + 1] = badgeOnly(num("xpBadgePadX", "OPT_LEVEL_BOX_PAD_X"))
+    rows[#rows + 1] = badgeOnly(num("xpBadgePadY", "OPT_LEVEL_BOX_PAD_Y"))
+    rows[#rows + 1] = badgeOnly(num("xpBadgeMinW", "OPT_LEVEL_BOX_MIN_W"))
     return rows
 end
 
@@ -672,7 +650,6 @@ Window.PAGES = {
     { id = "bars", label = "PAGE_BARS", rows = barRows, group = "NAV_GROUP_BARS" },
     { id = "professions", label = "PAGE_PROFESSIONS", build = buildSkillPage, group = "NAV_GROUP_BARS" },
     { id = "reputation", label = "PAGE_REPUTATION", rows = repRows, group = "NAV_GROUP_BARS" },
-    { id = "level", label = "PAGE_LEVEL", rows = levelRows, group = "NAV_GROUP_BARS" },
     { id = "backdrop", label = "PAGE_BACKDROP", rows = backdropRows, group = "NAV_GROUP_BARS" },
     { id = "xp", label = "PAGE_XP", rows = xpRows, group = "NAV_GROUP_XP" },
     { id = "xptext", label = "PAGE_XPTEXT", rows = xpTextRows, group = "NAV_GROUP_XP" },

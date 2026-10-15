@@ -23,20 +23,18 @@ Settings.DEFAULTS = {
 
     -- Arrangement: ROW (professions in a row, reputation below), COLUMNS
     -- (professions left, reputation right, each stacked) or COLUMN (all
-    -- stacked: professions, then reputation). In the stacked ones the
-    -- level sits on TOP, in the MIDDLE or at the BOTTOM; bars are
-    -- columnWidth wide. levelPlace FREE places it freely everywhere.
+    -- stacked: professions, then reputation); stacked, bars are columnWidth
+    -- wide.
     arrangement = "ROW",
     -- What shows at all: the profession bars, the reputation bars.
     showProfessions = true,
     showReputation = true,
     -- Hide while in combat / in a group: the strip (professions,
-    -- reputation, level) and the XP bar each on its own.
+    -- reputation) and the XP bar each on its own.
     hideInCombat = false,
     hideInGroup = false,
     xpHideInCombat = false,
     xpHideInGroup = false,
-    levelPlace = "TOP",
     columnWidth = 240,
 
     -- Bars
@@ -46,7 +44,8 @@ Settings.DEFAULTS = {
     standingY = 0,          -- the rank or standing in the bar, moved up or down
     textHeight = 11,
     textGap = 4,            -- between the text line and its bar
-    spacing = 15,
+    spacing = 15,           -- between bars side by side (a row, two columns)
+    rowGap = 4,             -- between bars one under the other
     segmentWidth = 21,
     barBgColor = { 0.192, 0.192, 0.192 },   -- the empty part of a bar
     barBgAlpha = 30,                -- percent
@@ -55,26 +54,6 @@ Settings.DEFAULTS = {
     showRank = true,        -- Apprentice, Journeyman, ... in the profession bars
     iconSize = 11,
     iconGap = 2,
-
-    -- Level number
-    levelShow = true,
-    levelY = -25,           -- the row's own place for it (kept for old profiles)
-    -- Moves the level (and the XP bar hanging from it) in every arrangement.
-    -- With levelPlace FREE (in every arrangement) these are its coordinates,
-    -- as the strip's own: X from the middle of the screen, Y from its top
-    -- edge (0: at the top, negative: down), for the badge's top edge; it
-    -- takes no room in the rows then.
-    levelOffsetX = 0,
-    levelOffsetY = 0,
-    levelGap = 87,          -- the least room kept free for the level box
-    levelFont = "Friz Quadrata",
-    levelFontSize = 28,
-    levelFontFlag = "OUTLINE",
-    levelStyle = "CREST",   -- see Bars.LEVEL_STYLES
-    levelColor = "GOLD",      -- GOLD, WHITE or CLASS
-    levelBoxPadX = 14,
-    levelBoxPadY = 10,
-    levelBoxMinW = 62,
 
     -- Backdrop behind everything
     backdropShow = false,
@@ -124,6 +103,9 @@ Settings.DEFAULTS = {
     xpBadgeFont = "Friz Quadrata",
     xpBadgeFontSize = 20,
     xpBadgeFontFlag = "OUTLINE",
+    xpBadgePadX = 14,       -- room around the digits
+    xpBadgePadY = 10,
+    xpBadgeMinW = 62,
     xpBadgeColor = "GOLD",
     -- The level as text, in every style: font, size, colour ("", 0 and off:
     -- the style's), place (AUTO: the style's, else as the numbers) plus X/Y.
@@ -171,12 +153,10 @@ Settings.RANGES = {
     labelFontSize = { 0, 30 },
     iconSize = { 6, 40 },
     iconGap = { 0, 20 },
-    levelY = { -80, 80 },
-    levelGap = { 0, 300 },
-    levelFontSize = { 10, 80 },
-    levelBoxPadX = { 0, 40 },
-    levelBoxPadY = { 0, 30 },
-    levelBoxMinW = { 20, 160 },
+    xpBadgePadX = { 0, 40 },
+    xpBadgePadY = { 0, 30 },
+    xpBadgeMinW = { 20, 160 },
+    rowGap = { 0, 40 },
     width = { 200, 4000 },
     scale = { 50, 200 },
     xpLevelFontSize = { 0, 60 },
@@ -204,8 +184,6 @@ Settings.RANGES = {
     xpBadgeX = { -600, 600 },
     xpBadgeY = { -200, 200 },
     xpBadgeFontSize = { 8, 80 },
-    levelOffsetX = { -2000, 2000 },
-    levelOffsetY = { -3000, 1200 },
     columnWidth = { 80, 800 },
     backdropAlpha = { 0, 100 },
     backdropPadding = { 0, 40 },
@@ -313,6 +291,14 @@ end
 -- it had, so nothing moves.
 local XP_OWN = { textHeight = "xpTextHeight", textGap = "xpTextGap", segmentWidth = "xpSegmentWidth",
     barBgColor = "xpBgColor", barBgAlpha = "xpBgAlpha" }
+-- A second pass (its own flag: the first may have run already): the XP
+-- badge's padding was the strip's level badge's.
+local BADGE_OWN = { levelBoxPadX = "xpBadgePadX", levelBoxPadY = "xpBadgePadY", levelBoxMinW = "xpBadgeMinW" }
+-- The strip's own level badge is gone (the XP bar shows the level): its
+-- settings leave the profiles.
+local LEVEL_GONE = { "levelShow", "levelPlace", "levelY", "levelOffsetX", "levelOffsetY", "levelGap",
+    "levelFont", "levelFontSize", "levelFontFlag", "levelStyle", "levelColor",
+    "levelBoxPadX", "levelBoxPadY", "levelBoxMinW" }
 -- Styles whose height is the bar height itself.
 local PLAIN_STYLES = { OWN = true, FOREVER = true, BLIZZARD = true }
 
@@ -343,21 +329,33 @@ function Settings.MigrateXpOwn()
     end
 end
 
+function Settings.MigrateLevelGone()
+    local account = ns.AccountDB()
+    if account.levelGone then return end
+    account.levelGone = true
+    for name, p in pairs(account.profiles or {}) do
+        if type(p) == "table" and name:sub(1, 1) ~= "@" then
+            for from, to in pairs(BADGE_OWN) do
+                if p[from] ~= nil and p[to] == nil then p[to] = p[from] end
+            end
+            for _, k in ipairs(LEVEL_GONE) do p[k] = nil end
+        end
+    end
+end
+
 -- Presets: ready-made looks, offered as read-only profiles (Profiles.lua):
 -- the values here, everything else at its default.
 Settings.PRESETS = {
-    -- The look before the arrangements came: one row, level in the middle,
-    -- no XP bar. That is the defaults.
+    -- The look before the arrangements came: one row, no XP bar. That is
+    -- the defaults.
     { id = "CLASSIC", values = {} },
     -- One column on the left, the XP bar free and wide above it with its
-    -- badge, the row's level switched off. Positions in the new reckoning:
-    -- the strip from the left edge, free places from the top edge.
+    -- badge. Positions in the new reckoning: the strip from the left edge,
+    -- free places from the top edge.
     { id = "COLUMN_XP", values = {
         arrangement = "COLUMN", columnWidth = 191, width = 889,
         xFrom = "LEFT", x = 10, y = -10,
-        levelShow = false, levelPlace = "FREE", levelOffsetY = -21, levelY = -33, levelGap = 93,
-        levelStyle = "WINGS", levelFontSize = 27,
-        levelBoxPadX = 4, levelBoxPadY = 8, levelBoxMinW = 44,
+        xpBadgePadX = 4, xpBadgePadY = 8, xpBadgeMinW = 44,
         xpEnabled = true, xpRow = "FREE", xpFreeY = 2, xpWidth = 1161, xpGap = 14,
         xpValuePlace = "IN_CENTER",
         xpLevelMode = "BADGE", xpBadgeY = -1, xpBadgeFontSize = 22, xpBadgeFollow = true,
