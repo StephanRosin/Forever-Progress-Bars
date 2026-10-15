@@ -141,19 +141,24 @@ Settings.DEFAULTS = {
 }
 
 -- Slider ranges, used by the options window and to clamp typed values.
--- The XP bar's colours, one pair per style where colours count (XpBar
--- ColourKey): xpColor<STYLE>, xpRestedColor<STYLE>; the styles with a
--- material of their own take them only with xpStyleColours<STYLE> on.
+-- The XP bar's colours, one pair per style (XpBar ColourKey):
+-- xpColor<STYLE>, xpRestedColor<STYLE>, taken while xpStyleColours<STYLE>
+-- is on; off, the style's own colours (Own and Forever: these defaults).
+-- On by default for Own and Forever, which always took the colours.
 Settings.XP_COLOURS = {
-    OWN = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 } },     -- Blizzard's classic purple and rested blue
-    FOREVER = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 } },
+    OWN = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 }, true },     -- Blizzard's classic purple and rested blue
+    FOREVER = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 }, true },
+    BLIZZARD = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 } },
     RUNE = { { 0.58, 0.40, 1.0 }, { 0.35, 0.30, 0.75 } },
+    GEMS = { { 0.69, 0.42, 0.94 }, { 0.24, 0.38, 0.66 } },
+    RING = { { 0.62, 0.30, 0.92 }, { 0.22, 0.36, 0.64 } },
+    THIN = { { 0.71, 0.58, 0.88 }, { 0.56, 0.69, 0.93 } },
     EMBER = { { 1.0, 0.45, 0.12 }, { 0.50, 0.13, 0.05 } },
 }
 for style, pair in pairs(Settings.XP_COLOURS) do
     Settings.DEFAULTS["xpColor" .. style] = pair[1]
     Settings.DEFAULTS["xpRestedColor" .. style] = pair[2]
-    Settings.DEFAULTS["xpStyleColours" .. style] = false
+    Settings.DEFAULTS["xpStyleColours" .. style] = pair[3] == true
 end
 
 Settings.RANGES = {

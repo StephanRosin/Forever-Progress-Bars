@@ -18,7 +18,6 @@ Each style says:
                  format (the level's text, else "Level %d")
   badge          the badge style "matching the bar" (Bars.lua, MATCH)
   hiddenFill     the bar's fill stays unseen (the style draws its own)
-  tintable       may take chosen colours instead of its material's (XP bar)
   build(bar, x)  makes its own textures once: x.under on the bar (below the
                  fill), x.over on a frame above the fill
   apply(bar, x, h)                   the static look
@@ -186,8 +185,14 @@ DEF.BLIZZARD = {
         fill(bar.sb, bar.styleTinted and SHADE or ATLAS.fill)
         paintFill(bar, 1, 1, 1)
         if bar.rested then
-            bar.rested:SetStatusBarTexture(ATLAS.prediction)
-            bar.rested:SetStatusBarColor(1, 1, 1, 1)
+            local rc = bar.styleRestedTint
+            if rc then
+                bar.rested:SetStatusBarTexture(WHITE)
+                bar.rested:SetStatusBarColor(rc[1], rc[2], rc[3], 0.6)
+            else
+                bar.rested:SetStatusBarTexture(ATLAS.prediction)
+                bar.rested:SetStatusBarColor(1, 1, 1, 1)
+            end
         end
     end,
 }
@@ -198,7 +203,7 @@ local RUNE_LIT, RUNE_DARK = { 0.80, 0.72, 1 }, { 0.36, 0.37, 0.41 }
 DEF.RUNE = {
     height = function(base) return math.floor(base * 2.6 + 0.5) end,
     inset = function(h) return 34, math.floor(h * 0.2 + 0.5), 34, math.floor(h * 0.42 + 0.5) end,
-    dividers = "NONE", badge = "RUNESTONE", tintable = true,
+    dividers = "NONE", badge = "RUNESTONE",
     level = { place = "ABOVE_LEFT", color = { 0.85, 0.80, 1 } },
     value = {},   -- white: grey on the bright violet fill reads badly
     build = function(bar, x)
@@ -314,13 +319,24 @@ DEF.GEMS = {
             local f = math.max(0, math.min(1, pct - (i - 1)))
             local base, gem = x.base[i], x.gem[i]
             local cx = (i - 0.5) / GEMS * w
-            base:SetTexture(MEDIA .. ((i - 1 < restTo and f < 1) and "GemRested.tga" or "GemEmpty.tga"))
+            local waiting = i - 1 < restTo and f < 1
+            local rc = (waiting and bar.styleRestedTint) or nil
+            -- A chosen rested colour: glass in that colour in an empty setting.
+            base:SetTexture(MEDIA .. ((waiting and not rc) and "GemRested.tga" or "GemEmpty.tga"))
             base:SetSize(size, size)
             base:ClearAllPoints()
             base:SetPoint("CENTER", bar.sb, "LEFT", cx, 0)
-            gem:SetShown(f > 0)
+            gem:SetShown(f > 0 or rc ~= nil)
             gem:SetTexture(MEDIA .. file)
             gem:SetVertexColor(r, g, b, 1)
+            if f == 0 and rc then
+                gem:SetTexture(MEDIA .. "GemShade.tga")
+                gem:SetVertexColor(rc[1], rc[2], rc[3], 0.7)
+                gem:SetTexCoord(0, 1, 0, 1)
+                gem:SetSize(size, size)
+                gem:ClearAllPoints()
+                gem:SetPoint("CENTER", base, "CENTER")
+            end
             if f > 0 then
                 gem:SetTexCoord(0, f, 0, 1)
                 gem:SetSize(size * f, size)
@@ -395,7 +411,8 @@ DEF.RING = {
                 t:SetVertexColor(0.78 - 0.30 * k, 0.48 - 0.26 * k, 1 - 0.18 * k, 1)
             elseif at <= restTo then
                 -- Opaque: see-through pieces overlap into stripes.
-                t:SetVertexColor(0.22, 0.36, 0.64, 1)
+                local rc = bar.styleRestedTint or { 0.22, 0.36, 0.64 }
+                t:SetVertexColor(rc[1], rc[2], rc[3], 1)
             else
                 t:SetVertexColor(0.08, 0.09, 0.11, 1)
             end
@@ -440,6 +457,8 @@ DEF.THIN = {
         x.dots:SetPoint("BOTTOMLEFT", ends(bar), "BOTTOMRIGHT", 0, 0)
         x.dots:SetWidth(math.max(1, rw))
         x.dots:SetShown(rw >= 1)
+        local rc = bar.styleRestedTint or { 0.56, 0.69, 0.93 }
+        x.dots:SetVertexColor(rc[1], rc[2], rc[3], 1)
         x.tick:ClearAllPoints()
         x.tick:SetPoint("TOP", ends(bar), "TOPRIGHT", 0, 0)
         x.tick:SetShown(midway(cur, max))
@@ -455,7 +474,7 @@ DEF.EMBER = {
         local side, edge = math.floor(h * 0.42 + 0.5), math.floor(h * 0.27 + 0.5)
         return side, edge, side, edge
     end,
-    dividers = "NONE", badge = "SHIELD", tintable = true,
+    dividers = "NONE", badge = "SHIELD",
     level = { place = "ABOVE_LEFT", color = { 1, 0.70, 0.36 } },
     value = { color = { 0.91, 0.79, 0.63 } },
     build = function(bar, x)

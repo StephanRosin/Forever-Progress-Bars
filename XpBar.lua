@@ -134,12 +134,8 @@ function Xp.Dividers() return Xp.Def().dividers or "OWN" end
 -- The chosen style's own colour settings: xpColor<STYLE> and so on.
 function Xp.ColourKey(base) return base .. S("xpStyle") end
 
--- Whether the colour settings count: always for our styles, for a style
--- with a material of its own when its own colours are switched on.
-function Xp.TakesColours()
-    local def = Xp.Def()
-    return def.ownColours == true or (def.tintable == true and S(Xp.ColourKey("xpStyleColours")) == true)
-end
+-- Whether the chosen colours count: in every style, while switched on.
+function Xp.TakesColours() return S(Xp.ColourKey("xpStyleColours")) == true end
 
 -- Some styles always show the level as text (the ring's middle), never as
 -- the badge.
@@ -204,10 +200,16 @@ function Xp.ApplyStyle()
     if not bar then return end
     local def = Xp.Def()
     local fill, rested = S(Xp.ColourKey("xpColor")), S(Xp.ColourKey("xpRestedColor"))
-    local opts = def.ownColours and { fill = fill, rested = rested } or {}
+    local own = Xp.TakesColours()
+    local opts = {}
+    if def.ownColours then
+        -- Our styles draw in colours anyway: the chosen ones, or their own.
+        local pair = Settings.XP_COLOURS[S("xpStyle")]
+        opts.fill, opts.rested = own and fill or pair[1], own and rested or pair[2]
+    end
     opts.bg, opts.bgAlpha = S("xpBgColor"), S("xpBgAlpha")
-    -- A style with a material of its own takes the chosen colours when asked.
-    local tint = Xp.TakesColours() and not def.ownColours
+    -- The others take the chosen colours over their material when asked.
+    local tint = own and not def.ownColours
     opts.tinted, opts.restedTint = tint, tint and rested or nil
     ns.Styles.Apply(bar, S("xpStyle"), Xp.Height(), opts)
     if tint then ns.Styles.Colour(bar, unpack(fill)) end
