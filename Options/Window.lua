@@ -545,6 +545,23 @@ local function buildSkillPage(page)
     page.rebuild()
 end
 
+-- XP lines: one block per line, all alike (show, place, across, up/down).
+local function xpInfoRows()
+    local rows = {
+        { type = "header", label = "OPT_XPINFO" },
+        { type = "text", label = "OPT_XPINFO_HINT", height = 40 },
+    }
+    for _, id in ipairs(ns.XpInfo.IDS) do
+        local key = "xpInfo" .. id
+        rows[#rows + 1] = { type = "header", label = "OPT_XPINFO_" .. id:upper() }
+        rows[#rows + 1] = check(key, "OPT_XPINFO_SHOW")
+        rows[#rows + 1] = choice(key .. "Place", "OPT_XPINFO_PLACE", ns.XpBar.VALUE_PLACES, "XP_VALUE_")
+        rows[#rows + 1] = num(key .. "X", "OPT_XPINFO_X")
+        rows[#rows + 1] = num(key .. "Y", "OPT_XPINFO_Y")
+    end
+    return rows
+end
+
 Window.PAGES = {
     { id = "general", label = "PAGE_GENERAL", rows = generalRows },
     { id = "bars", label = "PAGE_BARS", rows = barRows },
@@ -552,6 +569,7 @@ Window.PAGES = {
     { id = "reputation", label = "PAGE_REPUTATION", rows = repRows },
     { id = "level", label = "PAGE_LEVEL", rows = levelRows },
     { id = "xp", label = "PAGE_XP", rows = xpRows },
+    { id = "xpinfo", label = "PAGE_XPINFO", rows = xpInfoRows },
     { id = "backdrop", label = "PAGE_BACKDROP", rows = backdropRows },
     { id = "profiles", label = "PAGE_PROFILES", rows = profileRows },
 }

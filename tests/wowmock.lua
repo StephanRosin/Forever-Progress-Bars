@@ -155,6 +155,7 @@ function GetBuildInfo() return M.build[1], M.build[2], M.build[3], M.build[4] en
 M.state = { combat = false, time = 1000, level = 43, faction = "Alliance", class = "WARLOCK", sex = 2 }
 function InCombatLockdown() return M.state.combat end
 function GetTime() return M.state.time end
+function GetServerTime() return M.state.serverTime or 1800000000 end
 function UnitLevel() return M.state.level end
 -- Experience: M.state.xp, xpMax, rested (nil = none), xpOff.
 function UnitXP() return M.state.xp or 0 end

@@ -121,6 +121,13 @@ Settings.DEFAULTS = {
     xpValueX = 0,
     xpValueY = 0,
     xpGap = 0,
+    -- Extra lines on the XP bar (XpInfo.lua), all off: shown, place (as the
+    -- numbers), X/Y.
+    xpInfoLevelTime = false, xpInfoLevelTimePlace = "ABOVE_LEFT", xpInfoLevelTimeX = 0, xpInfoLevelTimeY = 0,
+    xpInfoSessionTime = false, xpInfoSessionTimePlace = "ABOVE_RIGHT", xpInfoSessionTimeX = 0, xpInfoSessionTimeY = 0,
+    xpInfoPerHour = false, xpInfoPerHourPlace = "BELOW_CENTER", xpInfoPerHourX = 0, xpInfoPerHourY = 0,
+    xpInfoToLevel = false, xpInfoToLevelPlace = "BELOW_LEFT", xpInfoToLevelX = 0, xpInfoToLevelY = 0,
+    xpInfoQuests = false, xpInfoQuestsPlace = "BELOW_RIGHT", xpInfoQuestsX = 0, xpInfoQuestsY = 0,
 
     -- Minimap button
     minimapShow = true,
@@ -151,6 +158,11 @@ Settings.RANGES = {
     xpGap = { -20, 80 },
     xpValueX = { -500, 500 },
     xpValueY = { -100, 100 },
+    xpInfoLevelTimeX = { -500, 500 }, xpInfoLevelTimeY = { -100, 100 },
+    xpInfoSessionTimeX = { -500, 500 }, xpInfoSessionTimeY = { -100, 100 },
+    xpInfoPerHourX = { -500, 500 }, xpInfoPerHourY = { -100, 100 },
+    xpInfoToLevelX = { -500, 500 }, xpInfoToLevelY = { -100, 100 },
+    xpInfoQuestsX = { -500, 500 }, xpInfoQuestsY = { -100, 100 },
     xpFreeX = { -2000, 2000 },
     xpFreeY = { -3000, 200 },
     xpWidth = { 0, 4000 },

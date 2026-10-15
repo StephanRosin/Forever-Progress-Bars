@@ -25,6 +25,7 @@ Share.lua
 Media.lua
 Bars.lua
 XpBar.lua
+XpInfo.lua
 Options\Style.lua
 Options\Widgets.lua
 Options\Window.lua

@@ -146,20 +146,27 @@ end
 -- The numbers' place. In the bar they need a layer above the fill, so the
 -- text moves onto one of its own once.
 local SIDES = { LEFT = { "LEFT", 4 }, CENTER = { "", 0 }, RIGHT = { "RIGHT", -4 } }
-function Xp.PlaceValue()
+
+-- The layer above the fill that carries the numbers and the extra lines.
+function Xp.TextLayer()
     local bar = slot()
     if not bar then return end
-    local value = bar.valueText
     if not bar.valueLayer then
         bar.valueLayer = CreateFrame("Frame", nil, bar)
         bar.valueLayer:SetAllPoints(bar)
         bar.valueLayer:SetFrameLevel((bar.sb:GetFrameLevel() or 1) + 3)
-        value:SetParent(bar.valueLayer)
+        bar.valueText:SetParent(bar.valueLayer)
     end
-    local where, side = S("xpValuePlace"):match("^(%u+)_(%u+)$")
+    return bar.valueLayer
+end
+
+-- A text at one of VALUE_PLACES, moved by x/y.
+function Xp.PlaceText(value, place, x, y)
+    local bar = slot()
+    if not bar then return end
+    local where, side = place:match("^(%u+)_(%u+)$")
     local s = SIDES[side] or SIDES.RIGHT
     local gap = S("textGap")
-    local x, y = S("xpValueX"), S("xpValueY")
     value:ClearAllPoints()
     if where == "IN" then
         local p = s[1] == "" and "CENTER" or s[1]
@@ -170,6 +177,14 @@ function Xp.PlaceValue()
         value:SetPoint("BOTTOM" .. s[1], bar, "TOP" .. s[1], x, gap + y)
     end
     value:SetJustifyH(side == "LEFT" and "LEFT" or side == "CENTER" and "CENTER" or "RIGHT")
+end
+
+function Xp.PlaceValue()
+    local bar = slot()
+    if not bar then return end
+    Xp.TextLayer()
+    Xp.PlaceText(bar.valueText, S("xpValuePlace"), S("xpValueX"), S("xpValueY"))
+    if ns.XpInfo then ns.XpInfo.Apply() end
 end
 
 -- Values and visibility. A change in visibility lays the strip out again

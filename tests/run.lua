@@ -1012,6 +1012,94 @@ ns.Locale.Set("AUTO")
 check("back to English", shown("Bar height"), true)
 ns.Window.Toggle()
 
+section("XP lines")
+do
+    local I = ns.XpInfo
+    for _, id in ipairs(I.IDS) do check(id .. " off by default", S("xpInfo" .. id), false) end
+    check("under a minute", I.Duration(59), "< 1m")
+    check("minutes", I.Duration(11 * 60 + 5), "11m")
+    check("hours keep the minutes", I.Duration(3600), "1h 0m")
+    check("days", I.Duration(2 * 86400 + 14 * 3600 + 11 * 60), "2d 14h 11m")
+    check("gain", I.Gain(100, 1000, 250), 150)
+    check("gain across a level-up", I.Gain(900, 1000, 50), 150)
+    check("no rate without XP", I.PerHour(0, 600), nil)
+    check("rate", I.PerHour(500, 1800), 1000)
+
+    -- A fresh login with /played muted in the chat.
+    M.state.level, M.state.xp, M.state.xpMax = 20, 1000, 10000
+    M.state.serverTime = 1800000000
+    local chat = M.newWidget("ChatFrame1")
+    chat._events.TIME_PLAYED_MSG = true
+    function chat:IsEventRegistered(e) return self._events[e] == true end
+    _G.ChatFrame1 = chat
+    local asked = 0
+    _G.RequestTimePlayed = function() asked = asked + 1 end
+    _G.C_QuestLog = { GetAllCompletedQuestIDs = function() return { 1, 2, 3 } end }
+    Settings.Set("xpEnabled", true)
+    Settings.Set("xpInfoLevelTime", true)
+    check("/played asked once", asked, 1)
+    check("chat frame muted meanwhile", chat._events.TIME_PLAYED_MSG, nil)
+    M.Fire("PLAYER_ENTERING_WORLD", true, false)
+    check("not asked again", asked, 1)
+    M.Fire("TIME_PLAYED_MSG", 99999, 3 * 3600)
+    M.RunTimers()
+    check("chat frame listens again", chat._events.TIME_PLAYED_MSG, true)
+    local lvl = I.TextOf("LevelTime")
+    check("level time shown", lvl:IsShown(), true)
+    check("level time", lvl:GetText(), "Time this level: 3h 0m")
+    check("at its place", lvl._points.BOTTOMLEFT ~= nil, true)
+    M.state.serverTime = 1800000000 + 600
+    I.Update()
+    check("level time runs on", lvl:GetText(), "Time this level: 3h 10m")
+
+    -- Session, rate, time to level.
+    for _, id in ipairs({ "SessionTime", "PerHour", "ToLevel", "Quests" }) do Settings.Set("xpInfo" .. id, true) end
+    check("session", I.TextOf("SessionTime"):GetText(), "Time this session: 10m")
+    check("no rate yet", I.TextOf("PerHour"):GetText(), "-- XP/hour")
+    check("no estimate yet", I.TextOf("ToLevel"):GetText(), "Next level in ~--")
+    M.state.xp = 2000
+    M.Fire("PLAYER_XP_UPDATE", "player")
+    check("rate: 1000 XP in 10 minutes", I.TextOf("PerHour"):GetText(), "6000 XP/hour")
+    check("8000 left at 6000 an hour", I.TextOf("ToLevel"):GetText(), "Next level in ~1h 20m")
+    check("quests on the character", I.TextOf("Quests"):GetText(), "Quests completed: 3")
+    _G.C_QuestLog.GetAllCompletedQuestIDs = function() return { 1, 2, 3, 4 } end
+    M.Fire("QUEST_TURNED_IN", 4, 100, 0)
+    M.RunTimers()
+    check("a quest handed in counts", I.TextOf("Quests"):GetText(), "Quests completed: 4")
+
+    -- Places and offsets, the same for every line.
+    Settings.Set("xpInfoQuestsPlace", "IN_LEFT")
+    Settings.Set("xpInfoQuestsX", 12)
+    local p = I.TextOf("Quests")._points.LEFT
+    check("in the bar, left, moved", p and p[3], 4 + 12)
+
+    -- Level-up: the level time starts again, the session goes on.
+    M.Fire("PLAYER_LEVEL_UP", 21)
+    I.Update()
+    check("new level from zero", lvl:GetText(), "Time this level: < 1m")
+    -- /reload keeps the session, a fresh login starts a new one.
+    M.Fire("PLAYER_ENTERING_WORLD", false, true)
+    check("reload keeps the session", I.TextOf("SessionTime"):GetText(), "Time this session: 10m")
+    M.Fire("PLAYER_ENTERING_WORLD", true, false)
+    check("login starts a new one", I.TextOf("SessionTime"):GetText(), "Time this session: < 1m")
+
+    -- Off again: hidden.
+    Settings.Set("xpInfoQuests", false)
+    check("switched off", I.TextOf("Quests"):IsShown(), false)
+
+    -- The options page: one block per line, all alike.
+    local rows = nil
+    for _, page in ipairs(ns.Window.PAGES) do if page.id == "xpinfo" then rows = page.rows() end end
+    check("own page", rows ~= nil, true)
+    check("header, hint and five blocks of five", rows and #rows, 2 + 5 * 5)
+    for _, id in ipairs({ "LevelTime", "SessionTime", "PerHour", "ToLevel", "Quests" }) do
+        Settings.Set("xpInfo" .. id, false)
+    end
+    Settings.Set("xpEnabled", false)
+    _G.ChatFrame1, _G.RequestTimePlayed, _G.C_QuestLog = nil, nil, nil
+    M.state.level = 43
+end
+
 section("Only SavedVariables, nothing private")
 for _, f in ipairs(tocFiles()) do
     local src = io.open(ROOT .. "/" .. f):read("*a")
