@@ -1083,6 +1083,21 @@ do
     M.Fire("PLAYER_ENTERING_WORLD", true, false)
     check("login starts a new one", I.TextOf("SessionTime"):GetText(), "Time this session: < 1m")
 
+    -- Rested: in the bar on the right, only while there is rested XP.
+    M.state.rested = 2500
+    Settings.Set("xpInfoRested", true)
+    local rest = I.TextOf("Rested")
+    check("rested shown", rest:IsShown(), true)
+    check("rested text", rest:GetText(), "Rested: 2500 XP (25%)")
+    check("in the bar, right", rest._points.RIGHT ~= nil, true)
+    M.state.rested = nil
+    M.Fire("UPDATE_EXHAUSTION")
+    check("no rested XP: hidden", rest:IsShown(), false)
+    M.state.rested = 100
+    M.Fire("UPDATE_EXHAUSTION")
+    check("back when rested again", rest:IsShown(), true)
+    M.state.rested = nil
+
     -- Off again: hidden.
     Settings.Set("xpInfoQuests", false)
     check("switched off", I.TextOf("Quests"):IsShown(), false)
@@ -1091,8 +1106,8 @@ do
     local rows = nil
     for _, page in ipairs(ns.Window.PAGES) do if page.id == "xpinfo" then rows = page.rows() end end
     check("own page", rows ~= nil, true)
-    check("header, hint and five blocks of five", rows and #rows, 2 + 5 * 5)
-    for _, id in ipairs({ "LevelTime", "SessionTime", "PerHour", "ToLevel", "Quests" }) do
+    check("header, hint and six blocks of five", rows and #rows, 2 + 6 * 5)
+    for _, id in ipairs(I.IDS) do
         Settings.Set("xpInfo" .. id, false)
     end
     Settings.Set("xpEnabled", false)

@@ -128,6 +128,7 @@ Settings.DEFAULTS = {
     xpInfoPerHour = false, xpInfoPerHourPlace = "BELOW_CENTER", xpInfoPerHourX = 0, xpInfoPerHourY = 0,
     xpInfoToLevel = false, xpInfoToLevelPlace = "BELOW_LEFT", xpInfoToLevelX = 0, xpInfoToLevelY = 0,
     xpInfoQuests = false, xpInfoQuestsPlace = "BELOW_RIGHT", xpInfoQuestsX = 0, xpInfoQuestsY = 0,
+    xpInfoRested = false, xpInfoRestedPlace = "IN_RIGHT", xpInfoRestedX = 0, xpInfoRestedY = 0,
 
     -- Minimap button
     minimapShow = true,
@@ -163,6 +164,7 @@ Settings.RANGES = {
     xpInfoPerHourX = { -500, 500 }, xpInfoPerHourY = { -100, 100 },
     xpInfoToLevelX = { -500, 500 }, xpInfoToLevelY = { -100, 100 },
     xpInfoQuestsX = { -500, 500 }, xpInfoQuestsY = { -100, 100 },
+    xpInfoRestedX = { -500, 500 }, xpInfoRestedY = { -100, 100 },
     xpFreeX = { -2000, 2000 },
     xpFreeY = { -3000, 200 },
     xpWidth = { 0, 4000 },

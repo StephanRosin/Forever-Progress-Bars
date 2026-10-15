@@ -1,7 +1,8 @@
 --[[---------------------------------------------------------------------------
 XpInfo.lua -- extra lines on the XP bar, each off by default: time on this
 level, time this session, XP per hour, time to the next level, quests
-completed on this character. Each sits at one of the numbers' places
+completed on this character, the rested bonus (only while there is one).
+Each sits at one of the numbers' places
 (XpBar.VALUE_PLACES) plus X/Y, in the numbers' font, and goes with the bar.
 
 The session starts at login and survives /reload (kept per character in
@@ -19,7 +20,7 @@ ns.XpInfo = Info
 
 -- Order of the lines and of their option blocks; the settings are
 -- xpInfo<id>, xpInfo<id>Place, xpInfo<id>X, xpInfo<id>Y.
-Info.IDS = { "LevelTime", "SessionTime", "PerHour", "ToLevel", "Quests" }
+Info.IDS = { "LevelTime", "SessionTime", "PerHour", "ToLevel", "Quests", "Rested" }
 
 function Info.Now() return (GetServerTime or time)() end
 
@@ -92,6 +93,10 @@ function Info.Text(id)
         return L.XPINFO_TOLEVEL:format(rate and Info.Duration(left / rate * 3600) or none)
     elseif id == "Quests" then
         return L.XPINFO_QUESTS:format(questCount and tostring(questCount) or none)
+    elseif id == "Rested" then
+        local rested, max = (GetXPExhaustion and GetXPExhaustion()) or 0, UnitXPMax("player") or 0
+        local big = BreakUpLargeNumbers or tostring
+        return L.XPINFO_RESTED:format(big(rested), max > 0 and math.floor(rested / max * 100) or 0)
     end
     return ""
 end
@@ -99,7 +104,11 @@ end
 local texts = {}   -- id -> FontString
 function Info.TextOf(id) return texts[id] end
 
+local function hasRested() return ((GetXPExhaustion and GetXPExhaustion()) or 0) > 0 end
+
 function Info.Update()
+    -- The rested line only while there is rested XP.
+    if texts.Rested then texts.Rested:SetShown(S("xpInfoRested") and hasRested()) end
     for id, fs in pairs(texts) do
         if fs:IsShown() then fs:SetText(Info.Text(id)) end
     end
@@ -120,7 +129,7 @@ function Info.Apply()
         end
         if fs then
             fs:SetShown(S(key))
-            if S(key) then
+            if S(key) then   -- placed even while hidden (Rested), so it is ready
                 if path then pcall(fs.SetFont, fs, path, size, flags) end
                 ns.XpBar.PlaceText(fs, S(key .. "Place"), S(key .. "X"), S(key .. "Y"))
             end
@@ -163,7 +172,7 @@ end)
 
 local events = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "TIME_PLAYED_MSG",
-    "QUEST_TURNED_IN" }) do
+    "QUEST_TURNED_IN", "UPDATE_EXHAUSTION" }) do
     pcall(events.RegisterEvent, events, e)
 end
 events:SetScript("OnEvent", function(_, event, a1, a2)
