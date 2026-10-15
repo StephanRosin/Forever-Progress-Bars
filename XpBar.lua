@@ -114,7 +114,6 @@ local OWN_TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar"   -- Bars.lua CFG.
 local ATLAS = {
     background = "UI-HUD-ExperienceBar-Background",
     fill = "UI-HUD-ExperienceBar-Fill-Experience",
-    fillRested = "UI-HUD-ExperienceBar-Fill-Rested",
     prediction = "UI-HUD-ExperienceBar-Fill-Prediction",
     frame = "UI-HUD-ExperienceBar-Frame",
 }
@@ -151,13 +150,12 @@ local function frameArt(bar)
     return holder
 end
 
--- The fill's art follows the rest state, as Blizzard's does (ExpBarOverrides).
--- Set only on a change: the badge riding on the fill hangs from its texture.
-local function foreverFill(bar, rested)
-    local atlas = rested and ATLAS.fillRested or ATLAS.fill
-    if bar.fillAtlas ~= atlas then
-        bar.fillAtlas = atlas
-        bar.sb:SetStatusBarTexture(atlas)
+-- The fill stays purple while rested (unlike Blizzard's), so only the rested
+-- part is blue. Set only once: the badge riding on the fill hangs from its texture.
+local function foreverFill(bar)
+    if bar.fillAtlas ~= ATLAS.fill then
+        bar.fillAtlas = ATLAS.fill
+        bar.sb:SetStatusBarTexture(ATLAS.fill)
     end
     bar.sb:SetStatusBarColor(1, 1, 1)
 end
@@ -174,7 +172,7 @@ function Xp.ApplyStyle()
     if on then
         bar.bg:SetAtlas(ATLAS.background)
         bar.bg:SetVertexColor(1, 1, 1, 1)
-        foreverFill(bar, ((GetXPExhaustion and GetXPExhaustion()) or 0) > 0)
+        foreverFill(bar)
         bar.rested:SetStatusBarTexture(ATLAS.prediction)
         bar.rested:SetStatusBarColor(1, 1, 1, 1)
     else
@@ -285,7 +283,6 @@ function Xp.Update()
         bar.rested:SetMinMaxValues(0, max)
         bar.rested:SetValue(math.min(max, cur + rested))
         bar.rested:SetShown(rested > 0)
-        if forever() then foreverFill(bar, rested > 0) end
         local title = S("xpTitle")
         -- The level as text, or none when the badge sits on the bar.
         local asText = title and S("xpLevelMode") ~= "BADGE"

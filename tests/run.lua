@@ -1147,10 +1147,10 @@ do
 
     M.state.rested = 3000
     M.Fire("UPDATE_EXHAUSTION")
-    check("forever rested: the rested fill", xp.sb._barTex, "UI-HUD-ExperienceBar-Fill-Rested")
+    check("forever rested: the fill stays purple", xp.sb._barTex, "UI-HUD-ExperienceBar-Fill-Experience")
+    check("forever rested: the rested part shows", xp.rested:IsShown(), true)
     M.state.rested = 0
     M.Fire("UPDATE_EXHAUSTION")
-    check("forever: back to the plain fill", xp.sb._barTex, "UI-HUD-ExperienceBar-Fill-Experience")
 
     -- The badge riding on the fill works in both styles.
     Settings.Set("xpLevelMode", "BADGE")
