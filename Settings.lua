@@ -115,6 +115,9 @@ Settings.DEFAULTS = {
     xpBadgeColor = "GOLD",
     xpLevelFont = "",
     xpLevelFontSize = 0,
+    -- Forever style: the level's colour and the plate behind it.
+    xpHeaderColor = { 1, 0.82, 0.29 },
+    xpHeaderPlate = true,
     xpValueFontSize = 0,
     -- Where the numbers sit: ABOVE, IN or BELOW the bar, _LEFT, _CENTER or
     -- _RIGHT, plus X/Y.

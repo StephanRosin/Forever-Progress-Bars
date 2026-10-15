@@ -131,7 +131,7 @@ local function blizzard() return S("xpStyle") == "BLIZZARD" end
 
 -- Forever shows the level as a header above the bar (the quest log's title:
 -- Friz Quadrata, gold, shadow), never as the badge.
-local HEADER_FONT, HEADER_SIZE, HEADER_COLOR = "Friz Quadrata", 18, { 1, 0.82, 0.29 }
+local HEADER_FONT, HEADER_SIZE = "Friz Quadrata", 18
 function Xp.LevelMode() return S("xpStyle") == "FOREVER" and "TEXT" or S("xpLevelMode") end
 
 -- The plate the header sits on, centred on the bar's top edge: the quest
@@ -216,6 +216,7 @@ function Xp.LayoutHeader()
         return
     end
     local p = plate(bar)
+    for _, t in ipairs({ p.bg, p.shine, p.line }) do t:SetShown(S("xpHeaderPlate")) end
     p.bg:SetColorTexture(0, 0, 0, 1)   -- opaque: what lies behind would show through the title
     name:SetParent(p)
     name:SetJustifyH("CENTER")
@@ -341,7 +342,8 @@ function Xp.StyleTitle()
     local size = S("xpLevelFontSize") > 0 and S("xpLevelFontSize") or header and HEADER_SIZE
         or own and own > 0 and own or base or 12
     if path then pcall(name.SetFont, name, path, size, flags) end
-    name:SetTextColor(unpack(header and HEADER_COLOR or ns.Bars.NAME_COLOR))
+    local c = header and S("xpHeaderColor") or ns.Bars.NAME_COLOR
+    name:SetTextColor(c[1], c[2], c[3])
     name:SetHeight(size)
     local vpath, _, vflags = value:GetFont()
     local vsize = S("xpValueFontSize") > 0 and S("xpValueFontSize") or labelSize(value)

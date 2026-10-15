@@ -246,9 +246,24 @@ local function ownStyleOnly(row)
     return row
 end
 
--- Forever always shows the level as its header: the choice is dimmed there.
-local function notForever(row)
-    row.enabled = function() return S("xpStyle") ~= "FOREVER" end
+-- Rows that mean something only in some looks are dimmed in the others:
+-- Forever always shows the level as its header; the badge rows only count
+-- for the badge, the level's font only for the level as text.
+local function enabledIf(test)
+    return function(row)
+        row.enabled = test
+        return row
+    end
+end
+local notForever = enabledIf(function() return S("xpStyle") ~= "FOREVER" end)
+local foreverOnly = enabledIf(function() return S("xpStyle") == "FOREVER" end)
+local badgeOnly = enabledIf(function() return ns.XpBar.LevelMode() == "BADGE" end)
+local levelTextOnly = enabledIf(function() return ns.XpBar.LevelMode() ~= "BADGE" end)
+
+-- The level's look; dimmed under Forever, it shows what Forever uses.
+local function levelModeRow()
+    local row = choice("xpLevelMode", "OPT_XP_LEVEL_MODE", { "TEXT", "BADGE" }, "XP_LEVEL_")
+    row.get = function() return ns.XpBar.LevelMode() end
     return row
 end
 
@@ -270,8 +285,8 @@ local function xpRows()
 
         { type = "header", label = "OPT_XP_TITLE_HEADER" },
         check("xpTitle", "OPT_XP_TITLE"),
-        notForever(choice("xpLevelMode", "OPT_XP_LEVEL_MODE", { "TEXT", "BADGE" }, "XP_LEVEL_")),
-        {
+        notForever(levelModeRow()),
+        levelTextOnly({
             type = "select", label = "OPT_XP_LEVEL_FONT",
             choices = function()
                 local list = { { label = L.XP_FONT_SAME, value = "" } }
@@ -280,8 +295,10 @@ local function xpRows()
             end,
             get = function() return S("xpLevelFont") end,
             set = function(v) Settings.Set("xpLevelFont", v) end,
-        },
-        num("xpLevelFontSize", "OPT_XP_LEVEL_SIZE"),
+        }),
+        levelTextOnly(num("xpLevelFontSize", "OPT_XP_LEVEL_SIZE")),
+        foreverOnly(colorRow("xpHeaderColor", "OPT_XP_HEADER_COLOR", true)),
+        foreverOnly(check("xpHeaderPlate", "OPT_XP_HEADER_PLATE")),
         choice("xpTextMode", "OPT_XP_TEXT_MODE", X.TEXT_MODES, "XP_MODE_"),
         num("xpValueFontSize", "OPT_XP_VALUE_SIZE"),
         choice("xpValuePlace", "OPT_XP_VALUE_PLACE", X.VALUE_PLACES, "XP_VALUE_"),
@@ -290,13 +307,13 @@ local function xpRows()
 
         { type = "header", label = "OPT_XP_BADGE" },
         { type = "text", label = "OPT_XP_BADGE_HINT" },
-        check("xpBadgeFollow", "OPT_XP_BADGE_FOLLOW"),
-        choice("xpBadgePoint", "OPT_XP_BADGE_POINT",
-            { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }, "POINT_"),
-        num("xpBadgeX", "OPT_XP_BADGE_X"),
-        num("xpBadgeY", "OPT_XP_BADGE_Y"),
+        badgeOnly(check("xpBadgeFollow", "OPT_XP_BADGE_FOLLOW")),
+        badgeOnly(choice("xpBadgePoint", "OPT_XP_BADGE_POINT",
+            { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }, "POINT_")),
+        badgeOnly(num("xpBadgeX", "OPT_XP_BADGE_X")),
+        badgeOnly(num("xpBadgeY", "OPT_XP_BADGE_Y")),
     }
-    for _, row in ipairs(badgeLookRows(ns.Bars.XP_BADGE)) do rows[#rows + 1] = row end
+    for _, row in ipairs(badgeLookRows(ns.Bars.XP_BADGE)) do rows[#rows + 1] = badgeOnly(row) end
     return rows
 end
 

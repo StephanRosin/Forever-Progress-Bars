@@ -1195,6 +1195,22 @@ do
     check("forever: header plate shown", xp.plate and xp.plate:IsShown(), true)
     check("forever: level on the plate", xp.nameText._parent, xp.plate)
     check("forever: plate fits the text", xp.plate:GetWidth(), xp.nameText:GetStringWidth() + 28)
+    Settings.Set("xpHeaderColor", { 0.5, 0.6, 0.7 })
+    check("forever: level in the chosen colour", xp.nameText._textColor[1], 0.5)
+    Settings.Set("xpHeaderColor", nil)
+    Settings.Set("xpHeaderPlate", false)
+    check("forever: plate can go", xp.plate.bg:IsShown(), false)
+    check("forever: level stays without the plate", xp.nameText:GetText(), "Level 20")
+    Settings.Set("xpHeaderPlate", nil)
+    check("forever: plate back", xp.plate.bg:IsShown(), true)
+    local byLabel = {}
+    for _, page in ipairs(ns.Window.PAGES) do
+        if page.id == "xp" then for _, r in ipairs(page.rows()) do byLabel[r.label] = r end end
+    end
+    check("forever: badge rows dimmed", byLabel.OPT_XP_BADGE_FOLLOW.enabled(), false)
+    check("forever: badge look dimmed", byLabel.OPT_LEVEL_STYLE.enabled(), false)
+    check("forever: level font usable", byLabel.OPT_XP_LEVEL_FONT.enabled(), true)
+    check("forever: header colour usable", byLabel.OPT_XP_HEADER_COLOR.enabled(), true)
     check("forever: a tick at the end of the fill", xp.marker and xp.marker:IsShown(), true)
     check("forever: the tick hangs on the fill", xp.marker._points.CENTER[1], xp.sb:GetStatusBarTexture())
     check("forever: our gold marker", xp.marker._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\BadgeMarker.tga")
@@ -1203,6 +1219,12 @@ do
     check("own after forever: fill inside one unit", xp.sb._points.TOPLEFT[3], 1)
     check("own after forever: plate hidden", xp.plate:IsShown(), false)
     check("own after forever: no tick", xp.marker:IsShown(), false)
+    local own = {}
+    for _, page in ipairs(ns.Window.PAGES) do
+        if page.id == "xp" then for _, r in ipairs(page.rows()) do own[r.label] = r end end
+    end
+    check("own with badge: header colour dimmed", own.OPT_XP_HEADER_COLOR.enabled(), false)
+    check("own with badge: badge rows usable", own.OPT_XP_BADGE_FOLLOW.enabled(), S("xpLevelMode") == "BADGE")
     check("own after forever: level back on the bar", xp.nameText._parent, xp)
 
     for _, k in ipairs({ "xpStyle", "xpLevelMode", "xpBadgeFollow" }) do Settings.Set(k, nil) end
