@@ -316,10 +316,8 @@ local function xpTextRows()
     local levelPlaces = { "AUTO" }
     for _, p in ipairs(X.VALUE_PLACES) do levelPlaces[#levelPlaces + 1] = p end
     return {
-        { type = "header", label = "OPT_XP_TITLE_HEADER" },
-        num("xpTextHeight", "OPT_TEXT_HEIGHT"),
-        num("xpTextGap", "OPT_TEXT_GAP"),
-        check("xpTitle", "OPT_XP_TITLE"),
+        -- First the choice that decides the rest: the level as text or badge.
+        { type = "header", label = "OPT_XP_LEVEL_HEADER" },
         levelChoice(levelModeRow()),
         levelTextOnly(choice("xpLevelPlace", "OPT_XP_LEVEL_PLACE", levelPlaces, "XP_VALUE_")),
         levelTextOnly(num("xpLevelX", "OPT_XP_LEVEL_X")),
@@ -329,6 +327,10 @@ local function xpTextRows()
         levelTextOnly(check("xpLevelColorOwn", "OPT_XP_LEVEL_COLOR_OWN")),
         levelColourOnly(colorRow("xpLevelColor", "OPT_XP_LEVEL_COLOR", true)),
         foreverOnly(check("xpHeaderPlate", "OPT_XP_HEADER_PLATE")),
+        { type = "header", label = "OPT_XP_TITLE_HEADER" },
+        check("xpTitle", "OPT_XP_TITLE"),
+        num("xpTextHeight", "OPT_TEXT_HEIGHT"),
+        num("xpTextGap", "OPT_TEXT_GAP"),
         choice("xpTextMode", "OPT_XP_TEXT_MODE", X.TEXT_MODES, "XP_MODE_"),
         choice("xpValuePlace", "OPT_XP_VALUE_PLACE", X.VALUE_PLACES, "XP_VALUE_"),
         num("xpValueX", "OPT_XP_VALUE_X"),
@@ -653,7 +655,9 @@ Window.PAGES = {
     { id = "backdrop", label = "PAGE_BACKDROP", rows = backdropRows, group = "NAV_GROUP_BARS" },
     { id = "xp", label = "PAGE_XP", rows = xpRows, group = "NAV_GROUP_XP" },
     { id = "xptext", label = "PAGE_XPTEXT", rows = xpTextRows, group = "NAV_GROUP_XP" },
-    { id = "xpbadge", label = "PAGE_XPBADGE", rows = xpBadgeRows, group = "NAV_GROUP_XP" },
+    -- Only while the level shows as the badge.
+    { id = "xpbadge", label = "PAGE_XPBADGE", rows = xpBadgeRows, group = "NAV_GROUP_XP",
+      shown = function() return ns.XpBar.LevelMode() == "BADGE" end },
     { id = "xpinfo", label = "PAGE_XPINFO", rows = xpInfoRows, group = "NAV_GROUP_XP" },
     { id = "profiles", label = "PAGE_PROFILES", rows = profileRows },
 }
@@ -794,25 +798,45 @@ local function createNav(parent)
     Style.Fill(nav, "panel")
     local edge = line(nav, "border")
     edge:SetPoint("TOPRIGHT"); edge:SetPoint("BOTTOMRIGHT"); edge:SetWidth(1)
-    frame.navButtons = {}
-    -- A caption above each group; the pages in it indented.
-    local y, group = NAV_TOP, nil
+    frame.navButtons, frame.navCaptions, frame.nav = {}, {}, nav
     for _, page in ipairs(Window.PAGES) do
-        if page.group ~= group then
-            group = page.group
-            if group then
-                local caption = Style.Text(nav, 10, "muted")
-                caption:SetPoint("TOPLEFT", nav, "TOPLEFT", INSET, -(y + NAV_CAPTION_H - 14))
-                caption:SetText(L[group]:upper())
-                y = y + NAV_CAPTION_H
-            end
-        end
-        navButton(nav, page, y)
+        navButton(nav, page, 0)
         if page.group then frame.navButtons[page.id].text:SetPoint("LEFT", frame.navButtons[page.id], "LEFT", INSET + 8, 0) end
-        y = y + NAV_ROW_H
+        if page.group and not frame.navCaptions[page.group] then
+            local caption = Style.Text(nav, 10, "muted")
+            caption:SetText(L[page.group]:upper())
+            frame.navCaptions[page.group] = caption
+        end
     end
     languageRow(nav)
     return nav
+end
+
+-- The navigation's order: a caption above each group, the pages in it
+-- indented; a page whose `shown` says no leaves no gap.
+local function layoutNav()
+    if not frame or not frame.nav then return end
+    local nav, y, group = frame.nav, NAV_TOP, nil
+    for _, page in ipairs(Window.PAGES) do
+        local b = frame.navButtons[page.id]
+        local shown = not page.shown or page.shown()
+        b:SetShown(shown)
+        if shown then
+            if page.group ~= group then
+                group = page.group
+                local caption = group and frame.navCaptions[group]
+                if caption then
+                    caption:ClearAllPoints()
+                    caption:SetPoint("TOPLEFT", nav, "TOPLEFT", INSET, -(y + NAV_CAPTION_H - 14))
+                    y = y + NAV_CAPTION_H
+                end
+            end
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", nav, "TOPLEFT", 0, -y)
+            b:SetPoint("TOPRIGHT", nav, "TOPRIGHT", -1, -y)
+            y = y + NAV_ROW_H
+        end
+    end
 end
 
 -- Footer: lock or unlock the strip (drag it while unlocked).
@@ -923,6 +947,7 @@ end
 
 function Window.ShowPage(id)
     ensureWindow()
+    layoutNav()
     local page = pageFor(id)
     if not page then return end
     Widgets.CloseList()
@@ -940,9 +965,17 @@ function Window.ShowPage(id)
     updateScrollbar()
 end
 
--- Fetches every value on the visible page again.
+-- Fetches every value on the visible page again; a page no longer offered
+-- gives way to the one before it.
 function Window.Refresh()
     if not frame or not current then return end
+    layoutNav()
+    for i, p in ipairs(Window.PAGES) do
+        if p.id == current and p.shown and not p.shown() then
+            Window.ShowPage(Window.PAGES[i - 1].id)
+            return
+        end
+    end
     local page = pages[current]
     if not page then return end
     for _, row in ipairs(page.rows or {}) do row:Refresh() end
@@ -960,6 +993,9 @@ end
 function Window.Toggle()
     if Window.IsShown() then frame:Hide() else Window.Open() end
 end
+
+-- The page on show (the tests).
+function Window.Current() return current end
 
 function Window.IsShown()
     return frame ~= nil and frame:IsShown()

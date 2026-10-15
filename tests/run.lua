@@ -1421,6 +1421,25 @@ do
     account.profiles.Old = nil
 end
 
+section("XP badge page only with the badge")
+do
+    local W = ns.Window
+    local badgePage
+    for _, p in ipairs(W.PAGES) do if p.id == "xpbadge" then badgePage = p end end
+    Settings.Set("xpLevelMode", "TEXT")
+    check("text: no badge page", badgePage.shown(), false)
+    Settings.Set("xpLevelMode", "BADGE")
+    check("badge: the badge page", badgePage.shown(), true)
+    local first
+    for _, p in ipairs(W.PAGES) do if p.id == "xptext" then first = p.rows()[2] end end
+    check("the level choice comes first on the texts page", first.label, "OPT_XP_LEVEL_MODE")
+    W.Open("xpbadge")
+    Settings.Set("xpLevelMode", "TEXT")
+    check("its page gives way", W.Current(), "xptext")
+    W.Toggle()
+    Settings.Set("xpLevelMode", nil)
+end
+
 section("Only SavedVariables, nothing private")
 for _, f in ipairs(tocFiles()) do
     local src = io.open(ROOT .. "/" .. f):read("*a")
