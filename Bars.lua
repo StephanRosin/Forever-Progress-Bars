@@ -638,7 +638,7 @@ local xpSlot            -- the experience bar (XpBar.lua fills it)
 -- The level badge on the experience bar: the XP bar shows and its title
 -- line wants the badge rather than the text.
 local function BadgeOnXp()
-    return xpSlot ~= nil and xpSlot:IsShown() and S("xpTitle") and ns.XpBar.LevelMode() == "BADGE"
+    return xpSlot ~= nil and xpSlot:IsShown() and ns.XpBar.LevelMode() == "BADGE"
 end
 Bars.BadgeOnXp = BadgeOnXp
 local xpBadge           -- the level badge on the experience bar (own settings)
@@ -1304,12 +1304,12 @@ end
 local function XpBarHeight()
     return ns.XpBar and ns.XpBar.Height and ns.XpBar.Height() or S("barHeight")
 end
+-- With texts above the bar: their line (at least xpTextHeight, as tall as
+-- its largest font) and the gap; without: the bar alone.
 local function XpHeight()
-    if not S("xpTitle") then return XpBarHeight() end
-    -- The title line is as tall as its largest font (a big level number).
-    local line = S("xpTextHeight")
-    if ns.XpBar and ns.XpBar.TitleSize then line = math.max(line, ns.XpBar.TitleSize()) end
-    return line + S("xpTextGap") + XpBarHeight()
+    local above = ns.XpBar and ns.XpBar.TitleSize and ns.XpBar.TitleSize() or 0
+    if above <= 0 then return XpBarHeight() end
+    return math.max(S("xpTextHeight"), above) + S("xpTextGap") + XpBarHeight()
 end
 Bars.XpHeight = XpHeight
 Bars.RowHeightNow = function() return RowHeight() end
@@ -2194,6 +2194,7 @@ events:SetScript("OnEvent", function(_, event, ...)
         Settings.MigrateLevelGone()
         Settings.MigrateXpColours()
         Settings.MigrateOwnMerged()
+        Settings.MigrateTitleGone()
         Build()
         Bars.ApplyAll()
         Bars.MigrateFreeToTop()

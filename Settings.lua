@@ -97,11 +97,10 @@ Settings.DEFAULTS = {
     xpFreeX = 0,
     xpFreeY = -200,
     xpWidth = 0,
-    xpTitle = true,
     xpTextMode = "CURRENT_MAX_PERCENT",     -- see XpBar.TEXT_MODES
     -- The title line: the level's font and size, the numbers' size ("" and
     -- 0: as on the other bars), and extra space to the bars beside the row.
-    xpLevelMode = "TEXT",   -- TEXT ("Level 20") or BADGE (a badge of its own)
+    xpLevelMode = "TEXT",   -- TEXT ("Level 20"), BADGE (a badge of its own) or NONE
     -- The badge on the XP bar: its centre at a point of the bar plus X/Y,
     -- and a look of its own.
     xpBadgePoint = "LEFT",
@@ -131,6 +130,11 @@ Settings.DEFAULTS = {
     xpValueFontSize = 0,
     xpValueColorOwn = false,
     xpValueColor = { 1, 1, 1 },
+    -- The extra lines (XpInfo.lua): font, size, colour ("", 0, off: the numbers').
+    xpInfoFont = "",
+    xpInfoFontSize = 0,
+    xpInfoColorOwn = false,
+    xpInfoColor = { 1, 1, 1 },
     -- Where the numbers sit: ABOVE, IN or BELOW the bar, _LEFT, _CENTER or
     -- _RIGHT, plus X/Y.
     xpValuePlace = "ABOVE_RIGHT",
@@ -188,6 +192,7 @@ Settings.RANGES = {
     scale = { 50, 200 },
     xpLevelFontSize = { 0, 60 },
     xpValueFontSize = { 0, 40 },
+    xpInfoFontSize = { 0, 40 },
     xpGap = { -20, 80 },
     xpValueX = { -500, 500 },
     xpValueY = { -100, 100 },
@@ -434,6 +439,23 @@ function Settings.MigrateOwnMerged()
             elseif p.barStyle == "OWN" then
                 p.barStyle = nil
             end
+        end
+    end
+end
+
+-- The title line's switch left: the level and the numbers each show or
+-- hide on their own. A profile with it off hides both. Once per account.
+function Settings.MigrateTitleGone()
+    local account = ns.AccountDB()
+    if account.titleGone then return end
+    account.titleGone = true
+    for name, p in pairs(account.profiles or {}) do
+        if type(p) == "table" and name:sub(1, 1) ~= "@" then
+            if p.xpTitle == false then
+                p.xpLevelMode = "NONE"
+                p.xpTextMode = "NONE"
+            end
+            p.xpTitle = nil
         end
     end
 end

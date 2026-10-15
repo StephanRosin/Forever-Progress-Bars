@@ -680,12 +680,30 @@ do
     check("more space above it", xp._points.BOTTOMLEFT[4], yMid - 10)
     check("and below it", Bars.RepSlot(1)._points.BOTTOMLEFT[4], repY - (xpH + gap) - 20)
     Settings.Set("xpGap", nil)
-    -- Without a title line: only the bar, the numbers gone.
-    Settings.Set("xpTitle", false)
-    check("no title: no level text", xp.nameText:GetText(), "")
-    check("no title: only the bar's height", Bars.XpHeight(), ns.XpBar.Height())
+    -- Level and numbers hidden: only the bar, no room above it.
+    Settings.Set("xpLevelMode", "NONE")
+    Settings.Set("xpTextMode", "NONE")
+    check("level hidden: no level text", xp.nameText:GetText(), "")
+    check("level hidden: no badge", Bars.BadgeOnXp(), false)
+    check("numbers hidden: no numbers", xp.valueText:GetText(), "")
+    check("nothing above: only the bar's height", Bars.XpHeight(), ns.XpBar.Height())
     check("its height is not the bars' height", ns.XpBar.Height(), Settings.DEFAULTS.barHeight)
-    Settings.Set("xpTitle", nil)
+    -- An extra line above takes room again, in its own size.
+    Settings.Set("xpInfoSessionTime", true)
+    Settings.Set("xpInfoFontSize", 16)
+    check("an extra line above: room for it", Bars.XpHeight(), 16 + S("xpTextGap") + ns.XpBar.Height())
+    Settings.Set("xpInfoColorOwn", true)
+    Settings.Set("xpInfoColor", { 0.1, 0.9, 0.1 })
+    check("extra lines: their own colour", ns.XpInfo.TextOf("SessionTime")._textColor[2], 0.9)
+    for _, k in ipairs({ "xpInfoSessionTime", "xpInfoFontSize", "xpInfoColorOwn", "xpInfoColor", "xpLevelMode", "xpTextMode" }) do
+        Settings.Set(k, nil)
+    end
+    -- Numbers below the bar, the level as badge: nothing above.
+    Settings.Set("xpLevelMode", "BADGE")
+    Settings.Set("xpValuePlace", "BELOW_CENTER")
+    check("texts below only: no room above", Bars.XpHeight(), ns.XpBar.Height())
+    Settings.Set("xpLevelMode", nil)
+    Settings.Set("xpValuePlace", nil)
     -- Stacked: one column, between professions and reputation.
     Settings.Set("arrangement", "COLUMN")
     local p4 = slot(4)._points.BOTTOMLEFT[4]
@@ -1075,7 +1093,7 @@ do
     local rows = nil
     for _, page in ipairs(ns.Window.PAGES) do if page.id == "xpinfo" then rows = page.rows() end end
     check("own page", rows ~= nil, true)
-    check("header, hint and six blocks of five", rows and #rows, 2 + 6 * 5)
+    check("header, hint, the look (header and four) and six blocks of five", rows and #rows, 2 + 5 + 6 * 5)
     for _, id in ipairs(I.IDS) do
         Settings.Set("xpInfo" .. id, false)
     end
@@ -1589,6 +1607,20 @@ do
     SlashCmdList["FOREVERPROGRESSBARS"]("news")
     check("/fpb news without news: says so", N.IsOpen(), false)
     N.Current = oldCurrent
+end
+
+section("The title line's switch: from before")
+do
+    local account = ns.AccountDB()
+    account.titleGone = nil
+    account.profiles.Off = { xpTitle = false, xpLevelMode = "BADGE" }
+    account.profiles.On = { xpTitle = true }
+    Settings.MigrateTitleGone()
+    check("title off: level hidden", account.profiles.Off.xpLevelMode, "NONE")
+    check("title off: numbers hidden", account.profiles.Off.xpTextMode, "NONE")
+    check("the switch leaves", account.profiles.Off.xpTitle == nil and account.profiles.On.xpTitle == nil, true)
+    check("title on: nothing else", next(account.profiles.On), nil)
+    account.profiles.Off, account.profiles.On = nil, nil
 end
 
 section("Only SavedVariables, nothing private")

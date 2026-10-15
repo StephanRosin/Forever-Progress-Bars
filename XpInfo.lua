@@ -114,12 +114,22 @@ function Info.Update()
     end
 end
 
+-- The lines' size: their own, or the numbers'.
+function Info.FontSize()
+    return S("xpInfoFontSize") > 0 and S("xpInfoFontSize") or ns.XpBar.ValueSize()
+end
+
 -- Creates, styles and places the lines that are on; hides the others.
+-- Font and colour: their own, or the numbers'.
 function Info.Apply()
     local bar = ns.Bars.XpSlot and ns.Bars.XpSlot()
     local layer = ns.XpBar.TextLayer()
     if not bar or not layer then return end
-    local path, size, flags = bar.valueText:GetFont()
+    local path, _, flags = bar.valueText:GetFont()
+    if S("xpInfoFont") ~= "" then path = ns.Media.FontPath(S("xpInfoFont")) end
+    local size = Info.FontSize()
+    local r, g, b = bar.valueText:GetTextColor()
+    if S("xpInfoColorOwn") then r, g, b = unpack(S("xpInfoColor")) end
     for _, id in ipairs(Info.IDS) do
         local key = "xpInfo" .. id
         local fs = texts[id]
@@ -131,6 +141,7 @@ function Info.Apply()
             fs:SetShown(S(key))
             if S(key) then   -- placed even while hidden (Rested), so it is ready
                 if path then pcall(fs.SetFont, fs, path, size, flags) end
+                if r then fs:SetTextColor(r, g, b) end
                 ns.XpBar.PlaceText(fs, S(key .. "Place"), S(key .. "X"), S(key .. "Y"))
             end
         end

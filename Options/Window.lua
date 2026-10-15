@@ -293,11 +293,14 @@ local ownColoursOnly = enabledIf(function() return ns.XpBar.TakesColours() end)
 local ownLookOnly = enabledIf(function() return ns.XpBar.StyleId() == "FOREVER" end)
 local foreverOnly = enabledIf(function() return ns.XpBar.StyleId() == "FOREVER" end)
 local badgeOnly = enabledIf(function() return ns.XpBar.LevelMode() == "BADGE" end)
-local levelTextOnly = enabledIf(function() return ns.XpBar.LevelMode() ~= "BADGE" end)
+local levelTextOnly = enabledIf(function() return ns.XpBar.LevelMode() == "TEXT" end)
 local levelColourOnly = enabledIf(function()
-    return ns.XpBar.LevelMode() ~= "BADGE" and S("xpLevelColorOwn") == true
+    return ns.XpBar.LevelMode() == "TEXT" and S("xpLevelColorOwn") == true
 end)
-local valueColourOnly = enabledIf(function() return S("xpValueColorOwn") == true end)
+-- The numbers' rows only while they show.
+local valueOnly = enabledIf(function() return S("xpTextMode") ~= "NONE" end)
+local valueColourOnly = enabledIf(function() return S("xpTextMode") ~= "NONE" and S("xpValueColorOwn") == true end)
+local infoColourOnly = enabledIf(function() return S("xpInfoColorOwn") == true end)
 
 -- A row for the chosen style's own setting (base .. style): built once,
 -- it reads and writes the key of whatever style is chosen.
@@ -317,7 +320,7 @@ end
 
 -- The level's look; where a style always shows text, it shows what that is.
 local function levelModeRow()
-    local row = choice("xpLevelMode", "OPT_XP_LEVEL_MODE", { "TEXT", "BADGE" }, "XP_LEVEL_")
+    local row = choice("xpLevelMode", "OPT_XP_LEVEL_MODE", { "TEXT", "BADGE", "NONE" }, "XP_LEVEL_")
     row.get = function() return ns.XpBar.LevelMode() end
     return row
 end
@@ -383,19 +386,26 @@ local function xpTextRows()
         levelTextOnly(num("xpLevelFontSize", "OPT_XP_LEVEL_SIZE")),
         levelTextOnly(check("xpLevelColorOwn", "OPT_XP_LEVEL_COLOR_OWN")),
         levelColourOnly(colorRow("xpLevelColor", "OPT_XP_LEVEL_COLOR", true)),
-        foreverOnly(check("xpHeaderPlate", "OPT_XP_HEADER_PLATE")),
-        { type = "header", label = "OPT_XP_TITLE_HEADER" },
-        check("xpTitle", "OPT_XP_TITLE"),
-        num("xpTextHeight", "OPT_TEXT_HEIGHT"),
-        num("xpTextGap", "OPT_TEXT_GAP"),
+        (function()
+            local row = check("xpHeaderPlate", "OPT_XP_HEADER_PLATE")
+            row.enabled = function() return ns.XpBar.StyleId() == "FOREVER" and ns.XpBar.LevelMode() == "TEXT" end
+            return row
+        end)(),
+        -- The numbers: their format (or none), then where and how.
+        { type = "header", label = "OPT_XP_VALUE_HEADER" },
         choice("xpTextMode", "OPT_XP_TEXT_MODE", X.TEXT_MODES, "XP_MODE_"),
-        choice("xpValuePlace", "OPT_XP_VALUE_PLACE", X.VALUE_PLACES, "XP_VALUE_"),
-        num("xpValueX", "OPT_XP_VALUE_X"),
-        num("xpValueY", "OPT_XP_VALUE_Y"),
-        fontRow("xpValueFont", "OPT_XP_VALUE_FONT"),
-        num("xpValueFontSize", "OPT_XP_VALUE_SIZE"),
-        check("xpValueColorOwn", "OPT_XP_VALUE_COLOR_OWN"),
+        valueOnly(choice("xpValuePlace", "OPT_XP_VALUE_PLACE", X.VALUE_PLACES, "XP_VALUE_")),
+        valueOnly(num("xpValueX", "OPT_XP_VALUE_X")),
+        valueOnly(num("xpValueY", "OPT_XP_VALUE_Y")),
+        valueOnly(fontRow("xpValueFont", "OPT_XP_VALUE_FONT")),
+        valueOnly(num("xpValueFontSize", "OPT_XP_VALUE_SIZE")),
+        valueOnly(check("xpValueColorOwn", "OPT_XP_VALUE_COLOR_OWN")),
         valueColourOnly(colorRow("xpValueColor", "OPT_XP_VALUE_COLOR", true)),
+        -- For every text on the bar, the extra lines included.
+        { type = "header", label = "OPT_XP_TEXT_ROOM" },
+        { type = "text", label = "OPT_XP_TEXT_ROOM_HINT", height = 40 },
+        num("xpTextGap", "OPT_XP_TEXT_GAP"),
+        num("xpTextHeight", "OPT_XP_TEXT_HEIGHT"),
     }
 end
 
@@ -689,6 +699,12 @@ local function xpInfoRows()
     local rows = {
         { type = "header", label = "OPT_XPINFO" },
         { type = "text", label = "OPT_XPINFO_HINT", height = 40 },
+        -- One look for all lines: their own, or the numbers'.
+        { type = "header", label = "OPT_XPINFO_LOOK" },
+        fontRow("xpInfoFont", "OPT_XPINFO_FONT"),
+        num("xpInfoFontSize", "OPT_XPINFO_SIZE"),
+        check("xpInfoColorOwn", "OPT_XPINFO_COLOR_OWN"),
+        infoColourOnly(colorRow("xpInfoColor", "OPT_XPINFO_COLOR", true)),
     }
     for _, id in ipairs(ns.XpInfo.IDS) do
         local key = "xpInfo" .. id

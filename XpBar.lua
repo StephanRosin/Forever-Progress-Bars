@@ -193,7 +193,7 @@ local function plate(bar)
 end
 
 local function plateShown()
-    return Xp.StyleId() == "FOREVER" and S("xpTitle") and S("xpHeaderPlate") and Xp.LevelMode() ~= "BADGE"
+    return Xp.StyleId() == "FOREVER" and S("xpHeaderPlate") and Xp.LevelMode() == "TEXT"
 end
 
 -- Look of the bar for the chosen style; Bars.lua calls it after it painted
@@ -235,15 +235,29 @@ local function levelSize(bar)
     return XP_LABEL
 end
 
+-- The numbers' size: their own, or the default label size.
+function Xp.ValueSize()
+    return S("xpValueFontSize") > 0 and S("xpValueFontSize") or labelSize()
+end
+
+-- The room the texts above the bar take: the tallest of the level (as
+-- text), the numbers and the extra lines placed above it; 0 when none is.
 function Xp.TitleSize()
     local bar = slot()
     if not bar then return 0 end
-    local val = S("xpValueFontSize") > 0 and S("xpValueFontSize") or labelSize(bar.valueText)
-    -- Only texts above the bar take room in the title line.
-    if S("xpValuePlace"):sub(1, 5) ~= "ABOVE" then val = 0 end
-    if Xp.LevelMode() == "BADGE" or Xp.LevelPlace():sub(1, 5) ~= "ABOVE" then return val end
-    local lvl = plateShown() and PLATE_H or levelSize(bar)
-    return math.max(lvl, val)
+    local function above(place) return place:sub(1, 5) == "ABOVE" end
+    local size = 0
+    if S("xpTextMode") ~= "NONE" and above(S("xpValuePlace")) then size = Xp.ValueSize() end
+    if Xp.LevelMode() == "TEXT" and above(Xp.LevelPlace()) then
+        size = math.max(size, plateShown() and PLATE_H or levelSize(bar))
+    end
+    local info = ns.XpInfo
+    if info then
+        for _, id in ipairs(info.IDS) do
+            if S("xpInfo" .. id) and above(S("xpInfo" .. id .. "Place")) then size = math.max(size, info.FontSize()) end
+        end
+    end
+    return size
 end
 
 -- A text's colour: its own when switched on, else the style's, else the bars'.
@@ -270,7 +284,7 @@ function Xp.StyleTitle()
     local vpath, _, vflags = unpack(bar.valueBase)
     if S("xpValueFont") ~= "" then vpath = ns.Media.FontPath(S("xpValueFont"))
     elseif def.value.font then vpath = ns.Media.FontPath(def.value.font) end
-    local vsize = S("xpValueFontSize") > 0 and S("xpValueFontSize") or labelSize(value)
+    local vsize = Xp.ValueSize()
     if vpath then pcall(value.SetFont, value, vpath, vsize, vflags) end
     local vc = textColour("xpValueColorOwn", "xpValueColor", def.value.color, ns.Bars.VALUE_COLOR)
     value:SetTextColor(vc[1], vc[2], vc[3])
@@ -365,11 +379,10 @@ function Xp.Update()
         bar.rested:SetMinMaxValues(0, max)
         bar.rested:SetValue(math.min(max, cur + rested))
         bar.rested:SetShown(rested > 0)
-        local title = S("xpTitle")
-        -- The level as text, or none when the badge sits on the bar.
-        local asText = title and Xp.LevelMode() ~= "BADGE"
+        -- The level as text; none as the badge or hidden.
+        local asText = Xp.LevelMode() == "TEXT"
         bar.nameText:SetText(asText and L.XP_LEVEL:format(UnitLevel("player") or 0) or "")
-        bar.valueText:SetText(title and Xp.Text(S("xpTextMode"), cur, max) or "")
+        bar.valueText:SetText(Xp.Text(S("xpTextMode"), cur, max))
         ns.Styles.Update(bar, cur, max, rested)
     end
     Xp.PlaceLevel()
