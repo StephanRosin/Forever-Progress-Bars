@@ -27,6 +27,7 @@ Everything you level, in one strip: two primary professions, two secondary skill
 - A title line like the reputation bars: "Level 20" on the left, "730 / 23200 (3%)" on the right (or in or below the bar, left, middle or right), with its own fonts and sizes (a big level, small numbers). Or the level as a badge of its own on the bar, placed at any of its points or riding on the end of the fill, with its own style and size.
 - Rested experience shows ahead of the fill; the tooltip gives experience, progress, what is left to the next level and rested experience.
 - Hidden at the maximum level. While it is on, Blizzard's experience bar is hidden.
+- **Extra lines**, each on its own and off by default: time this level, time this session, XP per hour, next level in ~1h 20m, quests completed on this character, and your rested bonus (only while you have one). Every line hangs on the XP bar at a place of your choice (above, in or below; left, middle or right) and moves by pixels.
 
 ## Level
 - Your level in a box between the bars, above, in the middle of or below the columns, or **anywhere on the screen** (X from the screen's middle, Y from its top edge). It can also be switched off.
@@ -46,7 +47,7 @@ Everything you level, in one strip: two primary professions, two secondary skill
 - Bar height, text height, the space between text and bar, spacing, segment width, label font size and icon size are all adjustable, as are the colour and opacity of the bars' empty part.
 
 ## Options
-- Its own options window in the style of Forever Unit Frames, opened from the **minimap button** or with `/fpb`: General, Bars, Professions, Reputation, Level, XP bar, Background and Profiles.
+- Its own options window in the style of Forever Unit Frames, opened from the **minimap button** or with `/fpb`: General, Bars, Professions, Reputation, Level, XP bar, XP lines, Background and Profiles.
 - Also listed in Blizzard's **addon compartment** next to the minimap: left-click opens the options, right-click locks or unlocks the strip.
 - **Profiles**: save your layout under a name and share it between characters.
 - **Presets** in the profile list: "Classic" (one row, level in the middle) and "Column with XP bar". They are read-only (changes last until the next reload); "Save as..." turns one into a profile of your own. Your reputations, hidden skills, lock and minimap button come along.
