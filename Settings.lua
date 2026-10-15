@@ -48,7 +48,6 @@ Settings.DEFAULTS = {
     barBorderSize = 1,
     barBorderColor = { 0, 0, 0, 0.9 },
     barMarker = false,
-    ringBeside = false,     -- signet ring: the texts beside it instead of above
     standingY = 0,          -- the rank or standing in the bar, moved up or down
     textHeight = 11,
     textGap = 4,            -- between the text line and its bar
@@ -162,7 +161,6 @@ Settings.XP_COLOURS = {
     BLIZZARD = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 } },
     RUNE = { { 0.58, 0.40, 1.0 }, { 0.35, 0.30, 0.75 } },
     GEMS = { { 0.69, 0.42, 0.94 }, { 0.24, 0.38, 0.66 } },
-    RING = { { 0.62, 0.30, 0.92 }, { 0.22, 0.36, 0.64 } },
     THIN = { { 0.71, 0.58, 0.88 }, { 0.56, 0.69, 0.93 } },
     EMBER = { { 1.0, 0.45, 0.12 }, { 0.50, 0.13, 0.05 } },
 }

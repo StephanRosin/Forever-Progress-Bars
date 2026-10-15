@@ -9,11 +9,9 @@ it neutral and takes their colour (Styles.Colour).
 Each style says:
   height(base)   its default height from the bars' height (the XP bar's
                  own height setting wins when it is not 0)
-  square         as wide as it is high when no width of its own is set
   inset(h, px)   where the fill sits inside the bar: left, top, right, bottom
   dividers       OWN (the bars' segments), BLIZZARD (Blizzard's 20) or NONE
   ownColours     whether the fill and rested colour settings apply
-  levelText      the level always shows as text (never the badge)
   level, value   the texts' defaults: place, size(base, h), font, colour,
                  format (the level's text, else "Level %d")
   badge          the badge style "matching the bar" (Bars.lua, MATCH)
@@ -41,7 +39,7 @@ local OWN_TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar"   -- Bars.lua CFG.
 -- carries meaning, so a style with a material of its own takes their colour.
 local SHADE = MEDIA .. "FillShade.tga"
 
-Styles.LIST = { "FOREVER", "BLIZZARD", "RUNE", "GEMS", "RING", "THIN", "EMBER" }
+Styles.LIST = { "FOREVER", "BLIZZARD", "RUNE", "GEMS", "THIN", "EMBER" }
 
 -- Helpers -------------------------------------------------------------------
 
@@ -350,84 +348,6 @@ DEF.GEMS = {
     end,
 }
 
--- Siegelring: a round gauge around the level instead of a bar, for near
--- the player frame: a gold bezel with 20 notches, the experience as an arc
--- (short rotated pieces), the rested bonus after it, a gold diamond at the
--- end. The arc runs at 0.36 of the size, 0.07 thick (RingBezel.svg).
-local ARC_PIECES = 90
-DEF.RING = {
-    height = function(base) return base * 5 end,
-    square = true, hiddenFill = true,
-    dividers = "NONE", levelText = true,
-    -- Only the number in the middle: "Level 18" is too wide for it.
-    level = { place = "IN_CENTER", format = "%d", size = function(_, h) return math.floor(h * 0.3 + 0.5) end,
-              font = "Friz Quadrata", color = { 0.95, 0.86, 0.61 } },
-    value = { color = { 0.87, 0.84, 0.78 } },
-    build = function(bar, x)
-        x.disc = over(x, "BACKGROUND", MEDIA .. "RingDisc.tga")
-        x.arc = {}
-        for i = 1, ARC_PIECES do
-            -- Soft-edged pieces: the game smooths them when turned (ArcPiece.svg).
-            x.arc[i] = over(x, "ARTWORK", MEDIA .. "ArcPiece.tga")
-        end
-        x.bezel = over(x, "OVERLAY", MEDIA .. "RingBezel.tga")
-        x.diamond = x.over:CreateTexture(nil, "OVERLAY", nil, 1)
-        x.diamond:SetTexture(MEDIA .. "Diamond.tga")
-    end,
-    apply = function(bar)
-        for _, b in ipairs(bar.borders) do b:Hide() end
-        bar.bg:SetColorTexture(0, 0, 0, 0)
-        fill(bar.sb, WHITE)
-        paintFill(bar, 1, 1, 1, 0)
-        if bar.rested then bar.rested:SetStatusBarColor(1, 1, 1, 0) end
-    end,
-    update = function(bar, x, cur, max, rested)
-        local w = width(bar)
-        local h = (bar.sb.GetHeight and bar.sb:GetHeight()) or 0
-        local tinted = bar.styleTinted and bar.styleTint
-        local d = math.min(w, h)
-        -- Centred, or at the left end with the texts beside it.
-        local ox = bar.styleRingLeft and (d - w) / 2 or 0
-        x.disc:SetSize(d * 0.66, d * 0.66)
-        x.disc:ClearAllPoints()
-        x.disc:SetPoint("CENTER", bar.sb, "CENTER", ox, 0)
-        x.bezel:SetSize(d, d)
-        x.bezel:ClearAllPoints()
-        x.bezel:SetPoint("CENTER", bar.sb, "CENTER", ox, 0)
-        local r, thick = d * 0.36, d * 0.07
-        local len = 2 * math.pi * r / ARC_PIECES * 1.3
-        local pct = max > 0 and cur / max or 0
-        local restTo = max > 0 and math.min(1, (cur + (rested or 0)) / max) or 0
-        for i = 1, ARC_PIECES do
-            local at = (i - 0.5) / ARC_PIECES
-            local a = at * 2 * math.pi
-            local t = x.arc[i]
-            t:SetSize(len * 64 / 58, thick * 16 / 10)   -- the piece is 58 x 10 of its 64 x 16
-            t:ClearAllPoints()
-            t:SetPoint("CENTER", bar.sb, "CENTER", ox + r * math.sin(a), r * math.cos(a))
-            if t.SetRotation then t:SetRotation(-a) end
-            if at <= pct and tinted then
-                t:SetVertexColor(tinted[1], tinted[2], tinted[3], 1)
-            elseif at <= pct then
-                -- Lighter at the start, deeper towards the end.
-                local k = at
-                t:SetVertexColor(0.78 - 0.30 * k, 0.48 - 0.26 * k, 1 - 0.18 * k, 1)
-            elseif at <= restTo then
-                -- Opaque: see-through pieces overlap into stripes.
-                local rc = bar.styleRestedTint or { 0.22, 0.36, 0.64 }
-                t:SetVertexColor(rc[1], rc[2], rc[3], 1)
-            else
-                t:SetVertexColor(0.08, 0.09, 0.11, 1)
-            end
-        end
-        local a = pct * 2 * math.pi
-        x.diamond:SetSize(d * 0.1, d * 0.1)
-        x.diamond:ClearAllPoints()
-        x.diamond:SetPoint("CENTER", bar.sb, "CENTER", ox + r * math.sin(a), r * math.cos(a))
-        x.diamond:SetShown(midway(cur, max))
-    end,
-}
-
 -- Hauchdünn: three pixels along the screen's edge, no frame; the rested
 -- bonus dotted, a short tick where the experience ends, small text below.
 DEF.THIN = {
@@ -578,7 +498,6 @@ end
 -- part in the bars' colours), then the style on top.
 -- opts: fill, rested (our colours, for the styles that take them); tinted
 -- (a bar whose colour comes from Styles.Colour: professions, reputation);
--- ringLeft (the ring at the bar's left end, its texts beside it);
 -- restedTint (the rested part's colour for a tinted bar); bg,
 -- bgAlpha (the empty part, else the bars' own); border, marker (Forever).
 function Styles.Apply(bar, id, h, opts)
@@ -587,7 +506,6 @@ function Styles.Apply(bar, id, h, opts)
     local def = Styles.Get(id)
     bar.styleId = id
     bar.styleTinted = opts.tinted
-    bar.styleRingLeft = opts.ringLeft
     bar.styleRestedTint = opts.restedTint
     for other, x in pairs(bar.styleParts or {}) do
         if other ~= id then showParts(x, false) end

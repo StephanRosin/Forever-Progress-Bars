@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="16" viewBox="0 0 64 16">
-  <!-- Siegelring: one piece of the arc, soft at its edges so the game smooths it when it turns
-       the piece (a plain colour texture turned has hard, stepped edges). The piece is the
-       middle 58 x 10; the rest is the soft margin. -->
-  <defs><filter id="soft" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="0.7"/></filter></defs>
-  <rect x="3" y="3" width="58" height="10" fill="#ffffff" filter="url(#soft)"/>
-</svg>

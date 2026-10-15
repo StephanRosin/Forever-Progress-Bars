@@ -157,11 +157,6 @@ local function barRows()
         { type = "header", label = "OPT_BAR_LOOK" },
         choice("barStyle", "OPT_BAR_STYLE", ns.Styles.LIST, "BAR_STYLE_"),
         { type = "text", label = "OPT_BAR_STYLE_HINT", height = 40 },
-        (function()
-            local row = check("ringBeside", "OPT_RING_BESIDE")
-            row.enabled = function() return S("barStyle") == "RING" end
-            return row
-        end)(),
         "RIM",
         colorRow("barBgColor", "OPT_BAR_BG_COLOR", true),
         { label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
@@ -294,7 +289,6 @@ local function enabledIf(test)
     end
 end
 local ownColoursOnly = enabledIf(function() return ns.XpBar.TakesColours() end)
-local levelChoice = enabledIf(function() return not ns.XpBar.Def().levelText end)
 -- Segments and the empty part's colour only where the style draws ours.
 local ownLookOnly = enabledIf(function() return ns.XpBar.StyleId() == "FOREVER" end)
 local foreverOnly = enabledIf(function() return ns.XpBar.StyleId() == "FOREVER" end)
@@ -381,7 +375,7 @@ local function xpTextRows()
     return {
         -- First the choice that decides the rest: the level as text or badge.
         { type = "header", label = "OPT_XP_LEVEL_HEADER" },
-        levelChoice(levelModeRow()),
+        levelModeRow(),
         levelTextOnly(choice("xpLevelPlace", "OPT_XP_LEVEL_PLACE", levelPlaces, "XP_VALUE_")),
         levelTextOnly(num("xpLevelX", "OPT_XP_LEVEL_X")),
         levelTextOnly(num("xpLevelY", "OPT_XP_LEVEL_Y")),

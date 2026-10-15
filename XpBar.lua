@@ -131,7 +131,6 @@ end
 function Xp.Width(stripWidth)
     local own = S("xpWidth")
     if own and own > 0 then return own end
-    if Xp.Def().square then return Xp.Height() end
     return stripWidth
 end
 
@@ -143,9 +142,7 @@ function Xp.ColourKey(base) return base .. Xp.StyleId() end
 -- Whether the chosen colours count: in every style, while switched on.
 function Xp.TakesColours() return S(Xp.ColourKey("xpStyleColours")) == true end
 
--- Some styles always show the level as text (the ring's middle), never as
--- the badge.
-function Xp.LevelMode() return Xp.Def().levelText and "TEXT" or S("xpLevelMode") end
+function Xp.LevelMode() return S("xpLevelMode") end
 
 -- The badge style "matching the bar" (Bars.lua, MATCH).
 function Xp.MatchBadge() return Xp.Def().badge or "CREST" end
@@ -371,8 +368,7 @@ function Xp.Update()
         local title = S("xpTitle")
         -- The level as text, or none when the badge sits on the bar.
         local asText = title and Xp.LevelMode() ~= "BADGE"
-        local format = Xp.Def().level.format or L.XP_LEVEL
-        bar.nameText:SetText(asText and format:format(UnitLevel("player") or 0) or "")
+        bar.nameText:SetText(asText and L.XP_LEVEL:format(UnitLevel("player") or 0) or "")
         bar.valueText:SetText(title and Xp.Text(S("xpTextMode"), cur, max) or "")
         ns.Styles.Update(bar, cur, max, rested)
     end
