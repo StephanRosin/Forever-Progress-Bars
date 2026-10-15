@@ -99,14 +99,15 @@ DEF.OWN = {
 }
 
 -- The look of the other Forever addons: dark, a gold rim two screen pixels
--- wide (the minimap's), the level on a plate (XpBar.lua) and a gold marker
+-- wide (the minimap's), the level as text on a plate (XpBar.lua) or as the
+-- badge, and a gold marker
 -- where the fill ends (tools/badges/marker.svg; Blizzard's own tick is
 -- 10 x 14 only and blurs when grown). The bar fills 100 of the marker's
 -- 160 height; it is half as wide.
 DEF.FOREVER = {
     height = function(base) return base end,
     inset = function(h, px) local r = 2 * px return r, r, r, r end,
-    dividers = "OWN", ownColours = true, levelText = true, badge = "CREST",
+    dividers = "OWN", ownColours = true, badge = "CREST",
     level = { place = "ABOVE_CENTER", size = function() return 18 end, font = "Friz Quadrata", color = GOLD_TEXT },
     value = {},
     build = function(bar, x)

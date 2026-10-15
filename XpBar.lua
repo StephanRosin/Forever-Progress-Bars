@@ -128,8 +128,8 @@ end
 
 function Xp.Dividers() return Xp.Def().dividers or "OWN" end
 
--- Some styles always show the level as text (Forever's header, the ring's
--- middle), never as the badge.
+-- Some styles always show the level as text (the ring's middle), never as
+-- the badge.
 function Xp.LevelMode() return Xp.Def().levelText and "TEXT" or S("xpLevelMode") end
 
 -- The badge style "matching the bar" (Bars.lua, MATCH).
@@ -181,7 +181,7 @@ local function plate(bar)
 end
 
 local function plateShown()
-    return S("xpStyle") == "FOREVER" and S("xpTitle") and S("xpHeaderPlate")
+    return S("xpStyle") == "FOREVER" and S("xpTitle") and S("xpHeaderPlate") and Xp.LevelMode() ~= "BADGE"
 end
 
 -- Look of the bar for the chosen style; Bars.lua calls it after it painted
