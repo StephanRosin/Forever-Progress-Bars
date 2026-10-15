@@ -72,7 +72,6 @@ Settings.DEFAULTS = {
     xpEnabled = false,
     xpStyle = "OWN",        -- the look, see Styles.LIST
     xpHeight = 0,           -- 0: the style's height (from the default bar height)
-    xpStyleColours = false, -- Rune stone, Forge: the colours below instead of the material's
     -- The XP bar's own counterparts of the bars' settings: none of those
     -- touch it (Settings.MigrateXpOwn copies them over once).
     xpTextHeight = 11,      -- the title line's least height
@@ -88,8 +87,6 @@ Settings.DEFAULTS = {
     xpFreeY = -200,
     xpWidth = 0,
     xpTitle = true,
-    xpColor = { 0.58, 0.0, 0.55 },          -- Blizzard's classic purple
-    xpRestedColor = { 0.0, 0.39, 0.88 },    -- and its rested blue
     xpTextMode = "CURRENT_MAX_PERCENT",     -- see XpBar.TEXT_MODES
     -- The title line: the level's font and size, the numbers' size ("" and
     -- 0: as on the other bars), and extra space to the bars beside the row.
@@ -144,6 +141,21 @@ Settings.DEFAULTS = {
 }
 
 -- Slider ranges, used by the options window and to clamp typed values.
+-- The XP bar's colours, one pair per style where colours count (XpBar
+-- ColourKey): xpColor<STYLE>, xpRestedColor<STYLE>; the styles with a
+-- material of their own take them only with xpStyleColours<STYLE> on.
+Settings.XP_COLOURS = {
+    OWN = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 } },     -- Blizzard's classic purple and rested blue
+    FOREVER = { { 0.58, 0.0, 0.55 }, { 0.0, 0.39, 0.88 } },
+    RUNE = { { 0.58, 0.40, 1.0 }, { 0.35, 0.30, 0.75 } },
+    EMBER = { { 1.0, 0.45, 0.12 }, { 0.50, 0.13, 0.05 } },
+}
+for style, pair in pairs(Settings.XP_COLOURS) do
+    Settings.DEFAULTS["xpColor" .. style] = pair[1]
+    Settings.DEFAULTS["xpRestedColor" .. style] = pair[2]
+    Settings.DEFAULTS["xpStyleColours" .. style] = false
+end
+
 Settings.RANGES = {
     barHeight = { 4, 40 },
     textHeight = { 8, 30 },
@@ -325,6 +337,33 @@ function Settings.MigrateXpOwn()
                 if p.xpLevelFontSize == nil and (p.xpStyle == nil or p.xpStyle == "OWN" or p.xpStyle == "BLIZZARD") then
                     p.xpLevelFontSize = label
                 end
+            end
+        end
+    end
+end
+
+-- Up to now one colour pair served every XP style: it stays with the two
+-- that used it (Own, Forever), once per account.
+function Settings.MigrateXpColours()
+    local account = ns.AccountDB()
+    if account.xpColoursPerStyle then return end
+    account.xpColoursPerStyle = true
+    for name, p in pairs(account.profiles or {}) do
+        if type(p) == "table" and name:sub(1, 1) ~= "@" then
+            for _, base in ipairs({ "xpColor", "xpRestedColor" }) do
+                local v = p[base]
+                if type(v) == "table" then
+                    for _, style in ipairs({ "OWN", "FOREVER" }) do
+                        if p[base .. style] == nil then p[base .. style] = { unpack(v) } end
+                    end
+                end
+                p[base] = nil
+            end
+            if p.xpStyleColours ~= nil then
+                for _, style in ipairs({ "RUNE", "EMBER" }) do
+                    if p["xpStyleColours" .. style] == nil then p["xpStyleColours" .. style] = p.xpStyleColours end
+                end
+                p.xpStyleColours = nil
             end
         end
     end

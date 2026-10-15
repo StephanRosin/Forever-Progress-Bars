@@ -1141,7 +1141,7 @@ do
     Settings.Set("xpStyle", "OWN")
     check("own: badge rides on the fill", select(2, box:GetPoint("CENTER")), xp.sb:GetStatusBarTexture())
     check("own again: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
-    check("own again: our colour", xp.sb._color[1], S("xpColor")[1])
+    check("own again: our colour", xp.sb._color[1], S("xpColor" .. S("xpStyle"))[1])
     check("own again: Blizzard's frame gone", parts("BLIZZARD").over:IsShown(), false)
     check("own again: rim shown", xp.borders[1]:IsShown(), true)
     local thin = true
@@ -1157,7 +1157,7 @@ do
     Settings.Set("xpStyle", "FOREVER")
     check("colour row: usable for forever", rows().OPT_XP_COLOR.enabled(), true)
     check("forever: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
-    check("forever: our colour", xp.sb._color[1], S("xpColor")[1])
+    check("forever: our colour", xp.sb._color[1], S("xpColor" .. S("xpStyle"))[1])
     check("forever: gold rim", xp.borders[1]:IsShown() and xp.borders[1]._gradient ~= nil, true)
     check("forever: dark background", xp.bg._texColor[4], 0.82)
     check("forever: no Blizzard frame", parts("BLIZZARD").over:IsShown(), false)
@@ -1241,14 +1241,31 @@ do
 
     check("rune: material colours by default", xp.sb._barTex, "Interface\\AddOns\\ForeverProgressBars\\Media\\FillRune.tga")
     check("rune: may take own colours", rows().OPT_XP_STYLE_COLOURS.enabled(), true)
-    Settings.Set("xpStyleColours", true)
+    check("rune: own colours off by default", rows().OPT_XP_STYLE_COLOURS.get(), false)
+    Settings.Set("xpStyleColoursRUNE", true)
     check("rune with own colours: a neutral fill", xp.sb._barTex, "Interface\\AddOns\\ForeverProgressBars\\Media\\FillShade.tga")
-    check("rune with own colours: the chosen colour", xp.sb._color[1], S("xpColor")[1])
-    check("rune with own colours: the rested colour", xp.rested._color[3], S("xpRestedColor")[3])
+    check("rune with own colours: the chosen colour", xp.sb._color[1], S("xpColor" .. S("xpStyle"))[1])
+    check("rune with own colours: the rested colour", xp.rested._color[3], S("xpRestedColor" .. S("xpStyle"))[3])
     check("rune with own colours: pickers usable", rows().OPT_XP_COLOR.enabled(), true)
     Settings.Set("xpStyle", "EMBER")
-    check("forge with own colours: the chosen colour", xp.sb._color[1], S("xpColor")[1])
-    Settings.Set("xpStyleColours", nil)
+    check("forge: its own switch, still off", xp.sb._barTex, "Interface\\AddOns\\ForeverProgressBars\\Media\\FillEmber.tga")
+    Settings.Set("xpStyleColoursEMBER", true)
+    check("forge with own colours: its own colour", xp.sb._color[1], Settings.DEFAULTS.xpColorEMBER[1])
+    Settings.Set("xpColorRUNE", { 0.1, 0.2, 0.3 })
+    check("forge: the rune stone's colour is not its own", xp.sb._color[1], Settings.DEFAULTS.xpColorEMBER[1])
+    Settings.Set("xpStyle", "RUNE")
+    check("rune: its own colour", xp.sb._color[1], 0.1)
+    check("the colour row shows the chosen style's", rows().OPT_XP_COLOR.get()[1], 0.1)
+    Settings.Set("xpStyle", "OWN")
+    check("own: untouched", xp.sb._color[1], Settings.DEFAULTS.xpColorOWN[1])
+    check("own: the switch shows ticked, dimmed", rows().OPT_XP_STYLE_COLOURS.get() == true
+        and not rows().OPT_XP_STYLE_COLOURS.enabled(), true)
+    Settings.Set("xpStyle", "BLIZZARD")
+    check("blizzard: unticked, dimmed (no colours)", rows().OPT_XP_STYLE_COLOURS.get() == false
+        and not rows().OPT_XP_STYLE_COLOURS.enabled(), true)
+    Settings.Set("xpStyle", "OWN")
+    for _, k in ipairs({ "xpStyleColoursRUNE", "xpStyleColoursEMBER", "xpColorRUNE" }) do Settings.Set(k, nil) end
+    Settings.Set("xpStyle", "EMBER")
     check("forge: molten again", xp.sb._barTex, "Interface\\AddOns\\ForeverProgressBars\\Media\\FillEmber.tga")
     Settings.Set("xpStyle", "GEMS")
     local g = parts("GEMS")
@@ -1449,6 +1466,21 @@ do
     check("its page gives way", W.Current(), "xptext")
     W.Toggle()
     Settings.Set("xpLevelMode", nil)
+end
+
+section("XP colours per style: from before")
+do
+    local account = ns.AccountDB()
+    account.xpColoursPerStyle = nil
+    account.profiles.Old = { xpColor = { 0.1, 0.2, 0.3 }, xpRestedColor = { 0.4, 0.5, 0.6 }, xpStyleColours = true }
+    Settings.MigrateXpColours()
+    local old = account.profiles.Old
+    check("migrated: own keeps the colour", old.xpColorOWN[1], 0.1)
+    check("migrated: forever too", old.xpRestedColorFOREVER[3], 0.6)
+    check("migrated: the rune stone keeps its own", old.xpColorRUNE, nil)
+    check("migrated: the switch for both", old.xpStyleColoursRUNE and old.xpStyleColoursEMBER, true)
+    check("migrated: the shared keys leave", old.xpColor == nil and old.xpStyleColours == nil, true)
+    account.profiles.Old = nil
 end
 
 section("Only SavedVariables, nothing private")

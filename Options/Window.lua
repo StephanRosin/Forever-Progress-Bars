@@ -260,6 +260,34 @@ local levelColourOnly = enabledIf(function()
 end)
 local valueColourOnly = enabledIf(function() return S("xpValueColorOwn") == true end)
 
+-- A row for the chosen style's own setting (base .. style): built once,
+-- it reads and writes the key of whatever style is chosen.
+local function styleKeyed(make, base, ...)
+    local args = { ... }
+    local row = make(base .. "OWN", unpack(args))
+    local keyed = {}
+    for _, style in ipairs(ns.Styles.LIST) do
+        if Settings.DEFAULTS[base .. style] ~= nil then keyed[style] = make(base .. style, unpack(args)) end
+    end
+    -- A style without colours of its own shows Own's (dimmed anyway).
+    local function current() return keyed[S("xpStyle")] or keyed.OWN end
+    row.get = function(...) return current().get(...) end
+    row.set = function(...) return current().set(...) end
+    return row
+end
+
+-- "Own colours": only the styles with a material of their own may switch;
+-- Own and Forever always take the colours, so there it shows ticked.
+local function styleColoursRow()
+    local row = styleKeyed(check, "xpStyleColours", "OPT_XP_STYLE_COLOURS")
+    local get = row.get
+    row.get = function(...)
+        if ns.XpBar.Def().ownColours then return true end
+        return get(...)
+    end
+    return row
+end
+
 -- The level's look; where a style always shows text, it shows what that is.
 local function levelModeRow()
     local row = choice("xpLevelMode", "OPT_XP_LEVEL_MODE", { "TEXT", "BADGE" }, "XP_LEVEL_")
@@ -287,9 +315,10 @@ local function xpRows()
     return {
         { type = "header", label = "OPT_BAR_LOOK" },
         choice("xpStyle", "OPT_XP_STYLE", X.STYLES, "XP_STYLE_"),
-        tintableOnly(check("xpStyleColours", "OPT_XP_STYLE_COLOURS")),
-        ownColoursOnly(colorRow("xpColor", "OPT_XP_COLOR", true)),
-        ownColoursOnly(colorRow("xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
+        -- Each style keeps its own colours: the keys follow the chosen style.
+        tintableOnly(styleColoursRow()),
+        ownColoursOnly(styleKeyed(colorRow, "xpColor", "OPT_XP_COLOR", true)),
+        ownColoursOnly(styleKeyed(colorRow, "xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
         ownLookOnly(num("xpSegmentWidth", "OPT_SEGMENT_WIDTH")),
         ownLookOnly(colorRow("xpBgColor", "OPT_BAR_BG_COLOR", true)),
         ownLookOnly({ label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
