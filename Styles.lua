@@ -161,9 +161,18 @@ local ATLAS = {
 -- container 1192 x 17, bar 3 smaller); the frame reaches past it by the
 -- rest of its atlas size.
 local BLIZZARD_BAR_W, BLIZZARD_BAR_H = 1189, 14
+-- The frame's opening is smaller than the bar and has bevelled ends, so a
+-- fill as big as the bar pokes out past the frame. These keep the fill's
+-- corners under the frame's line (measured on screen at bar height 25: the
+-- opening is 14.5 high; the bevels keep their width, the height stretches).
+local BLIZZARD_INSET_SIDE, BLIZZARD_INSET_EDGE_SHARE = 7.5, 0.21
 
 DEF.BLIZZARD = {
     height = function(base) return base end,
+    inset = function(h)
+        local edge = math.floor(h * BLIZZARD_INSET_EDGE_SHARE + 0.5)
+        return BLIZZARD_INSET_SIDE, edge, BLIZZARD_INSET_SIDE, edge
+    end,
     dividers = "BLIZZARD", badge = "CREST",
     level = { place = "ABOVE_LEFT" },
     value = {},
@@ -174,8 +183,9 @@ DEF.BLIZZARD = {
         t:SetAtlas(ATLAS.frame, false)
         local ox = math.max(0, ((info.width or 0) - BLIZZARD_BAR_W) / 2)
         local oy = math.max(0, ((info.height or 0) - BLIZZARD_BAR_H) / 2)
-        t:SetPoint("TOPLEFT", bar.sb, "TOPLEFT", -ox, oy)
-        t:SetPoint("BOTTOMRIGHT", bar.sb, "BOTTOMRIGHT", ox, -oy)
+        -- Hung on the bar, not the fill: the fill sits inside the frame.
+        t:SetPoint("TOPLEFT", bar, "TOPLEFT", 1 - ox, oy - 1)
+        t:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", ox - 1, 1 - oy)
         local cap = info.height or 0
         sliced(t, cap, cap)
         x.frame = t

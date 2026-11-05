@@ -1134,6 +1134,12 @@ do
     check("blizzard: prediction for the rested part", xp.rested._barTex, "UI-HUD-ExperienceBar-Fill-Prediction")
     check("blizzard: rim hidden", xp.borders[1]:IsShown(), false)
     check("blizzard: frame shown", parts("BLIZZARD").over:IsShown(), true)
+    -- The fill sits in the frame's opening; the frame stays with the bar.
+    local side, edge = ns.Styles.DEF.BLIZZARD.inset(25)
+    check("blizzard: fill inside the frame, sides", side, 7.5)
+    check("blizzard: fill inside the frame, top and bottom", edge, 5)
+    check("blizzard: fill placed by the inset", xp.sb._points.BOTTOMRIGHT[3], -side)
+    check("blizzard: frame hangs on the bar", parts("BLIZZARD").frame._points.TOPLEFT[1], xp)
     local shown, art = 0, true
     for _, d in ipairs(xp.dividers) do
         if d:IsShown() then
