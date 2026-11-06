@@ -1667,7 +1667,7 @@ do
     M.state.time = math.pi / 6   -- sin(3t) = 1
     f:GetScript("OnUpdate")(f, 0)
     check("at the top: the sun shines", f.sun:GetAlpha(), 1)
-    check("the sun reaches past the badge", f.sun:GetWidth() > 40 and f.sun:GetWidth() == f.sun:GetHeight(), true)
+    check("the sun spans the longer side, square", f.sun:GetWidth() == 40 and f.sun:GetWidth() == f.sun:GetHeight(), true)
     check("the sun is added, not painted", f.sun:GetBlendMode(), "ADD")
     check("the sun sits on the badge's digits", select(2, f.sun:GetPoint("CENTER")), badge.text)
     check("at the top: brighter than itself", badge.glow:GetAlpha() > 0.5, true)
