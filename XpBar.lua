@@ -374,7 +374,7 @@ local TALENT_PULSE_SPEED = 3
 local TALENT_HOVER_LEVEL = 20   -- above the badge (bar + 10)
 local SUN_TEXTURE = "Interface\\AddOns\\ForeverProgressBars\\Media\\SunGlow.tga"
 local SUN_COLOUR = { 1, 0.85, 0.45 }
-local SUN_SCALE = 1.6           -- of the badge's or the level text's longer side
+local SUN_SCALE = 1.2           -- of the badge's or the level text's longer side
 local talentHover, talentTarget, talentPulse
 
 local function pulseLevelText(wave)
