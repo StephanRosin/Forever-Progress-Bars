@@ -377,10 +377,52 @@ local SUN_COLOUR = { 1, 0.85, 0.45 }
 local SUN_SCALE = 1.0           -- of the badge's or the level text's longer side
 local talentHover, talentTarget, talentPulse
 
-local function pulseLevelText(wave)
-    local c = textColour("xpLevelColorOwn", "xpLevelColor", Xp.Def().level.color, ns.Bars.NAME_COLOR)
-    slot().nameText:SetTextColor(ns.Bars.PulseColour(c, wave))
+-- The level text's glow: its letters again in the sun's colour, a little off
+-- in every direction, behind the real ones. A font string has no blend mode.
+local GLOW_COPIES, GLOW_RADIUS, GLOW_ALPHA = 8, 2, 0.45
+local levelGlow, levelGlowKey = {}, nil
+
+local function buildLevelGlow(name)
+    local layer, sublevel = name:GetDrawLayer()
+    for i = 1, GLOW_COPIES do
+        local copy = name:GetParent():CreateFontString(nil, layer)   -- moved along by syncLevelGlow
+        copy:SetDrawLayer(layer, sublevel - 1)
+        copy:SetTextColor(SUN_COLOUR[1], SUN_COLOUR[2], SUN_COLOUR[3])
+        local angle = (i - 1) / GLOW_COPIES * 2 * math.pi
+        local x, y = GLOW_RADIUS * math.cos(angle), GLOW_RADIUS * math.sin(angle)
+        copy:SetPoint("TOPLEFT", name, "TOPLEFT", x, y)
+        copy:SetPoint("BOTTOMRIGHT", name, "BOTTOMRIGHT", x, y)
+        levelGlow[i] = copy
+    end
 end
+
+-- Follows text, font and parent (Forever's plate carries the level) only when
+-- they change: this runs every frame.
+local function syncLevelGlow(name)
+    local path, size, flags = name:GetFont()
+    local text = name:GetText() or ""
+    local parent = name:GetParent()
+    local key = table.concat({ tostring(parent), tostring(path), tostring(size), tostring(flags), text }, "|")
+    if key == levelGlowKey then return end
+    levelGlowKey = key
+    for _, copy in ipairs(levelGlow) do
+        copy:SetParent(parent)
+        if path then copy:SetFont(path, size, flags) end
+        copy:SetJustifyH(name:GetJustifyH())
+        copy:SetText(text)
+    end
+end
+
+local function pulseLevelText(wave)
+    local name = slot().nameText
+    local c = textColour("xpLevelColorOwn", "xpLevelColor", Xp.Def().level.color, ns.Bars.NAME_COLOR)
+    name:SetTextColor(ns.Bars.PulseColour(c, wave))
+    if #levelGlow == 0 then buildLevelGlow(name) end
+    syncLevelGlow(name)
+    for _, copy in ipairs(levelGlow) do copy:SetAlpha(wave * GLOW_ALPHA) end
+end
+
+function Xp.LevelGlow() return levelGlow end
 
 local function hasUnspentTalents()
     local api = C_ClassTalents and C_ClassTalents.HasUnspentTalentPoints
@@ -451,6 +493,8 @@ local function updateTalentPulse(bar, shown)
     -- On the digits: a badge moves them off its middle to fit its art.
     talentHover.sun:ClearAllPoints()
     talentHover.sun:SetPoint("CENTER", target.text or target)
+    -- Too wide for a line of text: there the letters glow instead.
+    talentHover.sun:SetShown(target ~= bar.nameText)
     talentHover:SetFrameLevel(bar:GetFrameLevel() + TALENT_HOVER_LEVEL)
     talentHover:Show()
 end

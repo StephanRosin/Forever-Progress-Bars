@@ -27,6 +27,8 @@ local function newWidget(name, kind)
     function w:GetAlpha() return self._alpha or 1 end
     function w:SetAlpha(v) self._alpha = v end
     function w:SetBlendMode(v) self._blend = v end
+    function w:GetDrawLayer() return "OVERLAY", self._drawSub or 0 end
+    function w:SetDrawLayer(_, sub) self._drawSub = sub end
     function w:GetBlendMode() return self._blend end
     function w:SetAllPoints(rel) self._allPoints = rel or true end
     function w:SetValue(v) self._value = v end
