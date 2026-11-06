@@ -1646,7 +1646,21 @@ do
     M.Fire("CHARACTER_POINTS_CHANGED", -1)
     local f = ns.XpBar.TalentHover()
     check("points: a hover frame over the badge", f and f._allPoints, badge)
-    check("the hover frame leaves clicks to the bar", f._click, false)
+    local toggles = 0
+    PlayerSpellsUtil = { ToggleClassTalentOrSpecFrame = function() toggles = toggles + 1 end }
+    local up = f:GetScript("OnMouseUp")
+    up(f, "RightButton")
+    check("right click: talents stay closed", toggles, 0)
+    up(f, "LeftButton")
+    check("left click opens the talents", toggles, 1)
+    M.state.combat = true
+    local chatBefore = #M.chat
+    up(f, "LeftButton")
+    check("in combat: no attempt", toggles, 1)
+    check("in combat: says why", M.chat[#M.chat] ~= nil and #M.chat == chatBefore + 1
+        and M.chat[#M.chat]:find(ns.L.MSG_TALENTS_IN_COMBAT, 1, true) ~= nil, true)
+    M.state.combat = false
+    PlayerSpellsUtil = nil
     M.state.time = math.pi / 6   -- sin(3t) = 1
     f:GetScript("OnUpdate")(f, 0)
     local high = badge:GetAlpha()
@@ -1655,6 +1669,7 @@ do
     check("the badge pulses", high > 0.99 and badge:GetAlpha() < 0.4, true)
     f:GetScript("OnEnter")(f)
     check("hover says why", GameTooltip._lines[1], ns.L.TIP_UNSPENT_TALENTS)
+    check("hover names the click", GameTooltip._lines[2], ns.L.TIP_UNSPENT_TALENTS_CLICK)
     f:GetScript("OnLeave")(f)
     Settings.Set("xpLevelMode", "TEXT")
     check("no badge: the level text instead", f._allPoints, xp.nameText)

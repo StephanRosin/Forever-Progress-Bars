@@ -368,8 +368,8 @@ end
 -- Values and visibility. A change in visibility lays the strip out again
 -- (the row comes or goes).
 -- Unspent talent points: the level (badge or text) pulses and a hover tells
--- why. A frame over it, as a font string takes no mouse; motion only, so a
--- click or a drag still reaches the bar underneath.
+-- why, a left click opens the talents. A frame over it, as a font string
+-- takes no mouse. It takes the click, so a bar underneath does not open too.
 local TALENT_PULSE_SPEED = 3
 local TALENT_PULSE_MIN_ALPHA = 0.35
 local TALENT_HOVER_LEVEL = 20   -- above the badge (bar + 10)
@@ -380,10 +380,22 @@ local function hasUnspentTalents()
     return api ~= nil and api() == true
 end
 
+-- From addon code the panel manager refuses in combat; a secure button instead
+-- would make the XP bar protected, and it must stay movable in combat.
+local function toggleTalents()
+    if InCombatLockdown() then
+        ns.Print(L.MSG_TALENTS_IN_COMBAT)
+        return
+    end
+    PlayerSpellsUtil.ToggleClassTalentOrSpecFrame()
+end
+
 local function buildTalentHover(parent)
     local f = CreateFrame("Frame", nil, parent)
-    f:SetMouseMotionEnabled(true)
-    f:SetMouseClickEnabled(false)
+    f:EnableMouse(true)
+    f:SetScript("OnMouseUp", function(_, button)
+        if button == "LeftButton" then toggleTalents() end
+    end)
     f:SetScript("OnUpdate", function()
         local wave = (math.sin(GetTime() * TALENT_PULSE_SPEED) + 1) / 2
         talentTarget:SetAlpha(TALENT_PULSE_MIN_ALPHA + (1 - TALENT_PULSE_MIN_ALPHA) * wave)
@@ -391,6 +403,7 @@ local function buildTalentHover(parent)
     f:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine(L.TIP_UNSPENT_TALENTS, 1, 1, 1)
+        GameTooltip:AddLine(L.TIP_UNSPENT_TALENTS_CLICK, 0.4, 0.8, 1)
         GameTooltip:Show()
     end)
     f:SetScript("OnLeave", function() GameTooltip:Hide() end)
