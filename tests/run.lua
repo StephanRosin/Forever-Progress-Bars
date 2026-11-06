@@ -1632,7 +1632,7 @@ end
 section("Unspent talent points")
 do
     local xp = Bars.XpSlot()
-    local spare = { "xpEnabled", "xpLevelMode" }
+    local spare = { "xpEnabled", "xpLevelMode", "xpBadgeStyle" }
     local kept = {}
     for _, k in ipairs(spare) do kept[k] = Settings.Get(k) end
     local hasPoints = false
@@ -1640,8 +1640,10 @@ do
     local badge = Bars.XpBadge()
     Settings.Set("xpEnabled", true)
     Settings.Set("xpLevelMode", "BADGE")
+    Settings.Set("xpBadgeStyle", "CREST")
     ns.XpBar.Update()
-    check("no points: the badge stays solid", badge:GetAlpha() == nil or badge:GetAlpha() == 1, true)
+    local badgeColour = badge.text._textColor
+    local function near(a, b) return math.abs(a - b) < 0.001 end
     hasPoints = true
     M.Fire("CHARACTER_POINTS_CHANGED", -1)
     local f = ns.XpBar.TalentHover()
@@ -1663,26 +1665,36 @@ do
     PlayerSpellsUtil = nil
     M.state.time = math.pi / 6   -- sin(3t) = 1
     f:GetScript("OnUpdate")(f, 0)
-    local high = badge:GetAlpha()
+    check("at the top: brighter than itself", badge.glow:GetAlpha() > 0.5, true)
+    local top = badge.text._textColor
+    check("at the top: the digits lighter", top[3] > badgeColour[3], true)
     M.state.time = math.pi / 2   -- sin(3t) = -1
     f:GetScript("OnUpdate")(f, 0)
-    check("the badge pulses", high > 0.99 and badge:GetAlpha() < 0.4, true)
+    check("at the bottom: no glow", near(badge.glow:GetAlpha(), 0), true)
+    check("at the bottom: the digits as they are", near(badge.text._textColor[1], badgeColour[1]), true)
+    check("the art is never darkened", badge.art._vertex, nil)
+    check("the opacity stays", badge:GetAlpha(), 1)
     f:GetScript("OnEnter")(f)
     check("hover says why", GameTooltip._lines[1], ns.L.TIP_UNSPENT_TALENTS)
     check("hover names the click", GameTooltip._lines[2], ns.L.TIP_UNSPENT_TALENTS_CLICK)
     f:GetScript("OnLeave")(f)
     Settings.Set("xpLevelMode", "TEXT")
     check("no badge: the level text instead", f._allPoints, xp.nameText)
-    check("the badge is solid again", badge:GetAlpha(), 1)
+    check("the badge is itself again", near(badge.glow:GetAlpha(), 0)
+        and near(badge.text._textColor[1], badgeColour[1]), true)
+    local textColour = { unpack(xp.nameText._textColor) }
+    M.state.time = math.pi / 6
     f:GetScript("OnUpdate")(f, 0)
-    check("the level text pulses", xp.nameText:GetAlpha() < 0.4, true)
+    check("the level text brightens", xp.nameText._textColor[3] > textColour[3], true)
+    check("the level text keeps its opacity", xp.nameText:GetAlpha(), 1)
     Settings.Set("xpLevelMode", "NONE")
-    check("level hidden: nothing pulses", f:IsShown() or xp.nameText:GetAlpha() ~= 1, false)
+    check("level hidden: nothing pulses", f:IsShown(), false)
+    check("level hidden: the text is itself again", near(xp.nameText._textColor[1], textColour[1]), true)
     Settings.Set("xpLevelMode", "BADGE")
     hasPoints = false
     M.Fire("PLAYER_TALENT_UPDATE")
     check("points spent: the hover frame goes", f:IsShown(), false)
-    check("points spent: solid", badge:GetAlpha(), 1)
+    check("points spent: itself again", near(badge.glow:GetAlpha(), 0), true)
     C_ClassTalents = nil
     check("no talent API: no error", pcall(ns.XpBar.Update), true)
     for _, k in ipairs(spare) do Settings.Set(k, kept[k]) end

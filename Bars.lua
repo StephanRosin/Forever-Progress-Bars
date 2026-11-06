@@ -1028,6 +1028,11 @@ Bars.PaintGold, Bars.PaintRing, Bars.PlaceRing, Bars.OnePixel = PaintGold, Paint
 Bars.BORDER_COLOR, Bars.NAME_COLOR, Bars.Gradient = CFG.BORDER_COLOR, CFG.NAME_COLOR, Gradient
 Bars.VALUE_COLOR = CFG.VALUE_COLOR
 
+local function BadgeTextColour(keys)
+    return CFG.LEVEL_COLORS[S(keys.color)] or (S(keys.color) == "CLASS" and ClassColour())
+           or CFG.LEVEL_COLORS.GOLD
+end
+
 local function ApplyBadgeLook(box, keys, level)
     if not box then return end
     local text = box.text
@@ -1038,8 +1043,7 @@ local function ApplyBadgeLook(box, keys, level)
     end
     box:SetHeight(size + 2 * S("xpBadgePadY"))
 
-    local colour = CFG.LEVEL_COLORS[S(keys.color)] or (S(keys.color) == "CLASS" and ClassColour())
-                   or CFG.LEVEL_COLORS.GOLD
+    local colour = BadgeTextColour(keys)
     text:SetTextColor(colour[1], colour[2], colour[3])
 
     local style = LevelStyle(keys)
@@ -1047,14 +1051,17 @@ local function ApplyBadgeLook(box, keys, level)
     local px = OnePixel(box)
     local art = Bars.ART_STYLES[style]
     box.art:SetShown(art ~= nil)
+    box.glow:SetShown(art ~= nil)
     box.disc:SetShown(art ~= nil and art.disc == true)
     if art then
-        if art.atlas then
-            box.art:SetAtlas(art.atlas)
-        else
-            box.art:SetTexture(ArtFile(art, level))
-            local crop = art.crop or { 0, 1 }
-            box.art:SetTexCoord(crop[1], crop[2], 0, 1)
+        for _, tex in ipairs({ box.art, box.glow }) do
+            if art.atlas then
+                tex:SetAtlas(art.atlas)
+            else
+                tex:SetTexture(ArtFile(art, level))
+                local crop = art.crop or { 0, 1 }
+                tex:SetTexCoord(crop[1], crop[2], 0, 1)
+            end
         end
         box.bg:Hide()
         ShowRing(ring, false)
@@ -1077,6 +1084,20 @@ local function ApplyBadgeLook(box, keys, level)
         PlaceRing(ring, box, px, 0)
         PaintRing(ring, CFG.LEVEL_BOX_BORDER)
     end
+end
+
+-- A pulse in brightness, never darker. wave: 0 the colour itself, 1 brightest.
+local PULSE_BRIGHTEST = 0.6
+
+function Bars.PulseColour(c, wave)
+    local k = wave * PULSE_BRIGHTEST
+    return c[1] + (1 - c[1]) * k, c[2] + (1 - c[2]) * k, c[3] + (1 - c[3]) * k
+end
+
+-- The drawn art and the digits; a plain box or ring keeps its colour.
+function Bars.PulseBadge(wave)
+    xpBadge.glow:SetAlpha(wave * PULSE_BRIGHTEST)
+    xpBadge.text:SetTextColor(Bars.PulseColour(BadgeTextColour(XP_BADGE), wave))
 end
 
 -- level: at a level up, the new one (UnitLevel may still answer the old).
@@ -1144,6 +1165,11 @@ local function BuildBadge(parent)
     box.disc:SetPoint("CENTER")
     box.art = box:CreateTexture(nil, "ARTWORK")
     box.art:SetPoint("CENTER")
+    -- The art again, added on top: a texture's own colour cannot go brighter.
+    box.glow = box:CreateTexture(nil, "ARTWORK", nil, 1)
+    box.glow:SetAllPoints(box.art)
+    box.glow:SetBlendMode("ADD")
+    box.glow:SetAlpha(0)
     local text = box:CreateFontString(nil, "OVERLAY")
     text:SetPoint("CENTER", box, "CENTER", 0, 0)
     text:SetJustifyH("CENTER")

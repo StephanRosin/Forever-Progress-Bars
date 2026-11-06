@@ -371,9 +371,13 @@ end
 -- why, a left click opens the talents. A frame over it, as a font string
 -- takes no mouse. It takes the click, so a bar underneath does not open too.
 local TALENT_PULSE_SPEED = 3
-local TALENT_PULSE_MIN_ALPHA = 0.35
 local TALENT_HOVER_LEVEL = 20   -- above the badge (bar + 10)
-local talentHover, talentTarget
+local talentHover, talentTarget, talentPulse
+
+local function pulseLevelText(wave)
+    local c = textColour("xpLevelColorOwn", "xpLevelColor", Xp.Def().level.color, ns.Bars.NAME_COLOR)
+    slot().nameText:SetTextColor(ns.Bars.PulseColour(c, wave))
+end
 
 local function hasUnspentTalents()
     local api = C_ClassTalents and C_ClassTalents.HasUnspentTalentPoints
@@ -397,8 +401,7 @@ local function buildTalentHover(parent)
         if button == "LeftButton" then toggleTalents() end
     end)
     f:SetScript("OnUpdate", function()
-        local wave = (math.sin(GetTime() * TALENT_PULSE_SPEED) + 1) / 2
-        talentTarget:SetAlpha(TALENT_PULSE_MIN_ALPHA + (1 - TALENT_PULSE_MIN_ALPHA) * wave)
+        talentPulse((math.sin(GetTime() * TALENT_PULSE_SPEED) + 1) / 2)
     end)
     f:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -421,8 +424,9 @@ local function updateTalentPulse(bar, shown)
         target = (mode == "BADGE" and ns.Bars.XpBadge()) or (mode == "TEXT" and bar.nameText) or nil
     end
     if target == talentTarget then return end
-    if talentTarget then talentTarget:SetAlpha(1) end
+    if talentTarget then talentPulse(0) end
     talentTarget = target
+    talentPulse = target == bar.nameText and pulseLevelText or ns.Bars.PulseBadge
     if not target then
         if talentHover then talentHover:Hide() end
         return
