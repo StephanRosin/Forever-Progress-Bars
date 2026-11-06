@@ -26,6 +26,8 @@ local function newWidget(name, kind)
     function w:GetText() return self._text end
     function w:GetAlpha() return self._alpha or 1 end
     function w:SetAlpha(v) self._alpha = v end
+    function w:SetBlendMode(v) self._blend = v end
+    function w:GetBlendMode() return self._blend end
     function w:SetAllPoints(rel) self._allPoints = rel or true end
     function w:SetValue(v) self._value = v end
     function w:GetValue() return self._value end

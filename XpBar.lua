@@ -372,6 +372,9 @@ end
 -- takes no mouse. It takes the click, so a bar underneath does not open too.
 local TALENT_PULSE_SPEED = 3
 local TALENT_HOVER_LEVEL = 20   -- above the badge (bar + 10)
+local SUN_TEXTURE = "Interface\\AddOns\\ForeverProgressBars\\Media\\SunGlow.tga"
+local SUN_COLOUR = { 1, 0.85, 0.45 }
+local SUN_SCALE = 2.6           -- of the badge's or the level text's longer side
 local talentHover, talentTarget, talentPulse
 
 local function pulseLevelText(wave)
@@ -400,8 +403,20 @@ local function buildTalentHover(parent)
     f:SetScript("OnMouseUp", function(_, button)
         if button == "LeftButton" then toggleTalents() end
     end)
-    f:SetScript("OnUpdate", function()
-        talentPulse((math.sin(GetTime() * TALENT_PULSE_SPEED) + 1) / 2)
+    -- On top and added, so it also lightens the badge like glare: no frame
+    -- level between the bar and the badge fits a level text as well.
+    f.sun = f:CreateTexture(nil, "BACKGROUND")
+    f.sun:SetTexture(SUN_TEXTURE)
+    f.sun:SetBlendMode("ADD")
+    f.sun:SetVertexColor(SUN_COLOUR[1], SUN_COLOUR[2], SUN_COLOUR[3])
+    f.sun:SetPoint("CENTER")
+    f:SetScript("OnUpdate", function(self)
+        local wave = (math.sin(GetTime() * TALENT_PULSE_SPEED) + 1) / 2
+        talentPulse(wave)
+        local size = math.max(self:GetWidth(), self:GetHeight()) * SUN_SCALE
+        self.sun:SetSize(size, size)
+        -- Squared: the shine belongs to the bright end of the pulse.
+        self.sun:SetAlpha(wave * wave)
     end)
     f:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")

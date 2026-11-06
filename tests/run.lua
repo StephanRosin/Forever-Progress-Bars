@@ -1663,14 +1663,19 @@ do
         and M.chat[#M.chat]:find(ns.L.MSG_TALENTS_IN_COMBAT, 1, true) ~= nil, true)
     M.state.combat = false
     PlayerSpellsUtil = nil
+    f:SetSize(40, 30)
     M.state.time = math.pi / 6   -- sin(3t) = 1
     f:GetScript("OnUpdate")(f, 0)
+    check("at the top: the sun shines", f.sun:GetAlpha(), 1)
+    check("the sun reaches past the badge", f.sun:GetWidth() > 40 and f.sun:GetWidth() == f.sun:GetHeight(), true)
+    check("the sun is added, not painted", f.sun:GetBlendMode(), "ADD")
     check("at the top: brighter than itself", badge.glow:GetAlpha() > 0.5, true)
     local top = badge.text._textColor
     check("at the top: the digits lighter", top[3] > badgeColour[3], true)
     M.state.time = math.pi / 2   -- sin(3t) = -1
     f:GetScript("OnUpdate")(f, 0)
     check("at the bottom: no glow", near(badge.glow:GetAlpha(), 0), true)
+    check("at the bottom: no sun", near(f.sun:GetAlpha(), 0), true)
     check("at the bottom: the digits as they are", near(badge.text._textColor[1], badgeColour[1]), true)
     check("the art is never darkened", badge.art._vertex, nil)
     check("the opacity stays", badge:GetAlpha(), 1)
