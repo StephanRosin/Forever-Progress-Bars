@@ -1669,6 +1669,7 @@ do
     check("at the top: the sun shines", f.sun:GetAlpha(), 1)
     check("the sun reaches past the badge", f.sun:GetWidth() > 40 and f.sun:GetWidth() == f.sun:GetHeight(), true)
     check("the sun is added, not painted", f.sun:GetBlendMode(), "ADD")
+    check("the sun sits on the badge's digits", select(2, f.sun:GetPoint("CENTER")), badge.text)
     check("at the top: brighter than itself", badge.glow:GetAlpha() > 0.5, true)
     local top = badge.text._textColor
     check("at the top: the digits lighter", top[3] > badgeColour[3], true)
@@ -1685,6 +1686,7 @@ do
     f:GetScript("OnLeave")(f)
     Settings.Set("xpLevelMode", "TEXT")
     check("no badge: the level text instead", f._allPoints, xp.nameText)
+    check("no badge: the sun sits on the level text", select(2, f.sun:GetPoint("CENTER")), xp.nameText)
     check("the badge is itself again", near(badge.glow:GetAlpha(), 0)
         and near(badge.text._textColor[1], badgeColour[1]), true)
     local textColour = { unpack(xp.nameText._textColor) }

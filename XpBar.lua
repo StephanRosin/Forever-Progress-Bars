@@ -409,7 +409,6 @@ local function buildTalentHover(parent)
     f.sun:SetTexture(SUN_TEXTURE)
     f.sun:SetBlendMode("ADD")
     f.sun:SetVertexColor(SUN_COLOUR[1], SUN_COLOUR[2], SUN_COLOUR[3])
-    f.sun:SetPoint("CENTER")
     f:SetScript("OnUpdate", function(self)
         local wave = (math.sin(GetTime() * TALENT_PULSE_SPEED) + 1) / 2
         talentPulse(wave)
@@ -449,6 +448,9 @@ local function updateTalentPulse(bar, shown)
     talentHover = talentHover or buildTalentHover(bar:GetParent())
     talentHover:ClearAllPoints()
     talentHover:SetAllPoints(target)
+    -- On the digits: a badge moves them off its middle to fit its art.
+    talentHover.sun:ClearAllPoints()
+    talentHover.sun:SetPoint("CENTER", target.text or target)
     talentHover:SetFrameLevel(bar:GetFrameLevel() + TALENT_HOVER_LEVEL)
     talentHover:Show()
 end
