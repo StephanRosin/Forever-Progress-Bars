@@ -24,6 +24,11 @@ local function newWidget(name, kind)
     end
     function w:SetText(t) self._text = t end
     function w:GetText() return self._text end
+    function w:SetMouseMotionEnabled(v) self._motion = v end
+    function w:SetMouseClickEnabled(v) self._click = v end
+    function w:GetAlpha() return self._alpha or 1 end
+    function w:SetAlpha(v) self._alpha = v end
+    function w:SetAllPoints(rel) self._allPoints = rel or true end
     function w:SetValue(v) self._value = v end
     function w:GetValue() return self._value end
     function w:SetMinMaxValues(a, b) self._min, self._max = a, b end

@@ -367,6 +367,62 @@ end
 
 -- Values and visibility. A change in visibility lays the strip out again
 -- (the row comes or goes).
+-- Unspent talent points: the level (badge or text) pulses and a hover tells
+-- why. A frame over it, as a font string takes no mouse; motion only, so a
+-- click or a drag still reaches the bar underneath.
+local TALENT_PULSE_SPEED = 3
+local TALENT_PULSE_MIN_ALPHA = 0.35
+local TALENT_HOVER_LEVEL = 20   -- above the badge (bar + 10)
+local talentHover, talentTarget
+
+local function hasUnspentTalents()
+    local api = C_ClassTalents and C_ClassTalents.HasUnspentTalentPoints
+    return api ~= nil and api() == true
+end
+
+local function buildTalentHover(parent)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetMouseMotionEnabled(true)
+    f:SetMouseClickEnabled(false)
+    f:SetScript("OnUpdate", function()
+        local wave = (math.sin(GetTime() * TALENT_PULSE_SPEED) + 1) / 2
+        talentTarget:SetAlpha(TALENT_PULSE_MIN_ALPHA + (1 - TALENT_PULSE_MIN_ALPHA) * wave)
+    end)
+    f:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(L.TIP_UNSPENT_TALENTS, 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    f:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- Spending the last point hides it under the cursor.
+    f:SetScript("OnHide", function(self)
+        if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+    end)
+    return f
+end
+
+local function updateTalentPulse(bar, shown)
+    local target
+    if shown and hasUnspentTalents() then
+        local mode = Xp.LevelMode()
+        target = (mode == "BADGE" and ns.Bars.XpBadge()) or (mode == "TEXT" and bar.nameText) or nil
+    end
+    if target == talentTarget then return end
+    if talentTarget then talentTarget:SetAlpha(1) end
+    talentTarget = target
+    if not target then
+        if talentHover then talentHover:Hide() end
+        return
+    end
+    talentHover = talentHover or buildTalentHover(bar:GetParent())
+    talentHover:ClearAllPoints()
+    talentHover:SetAllPoints(target)
+    talentHover:SetFrameLevel(bar:GetFrameLevel() + TALENT_HOVER_LEVEL)
+    talentHover:Show()
+end
+
+function Xp.TalentHover() return talentHover end
+
 function Xp.Update()
     local bar = slot()
     if not bar then return end
@@ -390,6 +446,7 @@ function Xp.Update()
         bar:SetShown(shown)
         if ns.Bars.Relayout then ns.Bars.Relayout() end
     end
+    updateTalentPulse(bar, shown)
 end
 
 -- Colours, scripts, Blizzard's bars; then the values and the layout.
@@ -414,7 +471,8 @@ end)
 
 local events = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_XP_UPDATE", "UPDATE_EXHAUSTION", "PLAYER_LEVEL_UP", "PLAYER_UPDATE_RESTING",
-    "PLAYER_ENTERING_WORLD", "ENABLE_XP_GAIN", "DISABLE_XP_GAIN" }) do
+    "PLAYER_ENTERING_WORLD", "ENABLE_XP_GAIN", "DISABLE_XP_GAIN",
+    "CHARACTER_POINTS_CHANGED", "PLAYER_TALENT_UPDATE", "TRAIT_CONFIG_UPDATED", "ACTIVE_COMBAT_CONFIG_CHANGED" }) do
     pcall(events.RegisterEvent, events, e)
 end
 events:RegisterEvent("PLAYER_LOGIN")

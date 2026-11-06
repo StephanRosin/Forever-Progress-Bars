@@ -1629,6 +1629,50 @@ do
     account.profiles.Off, account.profiles.On = nil, nil
 end
 
+section("Unspent talent points")
+do
+    local xp = Bars.XpSlot()
+    local spare = { "xpEnabled", "xpLevelMode" }
+    local kept = {}
+    for _, k in ipairs(spare) do kept[k] = Settings.Get(k) end
+    local hasPoints = false
+    C_ClassTalents = { HasUnspentTalentPoints = function() return hasPoints, 0, 0 end }
+    local badge = Bars.XpBadge()
+    Settings.Set("xpEnabled", true)
+    Settings.Set("xpLevelMode", "BADGE")
+    ns.XpBar.Update()
+    check("no points: the badge stays solid", badge:GetAlpha() == nil or badge:GetAlpha() == 1, true)
+    hasPoints = true
+    M.Fire("CHARACTER_POINTS_CHANGED", -1)
+    local f = ns.XpBar.TalentHover()
+    check("points: a hover frame over the badge", f and f._allPoints, badge)
+    check("the hover frame leaves clicks to the bar", f._click, false)
+    M.state.time = math.pi / 6   -- sin(3t) = 1
+    f:GetScript("OnUpdate")(f, 0)
+    local high = badge:GetAlpha()
+    M.state.time = math.pi / 2   -- sin(3t) = -1
+    f:GetScript("OnUpdate")(f, 0)
+    check("the badge pulses", high > 0.99 and badge:GetAlpha() < 0.4, true)
+    f:GetScript("OnEnter")(f)
+    check("hover says why", GameTooltip._lines[1], ns.L.TIP_UNSPENT_TALENTS)
+    f:GetScript("OnLeave")(f)
+    Settings.Set("xpLevelMode", "TEXT")
+    check("no badge: the level text instead", f._allPoints, xp.nameText)
+    check("the badge is solid again", badge:GetAlpha(), 1)
+    f:GetScript("OnUpdate")(f, 0)
+    check("the level text pulses", xp.nameText:GetAlpha() < 0.4, true)
+    Settings.Set("xpLevelMode", "NONE")
+    check("level hidden: nothing pulses", f:IsShown() or xp.nameText:GetAlpha() ~= 1, false)
+    Settings.Set("xpLevelMode", "BADGE")
+    hasPoints = false
+    M.Fire("PLAYER_TALENT_UPDATE")
+    check("points spent: the hover frame goes", f:IsShown(), false)
+    check("points spent: solid", badge:GetAlpha(), 1)
+    C_ClassTalents = nil
+    check("no talent API: no error", pcall(ns.XpBar.Update), true)
+    for _, k in ipairs(spare) do Settings.Set(k, kept[k]) end
+end
+
 section("Only SavedVariables, nothing private")
 for _, f in ipairs(tocFiles()) do
     local src = io.open(ROOT .. "/" .. f):read("*a")

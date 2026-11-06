@@ -642,6 +642,7 @@ local function BadgeOnXp()
 end
 Bars.BadgeOnXp = BadgeOnXp
 local xpBadge           -- the level badge on the experience bar (own settings)
+function Bars.XpBadge() return xpBadge end
 
 -- Which settings the badge reads.
 local XP_BADGE = { style = "xpBadgeStyle", font = "xpBadgeFont", size = "xpBadgeFontSize",
