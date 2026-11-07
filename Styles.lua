@@ -16,6 +16,7 @@ Each style says:
                  format (the level's text, else "Level %d")
   badge          the badge style "matching the bar" (Bars.lua, MATCH)
   hiddenFill     the bar's fill stays unseen (the style draws its own)
+  emptyPart      it shows the empty part's colour and opacity settings
   build(bar, x)  makes its own textures once: x.under on the bar (below the
                  fill), x.over on a frame above the fill
   apply(bar, x, h, opts)             the static look
@@ -39,7 +40,7 @@ local OWN_TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar"   -- Bars.lua CFG.
 -- carries meaning, so a style with a material of its own takes their colour.
 local SHADE = MEDIA .. "FillShade.tga"
 
-Styles.LIST = { "FOREVER", "BLIZZARD", "RUNE", "GEMS", "THIN", "EMBER" }
+Styles.LIST = { "FOREVER", "BLIZZARD", "RUNE", "GEMS", "THIN", "EMBER", "PHIAL", "ICE", "TAVERN", "GNOME" }
 
 -- Helpers -------------------------------------------------------------------
 
@@ -99,6 +100,100 @@ end
 -- Whether the fill has an end inside the bar to decorate.
 local function midway(cur, max) return (cur or 0) > 0 and (cur or 0) < (max or 0) end
 
+-- A style with a material of its own: no rim, no ground, its fill (neutral on
+-- a tinted bar).
+local function material(bar, file)
+    for _, b in ipairs(bar.borders) do b:Hide() end
+    bar.bg:SetColorTexture(0, 0, 0, 0)
+    fill(bar.sb, bar.styleTinted and SHADE or file)
+    paintFill(bar, 1, 1, 1)
+end
+
+-- The rested part flat in the style's colour, unless a colour was chosen.
+local function paintRested(bar, r, g, b, a)
+    if not bar.rested then return end
+    bar.rested:SetStatusBarTexture(WHITE)
+    local rc = bar.styleRestedTint
+    if rc then bar.rested:SetStatusBarColor(rc[1], rc[2], rc[3], 0.5)
+    else bar.rested:SetStatusBarColor(r, g, b, a) end
+end
+
+-- The empty part's settings on a style with a groove of its own, which has a
+-- hole behind it (plate): the chosen colour mixed over the groove's by its
+-- opacity. Below GROOVE_SOLID the groove itself fades out, so 0 is truly see-through
+-- and the default of 30 keeps the plain dark groove. opts.bg: the XP bar's;
+-- else the bars'. Returns how solid the groove is.
+local GROOVE_SOLID = 30
+local function paintGroove(t, opts, r, g, b)
+    local c = (opts and opts.bg) or S("barBgColor")
+    local percent = (opts and opts.bgAlpha) or S("barBgAlpha")
+    local a, solid = percent / 100, math.min(1, percent / GROOVE_SOLID)
+    t:SetColorTexture(c[1] * a + r * (1 - a), c[2] * a + g * (1 - a), c[3] * a + b * (1 - a), solid)
+    return solid
+end
+
+-- A plate with a hole for the fill, so the game shows through an empty bar: its
+-- 256 wide texture in four parts around the fill. The ends keep their pixels;
+-- the strips above and below stretch the texture's plain middle.
+local PLATE_W = 256
+local STRIP_FROM, STRIP_TO = 0.45, 0.55
+local function plate(bar, x, file)
+    local parts = {}
+    for _, side in ipairs({ "left", "right", "top", "bottom" }) do
+        parts[side] = under(bar, x, "BACKGROUND", 1, file)
+    end
+    return parts
+end
+
+-- left, top, right, bottom: the fill's inset in the bar. ox, oy: the plate's own.
+local function placePlate(p, bar, h, left, top, right, bottom, ox, oy)
+    ox, oy = ox or 0, oy or 0
+    local plateH = math.max(1, h - oy * 2)
+    for _, t in pairs(p) do t:ClearAllPoints() end
+    p.left:SetPoint("TOPLEFT", bar, "TOPLEFT", ox, -oy)
+    p.left:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", ox, oy)
+    p.left:SetWidth(left - ox)
+    p.left:SetTexCoord(0, (left - ox) / PLATE_W, 0, 1)
+    p.right:SetPoint("TOPRIGHT", bar, "TOPRIGHT", -ox, -oy)
+    p.right:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -ox, oy)
+    p.right:SetWidth(right - ox)
+    p.right:SetTexCoord(1 - (right - ox) / PLATE_W, 1, 0, 1)
+    p.top:SetPoint("TOPLEFT", bar, "TOPLEFT", left, -oy)
+    p.top:SetPoint("TOPRIGHT", bar, "TOPRIGHT", -right, -oy)
+    p.top:SetHeight(math.max(1, top - oy))
+    p.top:SetTexCoord(STRIP_FROM, STRIP_TO, 0, (top - oy) / plateH)
+    p.bottom:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", left, oy)
+    p.bottom:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -right, oy)
+    p.bottom:SetHeight(math.max(1, bottom - oy))
+    p.bottom:SetTexCoord(STRIP_FROM, STRIP_TO, 1 - (bottom - oy) / plateH, 1)
+end
+
+-- A texture tiled along the fill, staying put as the fill grows (Dots in THIN).
+local function tiled(x, layer, file)
+    local t = over(x, layer)
+    t:SetTexture(file, "REPEAT", "CLAMP")
+    if t.SetHorizTile then t:SetHorizTile(true) end
+    return t
+end
+
+local function alongFill(t, bar, cur)
+    t:ClearAllPoints()
+    t:SetPoint("TOPLEFT", bar.sb, "TOPLEFT")
+    t:SetPoint("BOTTOMRIGHT", ends(bar), "BOTTOMRIGHT")
+    t:SetShown((cur or 0) > 0)
+end
+
+-- The fill's shaped end, right of it: squeezed near the end of the bar so it
+-- stays inside; neutral on a tinted bar.
+local function placeTip(bar, tip, tipWidth, cur, max)
+    local room = max > 0 and width(bar) * (1 - cur / max) or 0
+    tip:SetVertexColor(tint(bar, 1, 1, 1))
+    tip:SetSize(math.max(1, math.min(tipWidth, room)), (bar.sb.GetHeight and bar.sb:GetHeight()) or 0)
+    tip:ClearAllPoints()
+    tip:SetPoint("LEFT", ends(bar), "RIGHT", 0, 0)
+    tip:SetShown(midway(cur, max))
+end
+
 -- The styles -------------------------------------------------------------------
 
 local DEF = {}
@@ -122,7 +217,7 @@ DEF.FOREVER = {
         local r = b.size * px
         return r, r, r, r
     end,
-    dividers = "OWN", ownColours = true, badge = "CREST",
+    dividers = "OWN", ownColours = true, emptyPart = true, badge = "CREST",
     level = { place = "ABOVE_LEFT" },
     value = {},
     build = function(bar, x)
@@ -214,15 +309,12 @@ local RUNE_LIT, RUNE_DARK = { 0.80, 0.72, 1 }, { 0.36, 0.37, 0.41 }
 DEF.RUNE = {
     height = function(base) return math.floor(base * 2.6 + 0.5) end,
     inset = function(h) return 34, math.floor(h * 0.2 + 0.5), 34, math.floor(h * 0.42 + 0.5) end,
-    dividers = "NONE", badge = "RUNESTONE",
+    dividers = "NONE", emptyPart = true, badge = "RUNESTONE",
     level = { place = "ABOVE_LEFT", color = { 0.85, 0.80, 1 } },
     value = {},   -- white: grey on the bright violet fill reads badly
     build = function(bar, x)
-        x.slab = under(bar, x, "BACKGROUND", 1, MEDIA .. "RuneSlab.tga")
-        x.slab:SetAllPoints(bar)
-        sliced(x.slab, 32, 32)
+        x.plate = plate(bar, x, MEDIA .. "RuneSlab.tga")
         x.groove = under(bar, x, "BORDER", 0)
-        x.groove:SetColorTexture(0.067, 0.071, 0.086, 1)
         x.groove:SetAllPoints(bar.sb)
         x.shade = under(bar, x, "BORDER", 1)
         x.shade:SetColorTexture(1, 1, 1, 1)
@@ -240,9 +332,11 @@ DEF.RUNE = {
             x.runes[i] = over(x, "OVERLAY", MEDIA .. "RuneGlyph" .. i .. ".tga")
         end
     end,
-    apply = function(bar, x, h)
+    apply = function(bar, x, h, opts)
         for _, b in ipairs(bar.borders) do b:Hide() end
         bar.bg:SetColorTexture(0, 0, 0, 0)
+        x.shade:SetAlpha(paintGroove(x.groove, opts, 0.067, 0.071, 0.086))
+        placePlate(x.plate, bar, h, DEF.RUNE.inset(h))
         fill(bar.sb, bar.styleTinted and SHADE or MEDIA .. "FillRune.tga")
         paintFill(bar, 1, 1, 1)
         if bar.rested then
@@ -407,15 +501,12 @@ DEF.EMBER = {
         local side, edge = math.floor(h * 0.42 + 0.5), math.floor(h * 0.27 + 0.5)
         return side, edge, side, edge
     end,
-    dividers = "NONE", badge = "SHIELD",
+    dividers = "NONE", emptyPart = true, badge = "SHIELD",
     level = { place = "ABOVE_LEFT", color = { 1, 0.70, 0.36 } },
     value = { color = { 0.91, 0.79, 0.63 } },
     build = function(bar, x)
-        x.frame = under(bar, x, "BACKGROUND", 1, MEDIA .. "EmberFrame.tga")
-        x.frame:SetAllPoints(bar)
-        sliced(x.frame, 24, 24)
+        x.plate = plate(bar, x, MEDIA .. "EmberFrame.tga")
         x.channel = under(bar, x, "BORDER", 0)
-        x.channel:SetColorTexture(0.05, 0.043, 0.04, 1)
         x.channel:SetAllPoints(bar.sb)
         x.rivets = {}
         for i = 1, 6 do
@@ -430,9 +521,11 @@ DEF.EMBER = {
             x.sparks[i]:SetVertexColor(1, 0.82, 0.45, 1)
         end
     end,
-    apply = function(bar, x, h)
+    apply = function(bar, x, h, opts)
         for _, b in ipairs(bar.borders) do b:Hide() end
         bar.bg:SetColorTexture(0, 0, 0, 0)
+        paintGroove(x.channel, opts, 0.05, 0.043, 0.04)
+        placePlate(x.plate, bar, h, DEF.EMBER.inset(h))
         fill(bar.sb, bar.styleTinted and SHADE or MEDIA .. "FillEmber.tga")
         paintFill(bar, 1, 1, 1)
         if bar.rested then
@@ -475,6 +568,222 @@ DEF.EMBER = {
             t:ClearAllPoints()
             t:SetPoint("CENTER", ends(bar), "TOPRIGHT", s[1], h * s[2] * 0.5)
             t:SetShown(on and cur < max)
+        end
+    end,
+}
+
+-- Alchemie-Phiole: a glass tube between brass caps, the experience a bubbling
+-- potion with a round end; the rested bonus a thinner blue one behind it.
+local PHIAL_CAP_SHARE = 0.55
+local PHIAL_TUBE_GAP = 2
+local function phialCap(h) return math.floor(h * PHIAL_CAP_SHARE + 0.5) end
+DEF.PHIAL = {
+    height = function(base) return math.floor(base * 1.4 + 0.5) end,
+    inset = function(h)
+        local side, edge = phialCap(h) - 1, math.max(4, math.floor(h * 0.2 + 0.5))
+        return side, edge, side, edge
+    end,
+    dividers = "NONE", emptyPart = true, badge = "GEM",
+    level = { place = "ABOVE_LEFT", color = { 0.89, 0.74, 0.42 } },
+    value = { color = { 0.91, 0.87, 0.78 } },
+    build = function(bar, x)
+        x.plate = plate(bar, x, MEDIA .. "PhialGlass.tga")
+        x.empty = under(bar, x, "BORDER", 0)
+        x.empty:SetAllPoints(bar.sb)
+        x.bubbles = tiled(x, "ARTWORK", MEDIA .. "PhialBubbles.tga")
+        x.tip = over(x, "ARTWORK")
+        x.glow = over(x, "ARTWORK", MEDIA .. "Glow.tga", true)
+        x.gloss = over(x, "OVERLAY")
+        x.gloss:SetColorTexture(1, 1, 1, 0.18)
+        x.capL = over(x, "OVERLAY", MEDIA .. "PhialCap.tga")
+        x.capR = over(x, "OVERLAY", MEDIA .. "PhialCap.tga")
+        x.capR:SetTexCoord(1, 0, 0, 1)
+    end,
+    apply = function(bar, x, h, opts)
+        material(bar, MEDIA .. "FillPhial.tga")
+        paintGroove(x.empty, opts, 0.09, 0.085, 0.12)
+        paintRested(bar, 0.25, 0.45, 0.85, 0.55)
+        x.tip:SetTexture(MEDIA .. (bar.styleTinted and "PhialTipShade.tga" or "PhialTip.tga"))
+        local cap = phialCap(h)
+        local side, top, sideR, bottom = DEF.PHIAL.inset(h)
+        -- The tube starts under the caps and is a little lower than they are.
+        placePlate(x.plate, bar, h, side, top, sideR, bottom, math.floor(cap / 2), PHIAL_TUBE_GAP)
+        x.capL:SetSize(cap, h)
+        x.capL:ClearAllPoints()
+        x.capL:SetPoint("LEFT", bar, "LEFT", 0, 0)
+        x.capR:SetSize(cap, h)
+        x.capR:ClearAllPoints()
+        x.capR:SetPoint("RIGHT", bar, "RIGHT", 0, 0)
+        x.gloss:ClearAllPoints()
+        x.gloss:SetPoint("TOPLEFT", bar.sb, "TOPLEFT", 0, -1)
+        x.gloss:SetPoint("TOPRIGHT", bar.sb, "TOPRIGHT", 0, -1)
+        x.gloss:SetHeight(math.max(2, math.floor(h * 0.14 + 0.5)))
+    end,
+    update = function(bar, x, cur, max)
+        alongFill(x.bubbles, bar, cur)
+        local tube = (bar.sb.GetHeight and bar.sb:GetHeight()) or 0
+        placeTip(bar, x.tip, tube / 2, cur, max)
+        x.glow:SetVertexColor(tint(bar, 0.78, 0.48, 0.96))
+        x.glow:SetSize(tube * 1.8, tube * 1.8)
+        x.glow:ClearAllPoints()
+        x.glow:SetPoint("CENTER", ends(bar), "RIGHT", 0, 0)
+        x.glow:SetShown(midway(cur, max))
+    end,
+}
+
+-- Eissplitter: a frame with pointed ends, faceted ice breaking off in a jagged
+-- edge; the rested bonus as pale frost.
+DEF.ICE = {
+    height = function(base) return math.floor(base * 1.4 + 0.5) end,
+    inset = function(h)
+        -- The frame's points keep their 18 units, whatever the height.
+        local edge = math.max(2, math.floor(h * 0.12 + 0.5))
+        return 20, edge, 20, edge
+    end,
+    dividers = "NONE", emptyPart = true, badge = "CREST",
+    level = { place = "ABOVE_LEFT", color = { 0.84, 0.95, 1 } },
+    value = { color = { 0.78, 0.87, 0.93 } },
+    build = function(bar, x)
+        x.plate = plate(bar, x, MEDIA .. "IceFrame.tga")
+        x.empty = under(bar, x, "BORDER", 0)
+        x.empty:SetAllPoints(bar.sb)
+        x.facets = tiled(x, "ARTWORK", MEDIA .. "IceFacets.tga")
+        x.tip = over(x, "ARTWORK")
+        x.glow = over(x, "OVERLAY", MEDIA .. "Glow.tga", true)
+    end,
+    apply = function(bar, x, h, opts)
+        material(bar, MEDIA .. "FillIce.tga")
+        paintGroove(x.empty, opts, 0.06, 0.09, 0.13)
+        placePlate(x.plate, bar, h, DEF.ICE.inset(h))
+        paintRested(bar, 0.81, 0.88, 1, 0.4)
+        x.tip:SetTexture(MEDIA .. (bar.styleTinted and "IceTipShade.tga" or "IceTip.tga"))
+    end,
+    update = function(bar, x, cur, max)
+        alongFill(x.facets, bar, cur)
+        local channel = (bar.sb.GetHeight and bar.sb:GetHeight()) or 0
+        placeTip(bar, x.tip, channel * 0.7, cur, max)
+        x.glow:SetVertexColor(tint(bar, 0.55, 0.85, 1))
+        x.glow:SetSize(channel * 1.6, channel * 1.6)
+        x.glow:ClearAllPoints()
+        x.glow:SetPoint("CENTER", ends(bar), "RIGHT", 0, 0)
+        x.glow:SetShown(midway(cur, max))
+    end,
+}
+
+-- Taverne: a wooden board with nails, ale in a dark groove; the rested bonus
+-- as the foam ahead of it.
+local TAVERN_NAILS = 3
+DEF.TAVERN = {
+    height = function(base) return math.floor(base * 1.6 + 0.5) end,
+    inset = function(h)
+        local edge = math.floor(h * 0.22 + 0.5)
+        return 28, edge, 28, edge
+    end,
+    dividers = "NONE", emptyPart = true, badge = "SHIELD",
+    level = { place = "ABOVE_LEFT", color = { 1, 0.80, 0.42 } },
+    value = { color = { 0.93, 0.85, 0.70 } },
+    build = function(bar, x)
+        x.plate = plate(bar, x, MEDIA .. "TavernBoard.tga")
+        x.groove = under(bar, x, "BORDER", 0)
+        x.groove:SetAllPoints(bar.sb)
+        x.nails, x.endNails = {}, {}
+        for i = 1, TAVERN_NAILS do
+            x.nails[i] = under(bar, x, "BORDER", 2, MEDIA .. "Rivet.tga")
+        end
+        for i = 1, 2 do
+            x.endNails[i] = under(bar, x, "BORDER", 2, MEDIA .. "Rivet.tga")
+            x.endNails[i]:SetPoint("CENTER", bar, i == 1 and "LEFT" or "RIGHT", i == 1 and 14 or -14, 0)
+        end
+    end,
+    apply = function(bar, x, h, opts)
+        material(bar, MEDIA .. "FillAle.tga")
+        paintGroove(x.groove, opts, 0.06, 0.04, 0.02)
+        placePlate(x.plate, bar, h, DEF.TAVERN.inset(h))
+        paintRested(bar, 0.96, 0.93, 0.83, 0.75)
+        x.h = h
+    end,
+    update = function(bar, x)
+        local h, w = x.h or 30, width(bar)
+        local _, edge = DEF.TAVERN.inset(h)
+        local nail = math.max(3, math.floor(h * 0.14 + 0.5))
+        for i = 1, TAVERN_NAILS do
+            local t = x.nails[i]
+            t:SetSize(nail, nail)
+            t:ClearAllPoints()
+            t:SetPoint("CENTER", bar.sb, "TOPLEFT", w * i / (TAVERN_NAILS + 1), edge / 2)
+        end
+        for _, t in ipairs(x.endNails) do t:SetSize(nail * 2, nail * 2) end
+    end,
+}
+
+-- Gnomenwerk: a brass plate with a row of lamps; the lamp being reached fades
+-- in, the rested bonus waits in amber. Lit lamps have a halo, so they are drawn
+-- larger than their place (LampLit: the core spans 20 x 44 of 32 x 64).
+local LAMPS = 40
+local LAMP_CORE_W, LAMP_CORE_H = 20 / 32, 44 / 64
+local LAMP_GAP_SHARE = 0.18
+local LAMP_EDGE = 3
+Styles.GNOME_RESTED = { 0.95, 0.72, 0.35 }
+DEF.GNOME = {
+    height = function(base) return math.floor(base * 1.4 + 0.5) end,
+    inset = function(h)
+        return 20, math.floor(h * 0.2 + 0.5), 20, math.floor(h * 0.2 + 0.5)
+    end,
+    dividers = "NONE", emptyPart = true, badge = "RANK", hiddenFill = true,
+    level = { place = "ABOVE_LEFT", color = { 0.89, 0.74, 0.42 } },
+    value = { color = { 0.85, 0.87, 0.82 } },
+    build = function(bar, x)
+        x.plate = plate(bar, x, MEDIA .. "GnomePlate.tga")
+        x.display = under(bar, x, "BORDER", 0)
+        x.display:SetAllPoints(bar.sb)
+        x.rivets = {}
+        for i, spot in ipairs({ { "TOPLEFT", 9, -7 }, { "BOTTOMLEFT", 9, 7 }, { "TOPRIGHT", -9, -7 }, { "BOTTOMRIGHT", -9, 7 } }) do
+            x.rivets[i] = under(bar, x, "BORDER", 2, MEDIA .. "Rivet.tga")
+            x.rivets[i]:SetVertexColor(1, 0.84, 0.5, 1)
+            x.rivets[i]:SetSize(6, 6)
+            x.rivets[i]:SetPoint("CENTER", bar, spot[1], spot[2], spot[3])
+        end
+        x.off, x.lit = {}, {}
+        for i = 1, LAMPS do
+            x.off[i] = over(x, "ARTWORK", MEDIA .. "LampOff.tga")
+            x.lit[i] = over(x, "OVERLAY", MEDIA .. "LampLit.tga")
+        end
+    end,
+    apply = function(bar, x, h, opts)
+        for _, b in ipairs(bar.borders) do b:Hide() end
+        bar.bg:SetColorTexture(0, 0, 0, 0)
+        paintGroove(x.display, opts, 0.04, 0.06, 0.055)
+        placePlate(x.plate, bar, h, DEF.GNOME.inset(h))
+        -- The bar stays (texts and the badge hang from it), unseen.
+        fill(bar.sb, WHITE)
+        paintFill(bar, 1, 1, 1, 0)
+        if bar.rested then bar.rested:SetStatusBarColor(1, 1, 1, 0) end
+    end,
+    update = function(bar, x, cur, max, rested)
+        local w = width(bar)
+        local slot = w / LAMPS
+        local gap = math.max(1, math.floor(slot * LAMP_GAP_SHARE + 0.5))
+        local cellW = math.max(1, slot - gap)
+        local cellH = math.max(1, ((bar.sb.GetHeight and bar.sb:GetHeight()) or 0) - LAMP_EDGE * 2)
+        local pct = max > 0 and cur / max * LAMPS or 0
+        local restTo = max > 0 and (cur + (rested or 0)) / max * LAMPS or 0
+        local r, g, b = tint(bar, 0.45, 0.98, 0.85)
+        local rc = bar.styleRestedTint or Styles.GNOME_RESTED
+        for i = 1, LAMPS do
+            local off, lit = x.off[i], x.lit[i]
+            off:SetSize(cellW, cellH)
+            off:ClearAllPoints()
+            off:SetPoint("LEFT", bar.sb, "LEFT", (i - 1) * slot + gap / 2, 0)
+            lit:SetSize(cellW / LAMP_CORE_W, cellH / LAMP_CORE_H)
+            lit:ClearAllPoints()
+            lit:SetPoint("CENTER", off, "CENTER")
+            local f = math.max(0, math.min(1, pct - (i - 1)))
+            if f > 0 then
+                lit:SetVertexColor(r, g, b, f)
+            else
+                lit:SetVertexColor(rc[1], rc[2], rc[3], 0.8)
+            end
+            lit:SetShown(f > 0 or i - 1 < restTo)
         end
     end,
 }

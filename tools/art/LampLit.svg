@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="64" viewBox="0 0 32 64"><!-- a lit lamp, neutral for its colour: the core spans 20 x 44, the rest is its halo -->
+<defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0.00" stop-color="#ffffff"/><stop offset="1.00" stop-color="#b8b8b8"/></linearGradient><filter id="b" x="-60%" y="-40%" width="220%" height="180%"><feGaussianBlur stdDeviation="3"/></filter></defs><rect x="6" y="10" width="20" height="44" rx="3" fill="#ffffff" fill-opacity="0.55" filter="url(#b)"/><rect x="6" y="10" width="20" height="44" rx="3" fill="url(#c)"/>
+</svg>

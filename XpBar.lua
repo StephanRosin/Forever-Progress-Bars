@@ -273,19 +273,19 @@ function Xp.StyleTitle()
     -- The fonts before any of ours, so leaving a style restores them.
     bar.nameBase = bar.nameBase or { name:GetFont() }
     bar.valueBase = bar.valueBase or { value:GetFont() }
-    local path, _, flags = unpack(bar.nameBase)
+    local path = bar.nameBase[1]
     if S("xpLevelFont") ~= "" then path = ns.Media.FontPath(S("xpLevelFont"))
     elseif def.level.font then path = ns.Media.FontPath(def.level.font) end
     local size = levelSize(bar)
-    if path then pcall(name.SetFont, name, path, size, flags) end
+    if path then pcall(name.SetFont, name, path, size, S("xpLevelFontFlag")) end
     local c = textColour("xpLevelColorOwn", "xpLevelColor", def.level.color, ns.Bars.NAME_COLOR)
     name:SetTextColor(c[1], c[2], c[3])
     name:SetHeight(size)
-    local vpath, _, vflags = unpack(bar.valueBase)
+    local vpath = bar.valueBase[1]
     if S("xpValueFont") ~= "" then vpath = ns.Media.FontPath(S("xpValueFont"))
     elseif def.value.font then vpath = ns.Media.FontPath(def.value.font) end
     local vsize = Xp.ValueSize()
-    if vpath then pcall(value.SetFont, value, vpath, vsize, vflags) end
+    if vpath then pcall(value.SetFont, value, vpath, vsize, S("xpValueFontFlag")) end
     local vc = textColour("xpValueColorOwn", "xpValueColor", def.value.color, ns.Bars.VALUE_COLOR)
     value:SetTextColor(vc[1], vc[2], vc[3])
     value:SetHeight(vsize)

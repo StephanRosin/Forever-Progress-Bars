@@ -1,6 +1,6 @@
 **Summary**
 
-Your professions, secondary skills, reputations and experience as bars, in six looks: Forever, Blizzard's bar, Rune stone, Gems, Hairline and Forge. In a row or in columns, scaled as you like, shareable as a string. Click a bar to open the profession.
+Your professions, secondary skills, reputations and experience as bars, in ten looks: Forever, Blizzard's bar, Rune stone, Gems, Hairline, Forge, Alchemist's phial, Ice shard, Tavern and Gnomish gauge. In a row or in columns, scaled as you like, shareable as a string. Click a bar to open the profession.
 
 ---
 
@@ -9,13 +9,17 @@ Your professions, secondary skills, reputations and experience as bars, in six l
 Everything you level, in one place: two primary professions, two secondary skills, four reputations of your choice and an experience bar with your level, for **WoW: Forever**. English, Deutsch, Español, Français.
 
 ## Looks
-Six looks, for the progress bars and the XP bar each on its own:
+Ten looks, for the progress bars and the XP bar each on its own:
 - **Forever**, the plain look: the rim of your choice (none, flat in a colour, or gold shaded like the minimap's), its width, the background's colour and opacity, and if you like a **gold marker** where the fill ends.
 - **Blizzard**: Blizzard's own experience bar art, frame and dividers.
 - **Rune stone**: a carved slab, the fill glowing arcane, runes that light up at 25, 50, 75 and 100 %.
 - **Gems**: twenty amethysts in gold settings on a chain; the one being filled is cut where you are.
 - **Hairline**: three pixels, no frame, small text.
 - **Forge**: a forged iron frame with rivets, molten metal glowing hottest at its end.
+- **Alchemist's phial**: a glass tube between brass caps, a bubbling potion with a round end.
+- **Ice shard**: a pointed frame, faceted ice with a jagged edge, the rested bonus as frost.
+- **Tavern**: a wooden board with nails, ale in a dark groove, the rested bonus as foam.
+- **Gnomish gauge**: forty lamps on a brass plate, the rested bonus in amber.
 
 The progress bars keep their colours in every look: each profession its own, each reputation its standing's.
 
@@ -34,7 +38,7 @@ The progress bars keep their colours in every look: each profession its own, eac
 - **Left-click a reputation bar to pick another faction** right there; right-click opens the reputation tab.
 
 ## Experience bar
-- In any of the six looks, with **colours of your own per look** (or the look's own), its own height, width, background and segments: none of the progress bars' settings touch it.
+- In any of the ten looks, with **colours of your own per look** (or the look's own), its own height, width, background and segments: none of the progress bars' settings touch it.
 - Above the professions, between professions and reputation, at the bottom, or **anywhere on the screen**.
 - **The level** as text, as a badge, or hidden. As text it has its own place (above, in or below the bar; left, middle or right), offset, font, size and colour; in Forever it can sit on a plate like the quest log's title. As a badge it sits at any point of the bar or rides on the end of the fill.
 - **Badges**: Classic, Gold, Class colour or the number alone, hand-drawn gold badges (crest, laurel wreath, wings), a **rank medal** whose ornaments grow every ten levels, a rune stone, an amethyst, an iron shield, two gold rings from Blizzard's own art, or **the one matching the bar's look**. The number in gold, white or your class colour; font, size, outline and padding adjustable.

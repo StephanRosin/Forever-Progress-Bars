@@ -119,6 +119,7 @@ Settings.DEFAULTS = {
     -- the style's), place (AUTO: the style's, else as the numbers) plus X/Y.
     xpLevelFont = "",
     xpLevelFontSize = 0,
+    xpLevelFontFlag = "",   -- outline: "", OUTLINE or THICKOUTLINE
     xpLevelColorOwn = false,
     xpLevelColor = { 1, 0.82, 0.29 },
     xpLevelPlace = "AUTO",
@@ -128,11 +129,13 @@ Settings.DEFAULTS = {
     -- The numbers: font, size, colour ("", 0 and off: the style's).
     xpValueFont = "",
     xpValueFontSize = 0,
+    xpValueFontFlag = "",
     xpValueColorOwn = false,
     xpValueColor = { 1, 1, 1 },
     -- The extra lines (XpInfo.lua): font, size, colour ("", 0, off: the numbers').
     xpInfoFont = "",
     xpInfoFontSize = 0,
+    xpInfoFontFlag = "",
     xpInfoColorOwn = false,
     xpInfoColor = { 1, 1, 1 },
     -- Where the numbers sit: ABOVE, IN or BELOW the bar, _LEFT, _CENTER or
@@ -167,6 +170,10 @@ Settings.XP_COLOURS = {
     GEMS = { { 0.69, 0.42, 0.94 }, { 0.24, 0.38, 0.66 } },
     THIN = { { 0.71, 0.58, 0.88 }, { 0.56, 0.69, 0.93 } },
     EMBER = { { 1.0, 0.45, 0.12 }, { 0.50, 0.13, 0.05 } },
+    PHIAL = { { 0.60, 0.25, 0.85 }, { 0.25, 0.45, 0.85 } },
+    ICE = { { 0.45, 0.78, 0.95 }, { 0.81, 0.88, 1.0 } },
+    TAVERN = { { 0.90, 0.62, 0.18 }, { 0.96, 0.93, 0.83 } },
+    GNOME = { { 0.45, 0.98, 0.85 }, { 0.95, 0.72, 0.35 } },
 }
 for style, pair in pairs(Settings.XP_COLOURS) do
     Settings.DEFAULTS["xpColor" .. style] = pair[1]

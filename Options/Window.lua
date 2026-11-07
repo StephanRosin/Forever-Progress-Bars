@@ -150,6 +150,12 @@ local function splice(rows, marker, extra)
     return out
 end
 
+-- The empty part's settings, greyed out where the bars' style does not show them.
+local function barEmptyRow(row)
+    row.enabled = function() return ns.Styles.Get(S("barStyle")).emptyPart == true end
+    return row
+end
+
 -- Leisten: their size (both widths), text line, look, icons.
 local function barRows()
     local w = screenSize()
@@ -158,10 +164,10 @@ local function barRows()
         choice("barStyle", "OPT_BAR_STYLE", ns.Styles.LIST, "BAR_STYLE_"),
         { type = "text", label = "OPT_BAR_STYLE_HINT", height = 40 },
         "RIM",
-        colorRow("barBgColor", "OPT_BAR_BG_COLOR", true),
-        { label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
+        barEmptyRow(colorRow("barBgColor", "OPT_BAR_BG_COLOR", true)),
+        barEmptyRow({ label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
           get = function() return S("barBgAlpha") end,
-          set = function(v) Settings.Set("barBgAlpha", v) end },
+          set = function(v) Settings.Set("barBgAlpha", v) end }),
         { type = "header", label = "OPT_BAR_SIZE" },
         -- The row's width counts only in a row, the column width only in columns.
         { label = "OPT_ROW_WIDTH", min = 200, max = w, step = 1, unit = "px",
@@ -224,6 +230,21 @@ end
 
 -- The look of a level badge: font, size, outline, colour, style. keys: the
 -- settings it reads (ns.Bars.XP_BADGE).
+local function outlineRow(key)
+    return {
+        type = "select", label = "OPT_OUTLINE",
+        choices = function()
+            return {
+                { label = L.OUTLINE_NONE, value = "" },
+                { label = L.OUTLINE_NORMAL, value = "OUTLINE" },
+                { label = L.OUTLINE_THICK, value = "THICKOUTLINE" },
+            }
+        end,
+        get = function() return S(key) end,
+        set = function(v) Settings.Set(key, v) end,
+    }
+end
+
 local function badgeLookRows(keys)
     return {
         {
@@ -250,18 +271,7 @@ local function badgeLookRows(keys)
             set = function(v) Settings.Set(keys.font, v) end,
         },
         num(keys.size, "OPT_FONT_SIZE"),
-        {
-            type = "select", label = "OPT_OUTLINE",
-            choices = function()
-                return {
-                    { label = L.OUTLINE_NONE, value = "" },
-                    { label = L.OUTLINE_NORMAL, value = "OUTLINE" },
-                    { label = L.OUTLINE_THICK, value = "THICKOUTLINE" },
-                }
-            end,
-            get = function() return S(keys.flag) end,
-            set = function(v) Settings.Set(keys.flag, v) end,
-        },
+        outlineRow(keys.flag),
         {
             type = "select", label = "OPT_LEVEL_COLOR",
             choices = function()
@@ -289,8 +299,9 @@ local function enabledIf(test)
     end
 end
 local ownColoursOnly = enabledIf(function() return ns.XpBar.TakesColours() end)
--- Segments and the empty part's colour only where the style draws ours.
+-- Segments only where the style draws ours; the empty part where it shows.
 local ownLookOnly = enabledIf(function() return ns.XpBar.StyleId() == "FOREVER" end)
+local xpEmptyOnly = enabledIf(function() return ns.XpBar.Def().emptyPart == true end)
 local foreverOnly = enabledIf(function() return ns.XpBar.StyleId() == "FOREVER" end)
 local badgeOnly = enabledIf(function() return ns.XpBar.LevelMode() == "BADGE" end)
 local levelTextOnly = enabledIf(function() return ns.XpBar.LevelMode() == "TEXT" end)
@@ -351,8 +362,8 @@ local function xpRows()
         ownColoursOnly(styleKeyed(colorRow, "xpRestedColor", "OPT_XP_RESTED_COLOR", true)),
         ownLookOnly(num("xpSegmentWidth", "OPT_SEGMENT_WIDTH")),
         "RIM",
-        ownLookOnly(colorRow("xpBgColor", "OPT_BAR_BG_COLOR", true)),
-        ownLookOnly({ label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
+        xpEmptyOnly(colorRow("xpBgColor", "OPT_BAR_BG_COLOR", true)),
+        xpEmptyOnly({ label = "OPT_BAR_BG_ALPHA", min = 0, max = 100, step = 1, unit = "%",
           get = function() return S("xpBgAlpha") end,
           set = function(v) Settings.Set("xpBgAlpha", v) end }),
         { type = "header", label = "OPT_HIDE" },
@@ -384,6 +395,7 @@ local function xpTextRows()
         levelTextOnly(num("xpLevelY", "OPT_XP_LEVEL_Y")),
         levelTextOnly(fontRow("xpLevelFont", "OPT_XP_LEVEL_FONT")),
         levelTextOnly(num("xpLevelFontSize", "OPT_XP_LEVEL_SIZE")),
+        levelTextOnly(outlineRow("xpLevelFontFlag")),
         levelTextOnly(check("xpLevelColorOwn", "OPT_XP_LEVEL_COLOR_OWN")),
         levelColourOnly(colorRow("xpLevelColor", "OPT_XP_LEVEL_COLOR", true)),
         (function()
@@ -399,6 +411,7 @@ local function xpTextRows()
         valueOnly(num("xpValueY", "OPT_XP_VALUE_Y")),
         valueOnly(fontRow("xpValueFont", "OPT_XP_VALUE_FONT")),
         valueOnly(num("xpValueFontSize", "OPT_XP_VALUE_SIZE")),
+        valueOnly(outlineRow("xpValueFontFlag")),
         valueOnly(check("xpValueColorOwn", "OPT_XP_VALUE_COLOR_OWN")),
         valueColourOnly(colorRow("xpValueColor", "OPT_XP_VALUE_COLOR", true)),
         -- For every text on the bar, the extra lines included.
@@ -703,6 +716,7 @@ local function xpInfoRows()
         { type = "header", label = "OPT_XPINFO_LOOK" },
         fontRow("xpInfoFont", "OPT_XPINFO_FONT"),
         num("xpInfoFontSize", "OPT_XPINFO_SIZE"),
+        outlineRow("xpInfoFontFlag"),
         check("xpInfoColorOwn", "OPT_XPINFO_COLOR_OWN"),
         infoColourOnly(colorRow("xpInfoColor", "OPT_XPINFO_COLOR", true)),
     }

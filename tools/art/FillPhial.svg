@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="32" viewBox="0 0 8 32"><!-- the potion -->
+<defs><linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0.00" stop-color="#c67bf4"/><stop offset="0.50" stop-color="#7c2bc1"/><stop offset="1.00" stop-color="#470f7c"/></linearGradient></defs><rect width="8" height="32" fill="url(#f)"/>
+</svg>

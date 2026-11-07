@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="32" viewBox="0 0 8 32"><!-- the ice -->
+<defs><linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0.00" stop-color="#d6f1ff"/><stop offset="0.50" stop-color="#5fb6ea"/><stop offset="1.00" stop-color="#1f6aa8"/></linearGradient></defs><rect width="8" height="32" fill="url(#f)"/>
+</svg>

@@ -1002,6 +1002,9 @@ ns.Window.Toggle()
 section("XP lines")
 do
     local I = ns.XpInfo
+    for _, k in ipairs({ "xpLevelFontFlag", "xpValueFontFlag", "xpInfoFontFlag" }) do
+        check(k .. " off by default", S(k), "")
+    end
     for _, id in ipairs(I.IDS) do check(id .. " off by default", S("xpInfo" .. id), false) end
     check("under a minute", I.Duration(59), "< 1m")
     check("minutes", I.Duration(11 * 60 + 5), "11m")
@@ -1076,6 +1079,10 @@ do
     local rest = I.TextOf("Rested")
     check("rested shown", rest:IsShown(), true)
     check("rested text", rest:GetText(), "Rested: 2500 XP (25%)")
+    check("rested: no outline by default", select(3, rest:GetFont()), "")
+    Settings.Set("xpInfoFontFlag", "OUTLINE")
+    check("rested: its outline", select(3, rest:GetFont()), "OUTLINE")
+    Settings.Set("xpInfoFontFlag", nil)
     check("in the bar, right", rest._points.RIGHT ~= nil, true)
     M.state.rested = nil
     M.Fire("UPDATE_EXHAUSTION")
@@ -1093,7 +1100,7 @@ do
     local rows = nil
     for _, page in ipairs(ns.Window.PAGES) do if page.id == "xpinfo" then rows = page.rows() end end
     check("own page", rows ~= nil, true)
-    check("header, hint, the look (header and four) and six blocks of five", rows and #rows, 2 + 5 + 6 * 5)
+    check("header, hint, the look (header and five) and six blocks of five", rows and #rows, 2 + 6 + 6 * 5)
     for _, id in ipairs(I.IDS) do
         Settings.Set("xpInfo" .. id, false)
     end
@@ -1122,7 +1129,7 @@ do
     check("forever by default", S("xpStyle"), "FOREVER")
     check("own: our texture", xp.sb._barTex, "Interface\\TargetingFrame\\UI-StatusBar")
     check("own: rim shown", xp.borders[1]:IsShown(), true)
-    check("six styles (Own went into Forever, the ring left)", #X.STYLES, 6)
+    check("ten styles", #X.STYLES, 10)
     for _, id in ipairs(X.STYLES) do
         check("style " .. id .. " named", ns.L["XP_STYLE_" .. id] ~= nil, true)
     end
@@ -1259,12 +1266,22 @@ do
             "xpValueColorOwn", "xpValueColor", "xpValueFont", "xpHeight" }) do Settings.Set(k, nil) end
     end
 
+    check("level: no outline by default", select(3, xp.nameText:GetFont()), "")
+    check("numbers: no outline by default", select(3, xp.valueText:GetFont()), "")
+    Settings.Set("xpLevelFontFlag", "OUTLINE")
+    check("level: its outline", select(3, xp.nameText:GetFont()), "OUTLINE")
+    check("numbers: keep theirs", select(3, xp.valueText:GetFont()), "")
+    Settings.Set("xpValueFontFlag", "THICKOUTLINE")
+    check("numbers: their outline", select(3, xp.valueText:GetFont()), "THICKOUTLINE")
+    Settings.Set("xpLevelFontFlag", nil)
+    Settings.Set("xpValueFontFlag", nil)
+
     -- The new looks.
     local base = S("barHeight")
     Settings.Set("xpStyle", "RUNE")
     check("rune: taller than the bars", xp:GetHeight(), math.floor(base * 2.6 + 0.5))
     check("rune: its fill", xp.sb._barTex, "Interface\\AddOns\\ForeverProgressBars\\Media\\FillRune.tga")
-    check("rune: the slab", parts("RUNE").slab._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\RuneSlab.tga")
+    check("rune: the slab", parts("RUNE").plate.left._texture, "Interface\\AddOns\\ForeverProgressBars\\Media\\RuneSlab.tga")
     check("rune: no dividers", (function() for _, d in ipairs(xp.dividers) do if d:IsShown() then return false end end return true end)(), true)
     check("rune: four runes", #parts("RUNE").runes, 4)
     check("rune: none lit at 3 %", parts("RUNE").runeGlow[1]:IsShown(), false)
@@ -1354,6 +1371,69 @@ do
     Settings.Set("xpBadgeStyle", nil)
     check("badge menu offers matching", Bars.AvailableLevelStyles(Bars.XP_BADGE)[1], "MATCH")
 
+    local MEDIA = "Interface\\AddOns\\ForeverProgressBars\\Media\\"
+    Settings.Set("xpStyle", "PHIAL")
+    local ph = parts("PHIAL")
+    check("phial: its potion", xp.sb._barTex, MEDIA .. "FillPhial.tga")
+    check("phial: the tip right of the fill", ph.tip._points.LEFT[1], xp.sb:GetStatusBarTexture())
+    check("phial: the bubbles end with the fill", ph.bubbles._points.BOTTOMRIGHT[1], xp.sb:GetStatusBarTexture())
+    check("phial: right cap mirrored", ph.capR._texCoord[1], 1)
+    check("phial: badge matches", Bars.LevelStyle(Bars.XP_BADGE), "GEM")
+
+    Settings.Set("xpStyle", "ICE")
+    check("ice: its fill", xp.sb._barTex, MEDIA .. "FillIce.tga")
+    check("ice: the break right of the fill", parts("ICE").tip._points.LEFT[1], xp.sb:GetStatusBarTexture())
+    do
+        local p = parts("ICE").plate
+        check("ice: the frame's end keeps its pixels", p.left._texCoord[2], 20 / 256)
+        check("ice: the strip above ends at the fill", p.top._points.TOPLEFT[3], 20)
+    end
+
+    Settings.Set("xpStyle", "TAVERN")
+    check("tavern: its ale", xp.sb._barTex, MEDIA .. "FillAle.tga")
+    check("tavern: three nails", #parts("TAVERN").nails, 3)
+    check("tavern: a round nail at each end", #parts("TAVERN").endNails, 2)
+    check("tavern: taller than the bars", xp:GetHeight(), math.floor(base * 1.6 + 0.5))
+
+    do
+        local groove = parts("TAVERN").groove
+        check("tavern: dark groove by default", groove._texColor[1] < 0.1, true)
+        Settings.Set("xpBgColor", { 1, 0, 0 })
+        Settings.Set("xpBgAlpha", 100)
+        check("tavern: the empty part's colour", groove._texColor[1], 1)
+        check("tavern: the groove stays solid", groove._texColor[4], 1)
+        Settings.Set("xpBgAlpha", 0)
+        check("tavern: opacity 0 is see-through", groove._texColor[4], 0)
+        Settings.Set("xpBgAlpha", 30)
+        check("tavern: from 30 on the groove is solid", groove._texColor[4], 1)
+        Settings.Set("xpBgColor", nil)
+        Settings.Set("xpBgAlpha", nil)
+    end
+
+    Settings.Set("xpStyle", "GNOME")
+    check("gnome: forty lamps", #parts("GNOME").lit, 40)
+    check("gnome: the fill unseen", xp.sb._color[4], 0)
+    do
+        local tex = ns.Styles.DEF.GNOME
+        local g = parts("GNOME")
+        tex.update(xp, g, 625, 1000, 100)   -- 25 lamps, the 26th not begun, rested to 29
+        check("gnome: lamp 25 lit", g.lit[25]:IsShown(), true)
+        check("gnome: lamp 25 full", g.lit[25]._vertex[4], 1)
+        check("gnome: lamp 26 waits rested", g.lit[26]._vertex[1], ns.Styles.GNOME_RESTED[1])
+        check("gnome: lamp 29 waits rested", g.lit[29]:IsShown(), true)
+        check("gnome: lamp 30 dark", g.lit[30]:IsShown(), false)
+        tex.update(xp, g, 0, 0, 0)
+        check("gnome: no max, all dark", g.lit[1]:IsShown(), false)
+    end
+
+    for _, id in ipairs({ "PHIAL", "ICE", "TAVERN", "GNOME" }) do
+        Settings.Set("xpStyle", id)
+        check(id .. ": own colour default", Settings.DEFAULTS["xpColor" .. id] ~= nil, true)
+        Settings.Set("xpStyleColours" .. id, true)
+        check(id .. ": takes the chosen colour", xp.styleTint[1], Settings.DEFAULTS["xpColor" .. id][1])
+        Settings.Set("xpStyleColours" .. id, nil)
+    end
+
     Settings.Set("xpStyle", "FOREVER")
     check("own after all: parts of the others hidden", parts("EMBER").over:IsShown() or parts("GEMS").over:IsShown(), false)
     check("own after all: bars' height", xp:GetHeight(), base)
@@ -1383,6 +1463,12 @@ do
         check("rune: a neutral fill", bar.sb._barTex, "Interface\\AddOns\\ForeverProgressBars\\Media\\FillShade.tga")
         check("rune: in the bar's colour", bar.sb._color[1], c[1])
         check("rune: no dividers", (function() for _, d in ipairs(bar.dividers) do if d:IsShown() then return false end end return true end)(), true)
+        Settings.Set("barStyle", "TAVERN")
+        Settings.Set("barBgColor", { 1, 0, 0 })
+        Settings.Set("barBgAlpha", 100)
+        check("tavern: the empty part's settings reach a progress bar", bar.styleParts.TAVERN.groove._texColor[1], 1)
+        Settings.Set("barBgColor", nil)
+        Settings.Set("barBgAlpha", nil)
         Settings.Set("barStyle", "GEMS")
         local g = bar.styleParts.GEMS
         check("gems: the fill unseen", bar.sb._color[4], 0)

@@ -125,7 +125,7 @@ function Info.Apply()
     local bar = ns.Bars.XpSlot and ns.Bars.XpSlot()
     local layer = ns.XpBar.TextLayer()
     if not bar or not layer then return end
-    local path, _, flags = bar.valueText:GetFont()
+    local path = bar.valueText:GetFont()
     if S("xpInfoFont") ~= "" then path = ns.Media.FontPath(S("xpInfoFont")) end
     local size = Info.FontSize()
     local r, g, b = bar.valueText:GetTextColor()
@@ -140,7 +140,7 @@ function Info.Apply()
         if fs then
             fs:SetShown(S(key))
             if S(key) then   -- placed even while hidden (Rested), so it is ready
-                if path then pcall(fs.SetFont, fs, path, size, flags) end
+                if path then pcall(fs.SetFont, fs, path, size, S("xpInfoFontFlag")) end
                 if r then fs:SetTextColor(r, g, b) end
                 ns.XpBar.PlaceText(fs, S(key .. "Place"), S(key .. "X"), S(key .. "Y"))
             end
