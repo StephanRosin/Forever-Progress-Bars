@@ -1,5 +1,5 @@
 --[[---------------------------------------------------------------------------
-Forever Progress Bars -- two primary professions, two secondary skills and
+Forever Progress Bars -- two primary professions, up to three secondary skills and
 four reputations as bars, with the character level in a box in the middle.
 
 Rules it is built by:
@@ -41,7 +41,10 @@ end
 
 -- Fixed values: not settings.
 local CFG = {
-    NUM_SLOTS = 4,          -- 2 primary professions + 2 secondary skills
+    NUM_SLOTS = 5,          -- 2 primary professions + up to 3 secondary skills
+    NUM_PRIMARY = 2,
+    NUM_SECONDARY = 3,
+    BASE_SLOTS = 4,         -- the fifth bar takes room only while a third secondary skill shows
     NUM_REP_SLOTS = 4,
     XP_ROW_GAP = 4,         -- between the XP row and the bars beside it (plus xpGap)
     LEVEL_COLORS = { GOLD = { 1.00, 0.90, 0.45 }, WHITE = { 1, 1, 1 } },
@@ -1352,6 +1355,12 @@ local function RowXpShift()
     return XpHeight() + 2 * XpGap() - S("rowGap")
 end
 
+-- Profession bars that take room: the fifth only while it holds a skill,
+-- so a player with two secondary skills keeps the old four-bar look.
+local function ProfSlotsInUse()
+    return slots[CFG.NUM_SLOTS].data and CFG.NUM_SLOTS or CFG.BASE_SLOTS
+end
+
 -- The stacked arrangements. Bars hang from the container's top: a bar's
 -- bottom lies its row's height (text line and bar) below where it starts,
 -- rows rowGap apart. Empty slots keep their place, as in the row.
@@ -1367,7 +1376,8 @@ local function LayoutStacked(mode)
     local top = xpWhere == "TOP" and xpRowH or 0
     -- In the middle: a gap on both sides of it.
     local xpMid = (xpWhere == "MIDDLE" and xpRowH > 0) and (xpRowH + xpGap) or 0
-    local blockH = CFG.NUM_SLOTS * rowH + (CFG.NUM_SLOTS - 1) * gap
+    local function blockHeight(n) return n * rowH + (n - 1) * gap end
+    local profBlockH, repBlockH = blockHeight(ProfSlotsInUse()), blockHeight(CFG.NUM_REP_SLOTS)
     local function y(start, k) return -(start + k * rowH + (k - 1) * gap) end
     -- A block switched off takes no room: the other one closes up.
     local profOn, repOn = S("showProfessions"), S("showReputation")
@@ -1376,12 +1386,12 @@ local function LayoutStacked(mode)
         local both = profOn and repOn
         local colGap = both and S("spacing") or 0
         width = (both and 2 or 1) * colW + colGap
-        barsH = (profOn or repOn) and blockH or 0
+        barsH = math.max(profOn and profBlockH or 0, repOn and repBlockH or 0)
         for k = 1, CFG.NUM_SLOTS do PutBar(slots[k], "TOPLEFT", 0, y(top, k), colW) end
         local repX = profOn and (colW + colGap) or 0
         for k = 1, CFG.NUM_REP_SLOTS do PutBar(repSlots[k], "TOPLEFT", repX, y(top, k), colW, true) end
     else
-        local profH, repH = profOn and blockH or 0, repOn and blockH or 0
+        local profH, repH = profOn and profBlockH or 0, repOn and repBlockH or 0
         -- Between the blocks only when both show.
         if not (profOn and repOn) and xpMid > 0 then xpMid = xpRowH end
         local groupGap = (profOn and repOn) and (xpMid > 0 and 0 or 3 * gap) or 0
@@ -1480,10 +1490,12 @@ local function Layout()
     layoutBusy = true
     local width = container:GetWidth() or 0
     local spacing = S("spacing")
-    local barWidth = (width - 3 * spacing) / CFG.NUM_SLOTS
-    if barWidth < 1 then layoutBusy = false; return end
-    local offsets = {}
-    for i = 1, CFG.NUM_SLOTS do offsets[i] = (i - 1) * (barWidth + spacing) end
+    -- The reputation row keeps its four columns when a fifth profession bar
+    -- narrows the profession row.
+    local profCount = ProfSlotsInUse()
+    local barWidth = (width - (profCount - 1) * spacing) / profCount
+    local repWidth = (width - (CFG.NUM_REP_SLOTS - 1) * spacing) / CFG.NUM_REP_SLOTS
+    if barWidth < 1 or repWidth < 1 then layoutBusy = false; return end
     local rowHeight = RowHeight()
     -- The XP row between professions and reputation pushes the reputation
     -- row down by its height.
@@ -1491,7 +1503,7 @@ local function Layout()
     for i = 1, CFG.NUM_SLOTS do
         local bar = slots[i]
         bar:ClearAllPoints()
-        bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", offsets[i], 0)
+        bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", (i - 1) * (barWidth + spacing), 0)
         bar:SetWidth(barWidth)
         LayoutDividers(bar, barWidth)
         -- A narrow bar clips the name, never the numbers.
@@ -1503,11 +1515,11 @@ local function Layout()
         bar:ClearAllPoints()
         -- Without the professions the reputation row takes their place.
         local repY = S("showProfessions") and (-(rowHeight + S("rowGap")) - xpMid) or 0
-        bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", offsets[i], repY)
-        bar:SetWidth(barWidth)
-        LayoutDividers(bar, barWidth)
+        bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", (i - 1) * (repWidth + spacing), repY)
+        bar:SetWidth(repWidth)
+        LayoutDividers(bar, repWidth)
         local valueWidth = bar.valueText:GetStringWidth() or 0
-        bar.nameText:SetWidth(math.max(1, barWidth - valueWidth - 4))
+        bar.nameText:SetWidth(math.max(1, repWidth - valueWidth - 4))
     end
     -- The experience bar: a row over the whole width, above the professions
     -- or below everything.
@@ -1792,12 +1804,17 @@ local function Refresh()
 
     local shownPrimary, shownSecondary = {}, {}
     for _, line in ipairs(primaries) do
-        if not Settings.IsHidden(line.name, line.key) and #shownPrimary < 2 then
+        if not Settings.IsHidden(line.name, line.key) and #shownPrimary < CFG.NUM_PRIMARY then
             shownPrimary[#shownPrimary + 1] = line
         end
     end
     for _, line in ipairs(secondaries) do
-        if not Settings.IsHidden(line.name, line.key) and #shownSecondary < 2 then
+        -- The third slot came later: an unrecognised skill (no key, so never
+        -- hidden by default) takes it only when the player ticked it, or
+        -- untouched players would suddenly get a fifth bar.
+        local third = #shownSecondary == CFG.NUM_SECONDARY - 1
+        local allowed = not third or line.key ~= "UNKNOWN" or Settings.IsShownByPlayer(line.name)
+        if allowed and not Settings.IsHidden(line.name, line.key) and #shownSecondary < CFG.NUM_SECONDARY then
             shownSecondary[#shownSecondary + 1] = line
         end
     end
@@ -1806,6 +1823,7 @@ local function Refresh()
     FillSlot(2, shownPrimary[2])
     FillSlot(3, shownSecondary[1])
     FillSlot(4, shownSecondary[2])
+    FillSlot(5, shownSecondary[3])
     Layout()
 end
 Bars.Refresh = function() return Refresh() end

@@ -188,7 +188,7 @@ L.OPT_ICON_SIZE = "Tamaño del icono"
 L.OPT_ICON_GAP = "Espacio entre icono y nombre"
 
 L.OPT_PROFESSIONS = "Profesiones y habilidades"
-L.OPT_PROFESSIONS_HINT = "Se muestran dos profesiones principales y dos secundarias. Desmarca una habilidad para ocultarla."
+L.OPT_PROFESSIONS_HINT = "Se muestran dos profesiones principales y hasta tres secundarias. Desmarca una habilidad para ocultarla."
 L.OPT_NO_SKILLS = "Todavía no se han encontrado habilidades."
 
 L.OPT_REPUTATION = "Barras de reputación"

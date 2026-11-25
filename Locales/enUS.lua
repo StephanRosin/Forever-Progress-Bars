@@ -212,7 +212,7 @@ L.OPT_ICON_SIZE = "Icon size"
 L.OPT_ICON_GAP = "Space between icon and name"
 
 L.OPT_PROFESSIONS = "Professions and skills"
-L.OPT_PROFESSIONS_HINT = "Two primary professions and two secondary skills are shown. Untick a skill to hide it."
+L.OPT_PROFESSIONS_HINT = "Two primary professions and up to three secondary skills are shown. Untick a skill to hide it."
 L.OPT_NO_SKILLS = "No skills found yet."
 
 L.OPT_REPUTATION = "Reputation bars"

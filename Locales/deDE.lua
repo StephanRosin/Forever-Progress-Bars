@@ -187,7 +187,7 @@ L.OPT_ICON_SIZE = "Symbolgröße"
 L.OPT_ICON_GAP = "Abstand zwischen Symbol und Name"
 
 L.OPT_PROFESSIONS = "Berufe und Fertigkeiten"
-L.OPT_PROFESSIONS_HINT = "Angezeigt werden zwei Hauptberufe und zwei Nebenberufe. Den Haken entfernen, um eine Fertigkeit auszublenden."
+L.OPT_PROFESSIONS_HINT = "Angezeigt werden zwei Hauptberufe und bis zu drei Nebenberufe. Den Haken entfernen, um eine Fertigkeit auszublenden."
 L.OPT_NO_SKILLS = "Noch keine Fertigkeiten gefunden."
 
 L.OPT_REPUTATION = "Rufleisten"

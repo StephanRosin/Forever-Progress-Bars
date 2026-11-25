@@ -187,7 +187,7 @@ L.OPT_ICON_SIZE = "Taille des icônes"
 L.OPT_ICON_GAP = "Espace entre l'icône et le nom"
 
 L.OPT_PROFESSIONS = "Métiers et compétences"
-L.OPT_PROFESSIONS_HINT = "Deux métiers principaux et deux compétences secondaires sont affichés. Décochez une compétence pour la masquer."
+L.OPT_PROFESSIONS_HINT = "Deux métiers principaux et jusqu'à trois compétences secondaires sont affichés. Décochez une compétence pour la masquer."
 L.OPT_NO_SKILLS = "Aucune compétence trouvée pour l'instant."
 
 L.OPT_REPUTATION = "Barres de réputation"

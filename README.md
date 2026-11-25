@@ -1,6 +1,6 @@
 # Forever Progress Bars
 
-Two primary professions, two secondary skills and four reputations as bars,
+Two primary professions, up to three secondary skills and four reputations as bars,
 and an experience bar with your level, for WoW: Forever. Ten looks (Forever,
 Blizzard, Rune stone, Gems, Hairline, Forge, Alchemist's phial, Ice shard, Tavern,
 Gnomish gauge) for the progress bars and the XP

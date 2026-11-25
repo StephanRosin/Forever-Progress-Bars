@@ -70,7 +70,7 @@ check("fill value", slot(1).sb:GetValue(), 300)
 check("fill colour: Alchemy green", slot(1).sb._color[1], ns.CFG.COLORS.ALCHEMY[1])
 check("icon from the spell", slot(1).icon._texture, "ICON2259")
 check("weapon skills never shown", (function()
-    for i = 1, 4 do if name(i) == "Swords" then return true end end
+    for i = 1, 5 do if name(i) == "Swords" then return true end end
     return false
 end)(), false)
 check("Fishing hidden by default", Settings.IsHidden("Fishing", "FISHING"), true)
@@ -82,8 +82,40 @@ check("empty slot hidden", slot(4):IsShown(), false)
 Settings.SetHidden("Fishing", false)
 check("showing Fishing fills slot 4", name(4), "Fishing")
 Settings.SetHidden("First Aid", false)
+check("three secondary skills: First Aid", name(3), "First Aid")
+check("three secondary skills: Cooking", name(4), "Cooking")
+check("three secondary skills: Fishing in slot 5", name(5), "Fishing")
+check("slot 5 shown", slot(5):IsShown(), true)
+do
+    local w, sp = Bars.container:GetWidth(), S("spacing")
+    check("five bars share the row", slot(1):GetWidth(), (w - 4 * sp) / 5)
+    check("reputation keeps four columns", Bars.RepSlot(1):GetWidth(), (w - 3 * sp) / 4)
+    Settings.Set("arrangement", "COLUMN")
+    local p4, p5 = slot(4)._points.BOTTOMLEFT[4], slot(5)._points.BOTTOMLEFT[4]
+    local r1 = Bars.RepSlot(1)._points.BOTTOMLEFT[4]
+    check("one column: Fishing under Cooking", p5 < p4, true)
+    check("one column: reputation under the fifth bar", r1 < p5, true)
+    Settings.Set("arrangement", nil)
+end
 Settings.SetHidden("Fishing", true)
 check("back to First Aid", name(3), "First Aid")
+-- A secondary skill the addon does not recognise (Riding under another
+-- spell name) must not fill the fifth bar on its own.
+do
+    local at = 1
+    while M.state.skills[at][1] ~= "Fishing" do at = at + 1 end
+    table.insert(M.state.skills, at + 1, { "Unknown Craft", false, false, 75, 0, 0, 150, false })
+    Bars.Refresh()
+    check("unknown third skill: not shown by default", name(5), nil)
+    Settings.SetHidden("Unknown Craft", false)
+    check("unknown third skill: shown once ticked", name(5), "Unknown Craft")
+    Settings.SetHidden("Unknown Craft", nil)
+    table.remove(M.state.skills, at + 1)
+    Bars.Refresh()
+end
+check("slot 5 empty again", name(5), nil)
+check("slot 5 hidden again", slot(5):IsShown(), false)
+check("four bars again", slot(1):GetWidth(), (Bars.container:GetWidth() - 3 * S("spacing")) / 4)
 
 -- A collapsed header is expanded for the scan and collapsed again.
 M.state.skills[4][3] = false

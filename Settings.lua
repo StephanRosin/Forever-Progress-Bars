@@ -319,6 +319,12 @@ function Settings.IsHidden(name, key)
     return Settings.DEFAULT_HIDDEN[key or ""] or false
 end
 
+-- Ticked by the player, not merely shown by default.
+function Settings.IsShownByPlayer(name)
+    local hidden = ns.DB().hidden
+    return type(hidden) == "table" and hidden[name] == false
+end
+
 function Settings.SetHidden(name, value)
     ns.DB().hidden = ns.DB().hidden or {}
     ns.DB().hidden[name] = value and true or false

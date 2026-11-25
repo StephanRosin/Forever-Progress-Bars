@@ -6,7 +6,7 @@ Your professions, secondary skills, reputations and experience as bars, in ten l
 
 # Forever Progress Bars
 
-Everything you level, in one place: two primary professions, two secondary skills, four reputations of your choice and an experience bar with your level, for **WoW: Forever**. English, Deutsch, Español, Français.
+Everything you level, in one place: two primary professions, up to three secondary skills, four reputations of your choice and an experience bar with your level, for **WoW: Forever**. English, Deutsch, Español, Français.
 
 ## Looks
 Ten looks, for the progress bars and the XP bar each on its own:
@@ -24,7 +24,7 @@ Ten looks, for the progress bars and the XP bar each on its own:
 The progress bars keep their colours in every look: each profession its own, each reputation its standing's.
 
 ## Professions and skills
-- Two primary professions on the left, two secondary skills on the right (First Aid and Cooking by default), each with its icon, name and rank.
+- Two primary professions on the left, up to three secondary skills on the right (First Aid and Cooking by default, tick Fishing for a third), each with its icon, name and rank.
 - Your rank in the middle of each profession bar: Apprentice, Journeyman, Expert, Artisan, Master (can be switched off and moved up or down).
 - Fishing and Riding are hidden by default; every skill can be shown or hidden in the options.
 - Coloured per profession: flask green for Alchemy, arcane purple for Enchanting, bolt-of-cloth blue for Tailoring, and so on.
