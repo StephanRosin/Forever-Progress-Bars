@@ -944,7 +944,7 @@ check("toggled closed", ns.Window.IsShown(), false)
 check("interface options page", M.registered[1], "Forever Progress Bars")
 
 section("Minimap button")
-local mb = M.byName["Forever Progress Bars"]
+local mb = M.byName["Forever Progress Bars Minimap"]
 check("button exists", mb ~= nil, true)
 mb:GetScript("OnClick")(mb, "LeftButton")
 check("left-click opens the options", ns.Window.IsShown(), true)
